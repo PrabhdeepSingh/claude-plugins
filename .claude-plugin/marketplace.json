@@ -8,15 +8,15 @@
   },
   "plugins": [
     {
-      "name": "ship",
-      "description": "PR babysitter: branch, commit, open PR, gather Claude + every enabled AI reviewer (Copilot, CodeRabbit, Aikido, …), fix/justify/resolve every finding, loop until clean, then merge — autonomously and repo-agnostic.",
+      "name": "sonu",
+      "description": "Prabhdeep (Sonu)'s personal Claude Code commands. Includes /sonu:ship — a PR babysitter that gathers Claude + every enabled AI reviewer (Copilot, CodeRabbit, Aikido, …), fixes/justifies/resolves every finding, loops until clean, then merges — autonomously and repo-agnostic.",
       "author": {
         "name": "Prabhdeep Singh"
       },
       "category": "workflow",
       "license": "MIT",
       "keywords": ["pull-request", "code-review", "copilot", "coderabbit", "automation", "git", "github"],
-      "source": "./ship"
+      "source": "./sonu"
     }
   ]
 }

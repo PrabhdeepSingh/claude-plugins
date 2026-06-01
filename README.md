@@ -1,23 +1,25 @@
 # claude-plugins
 
-Prabhdeep Singh's personal [Claude Code](https://claude.com/claude-code) plugins, packaged as a marketplace so they work on any repo and any machine I sign into — and so I can share them.
+Prabhdeep (Sonu) Singh's personal [Claude Code](https://claude.com/claude-code) commands, packaged as a marketplace so they work on any repo and any machine I sign into — and so I can share them.
 
 ## Install
 
 ```
 /plugin marketplace add PrabhdeepSingh/claude-plugins
-/plugin install ship@prabhdeep-tools
+/plugin install sonu@prabhdeep-tools
 ```
 
-Run those once per device. After that, `/ship` is available in every repo on that machine. To pull updates later:
+Run those once per device. After that, `/sonu:ship` is available in every repo on that machine. To pull updates later:
 
 ```
 /plugin marketplace update prabhdeep-tools
 ```
 
-## Plugins
+> Commands from a plugin are namespaced as `/<plugin>:<command>` — that's why it's `/sonu:ship`, not `/ship`. The slash menu autocompletes, so typing `ship` finds it.
 
-### `ship` — PR babysitter
+## Commands
+
+### `/sonu:ship` — PR babysitter
 
 Takes a finished change from working tree to a clean, merged PR — autonomously. Once you run it, it doesn't stop to ask "shall I merge?"; it only pauses for a real judgment call.
 
@@ -35,11 +37,11 @@ The change's review depth scales to the diff. You can force it:
 
 | Command | Behavior |
 |---------|----------|
-| `/ship` | Auto — light touch on trivial diffs, full panel on big or security-relevant ones. |
-| `/ship light` | Minimal Claude review (skips on truly trivial changes); still collects whatever the repo's bots post. |
-| `/ship full` | Deep Claude code + security review, full re-review loop. |
+| `/sonu:ship` | Auto — light touch on trivial diffs, full panel on big or security-relevant ones. |
+| `/sonu:ship light` | Minimal Claude review (skips on truly trivial changes); still collects whatever the repo's bots post. |
+| `/sonu:ship full` | Deep Claude code + security review, full re-review loop. |
 
-Mode words are parsed forgivingly — `quick`/`fast`/`lite` → `light`, and `thorough`/`deep`/`max` (typos included) → `full`. The mode only scales *Claude's own* reviews; the external bots auto-run on the repo regardless, so they cost the same whether `/ship` waits for them or not.
+Mode words are parsed forgivingly — `quick`/`fast`/`lite` → `light`, and `thorough`/`deep`/`max` (typos included) → `full`. The mode only scales *Claude's own* reviews; the external bots auto-run on the repo regardless, so they cost the same whether the babysitter waits for them or not.
 
 ## Requirements
 
@@ -50,7 +52,7 @@ Mode words are parsed forgivingly — `quick`/`fast`/`lite` → `light`, and `th
 
 ## A note on trust
 
-`/ship` runs shell commands and **merges PRs on your behalf**. Read the command before you install it (`ship/commands/ship.md`), and only point it at repos where you're comfortable with that. Plugins run with your local permissions.
+`/sonu:ship` runs shell commands and **merges PRs on your behalf**. Read the command before you install it (`sonu/commands/ship.md`), and only point it at repos where you're comfortable with that. Plugins run with your local permissions.
 
 ## Layout
 
@@ -59,11 +61,11 @@ claude-plugins/
 ├── .claude-plugin/
 │   └── marketplace.json     # marketplace manifest (name: prabhdeep-tools)
 ├── LICENSE                  # MIT
-└── ship/                    # the "ship" plugin
+└── sonu/                    # the "sonu" plugin (your personal namespace)
     ├── .claude-plugin/
     │   └── plugin.json
     └── commands/
-        └── ship.md          # the /ship command
+        └── ship.md          # the /sonu:ship command
 ```
 
 ## License

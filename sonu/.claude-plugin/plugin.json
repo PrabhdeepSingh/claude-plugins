@@ -1,0 +1,11 @@
+{
+  "name": "sonu",
+  "version": "1.1.0",
+  "description": "Prabhdeep (Sonu)'s personal Claude Code commands. Includes /sonu:ship — a PR babysitter that branches, commits, opens a PR, gathers Claude + every enabled AI reviewer (Copilot, CodeRabbit, Aikido, …), fixes/justifies/resolves every finding, loops until clean, then merges — autonomously and repo-agnostic.",
+  "author": {
+    "name": "Prabhdeep Singh",
+    "email": "pssingh0101@gmail.com"
+  },
+  "license": "MIT",
+  "keywords": ["pull-request", "code-review", "copilot", "coderabbit", "automation", "git", "github"]
+}
