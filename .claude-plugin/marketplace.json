@@ -1,18 +1,21 @@
 {
   "$schema": "https://anthropic.com/claude-code/marketplace.schema.json",
-  "name": "claude-tools",
-  "description": "Prabhdeep's personal Claude Code tools.",
+  "name": "prabhdeep-tools",
+  "description": "Prabhdeep Singh's personal Claude Code tools.",
   "owner": {
-    "name": "Prabhdeep Singh"
+    "name": "Prabhdeep Singh",
+    "email": "pssingh0101@gmail.com"
   },
   "plugins": [
     {
       "name": "ship",
-      "description": "Branch, commit, open PR, gather Claude (code + security) + Copilot reviews, fix/justify/resolve every finding, loop until clean, then merge — autonomously, repo-agnostic.",
+      "description": "PR babysitter: branch, commit, open PR, gather Claude + every enabled AI reviewer (Copilot, CodeRabbit, Aikido, …), fix/justify/resolve every finding, loop until clean, then merge — autonomously and repo-agnostic.",
       "author": {
         "name": "Prabhdeep Singh"
       },
       "category": "workflow",
+      "license": "MIT",
+      "keywords": ["pull-request", "code-review", "copilot", "coderabbit", "automation", "git", "github"],
       "source": "./ship"
     }
   ]
