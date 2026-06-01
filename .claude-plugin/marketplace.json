@@ -1,0 +1,19 @@
+{
+  "$schema": "https://anthropic.com/claude-code/marketplace.schema.json",
+  "name": "claude-tools",
+  "description": "Prabhdeep's personal Claude Code tools.",
+  "owner": {
+    "name": "Prabhdeep Singh"
+  },
+  "plugins": [
+    {
+      "name": "ship",
+      "description": "Branch, commit, open PR, gather Claude (code + security) + Copilot reviews, fix/justify/resolve every finding, loop until clean, then merge — autonomously, repo-agnostic.",
+      "author": {
+        "name": "Prabhdeep Singh"
+      },
+      "category": "workflow",
+      "source": "./ship"
+    }
+  ]
+}

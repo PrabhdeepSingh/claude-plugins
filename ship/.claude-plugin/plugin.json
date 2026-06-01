@@ -1,0 +1,8 @@
+{
+  "name": "ship",
+  "version": "1.0.0",
+  "description": "PR babysitter: branch, commit, open PR, gather Claude + Copilot reviews, fix/justify/resolve every finding, loop until clean, then merge — autonomously and repo-agnostic.",
+  "author": {
+    "name": "Prabhdeep Singh"
+  }
+}
