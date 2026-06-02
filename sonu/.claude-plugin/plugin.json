@@ -1,6 +1,6 @@
 {
   "name": "sonu",
-  "version": "1.2.0",
+  "version": "1.2.1",
   "description": "Prabhdeep (Sonu)'s personal Claude Code toolkit. Includes /sonu:ship — a PR babysitter that branches, commits, opens a PR, gathers Claude + every enabled AI reviewer (Copilot, CodeRabbit, Aikido, …), fixes/justifies/resolves every finding, loops until clean, then merges — autonomously and repo-agnostic — plus the code-standards skill that auto-applies Sonu's coding foundation (naming, modular design, schema/API conventions, safe data access, logging, input validation, and injection/leak prevention) to all AI-written code.",
   "author": {
     "name": "Prabhdeep Singh",

@@ -202,7 +202,15 @@ mutation($id:ID!){ resolveReviewThread(input:{threadId:$id}){ thread{ isResolved
    Then re-trigger the bots:
    - **Copilot:** `gh pr edit $PR --add-reviewer "@copilot"` (fallback if it errors: GraphQL `requestReviews` with `botIds:["BOT_kgDOCnlnWA"]` — Copilot's node id — and `union:true`).
    - **Other bots** generally re-review automatically on a new push (your Phase 4 `git push`). For any that don't, drop their re-review mention as an issue comment (`@coderabbitai review`, `@sourcery-ai review`, `@greptileai`, `@ellipsis-dev`, `/review` for Qodo).
-2. Wait for activity **newer than `$PREV_AT`** with the same settle-loop as 2C (background until-loop), comparing the max bot review timestamp against `$PREV_AT` (ISO-8601 sorts lexicographically, so `>` is a valid recency test). Re-run `/security-review` on the new diff if the fixes touched security-relevant code (and the mode runs it).
+2. Wait for activity **newer than `$PREV_AT`** with the same settle-loop as 2C (background until-loop), comparing the max bot review timestamp against `$PREV_AT`. ISO-8601 sorts lexicographically, so a string `>` is a valid recency test — but **do not write `[ "$MAX_AT" \> "$PREV_AT" ]`**: this harness runs the loop under `zsh`, whose `[`/`test` builtin rejects `\>` with `condition expected: >`, so the loop silently never fires and burns its full timeout. Use one of these portable forms instead — `[[ ... > ... ]]` (works in both bash and zsh) or a `sort`-based check:
+   ```bash
+   # portable recency check (works under bash AND zsh):
+   if [ -n "$MAX_AT" ] && [[ "$MAX_AT" > "$PREV_AT" ]]; then echo "NEW_REVIEW:$MAX_AT"; exit 0; fi
+   # or, builtin-agnostic, using sort -- newest sorts last:
+   # newest=$(printf '%s\n%s\n' "$PREV_AT" "$MAX_AT" | sort | tail -1)
+   # [ "$newest" = "$MAX_AT" ] && [ "$MAX_AT" != "$PREV_AT" ] && { echo "NEW_REVIEW:$MAX_AT"; exit 0; }
+   ```
+   Re-run `/security-review` on the new diff if the fixes touched security-relevant code (and the mode runs it).
 3. Fetch only **new** bot comments — track comment ids already handled and diff against the full registry-matched list:
    ```bash
    gh api "/repos/$REPO/pulls/$PR/comments" --paginate \
