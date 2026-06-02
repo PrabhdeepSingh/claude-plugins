@@ -170,7 +170,7 @@ Make logs human-readable and filterable. A log line should be scannable by a tir
 
 - **Use the right level so noise stays filterable.** `debug` for local detail, `info` for normal milestones, `warn` for recoverable oddities, `error` for failures that need a human. Logging everything at `error` makes the real errors impossible to find.
 - **Attach a correlation/request id** to every line so you can trace one request across the dozens of lines it produces. Without it, concurrent requests interleave into noise.
-- **Never log secrets or sensitive data** — passwords, tokens, API keys, full card numbers, and avoid dumping whole objects that might carry them. Log the `user_id`, not the user.
+- **Never log secrets or sensitive data** — passwords, tokens, API keys, full card numbers, and avoid dumping whole objects that might carry them. Log the `user_id`, not the user. The one principled exception is **security/audit events** (failed logins, permission denials, account changes): these legitimately need identifying detail like the attempted email to investigate abuse and support real users — but they belong in a **dedicated auth/audit log that is access-controlled and short-retention**, not the general application log that fans out to every dashboard. Keep that carve-out narrow; everywhere else, the rule stands.
 
 **Example:**
 ```js
@@ -244,7 +244,13 @@ if (!passwordValid)   return res.status(401).json({ error: 'Incorrect password' 
 
 // Prefer: one generic message for the pair; the real reason is logged, not returned
 if (!user || !passwordValid) {
-  logger.warn('Failed login attempt', { email_attempted: email, request_id: req.id });
+  // Full email is OK *here* because authLog is access-controlled with short
+  // retention — the audit-event exception in section 8, not the general app log.
+  authLog.warn('Failed login attempt', {
+    request_id: req.id,
+    reason: user ? 'bad_password' : 'no_account',
+    email_attempted: email,
+  });
   return res.status(401).json({ error: 'Email or password is incorrect' });
 }
 ```
