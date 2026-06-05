@@ -13,6 +13,20 @@ Before writing new code, hold these standards in mind as the target. Before edit
 
 When you finish a change, run the self-check at the bottom against your own diff before considering it done.
 
+## How you work — discipline before output
+
+The numbered sections below describe what finished code should look like. These four habits describe how to get there, and they head off the most common ways an AI coding session goes off the rails: confidently building the wrong thing, over-engineering, and leaving collateral damage in the diff. They bias toward care over raw speed — on a genuinely trivial change, use judgment.
+
+**Think before you code.** Don't assume your way past ambiguity. If a request has more than one reasonable reading, surface the options instead of silently picking one. State the assumptions you're working from, and if a simpler approach exists than the one asked for, say so. When something is genuinely unclear and a wrong guess would be expensive to unwind, stop and ask rather than building on the guess. A clarifying question up front is cheap; a confident wrong implementation is not.
+
+**Build the minimum that solves the problem.** Write the least code that fully does what was asked, and nothing speculative — no abstractions for single-use code, no configurability nobody requested, no error handling for cases that can't occur. (The rule of three from section 4 applies here too: don't generalize until you've actually seen the repetition.) If a senior engineer would call it overcomplicated, it is. Simplify.
+
+**Make surgical changes.** Touch only what the task requires. When editing existing code, resist the urge to "improve" adjacent lines, reformat, or refactor things that aren't broken — match the surrounding style even where you'd personally do it differently. Every changed line should trace directly back to the request. Clean up the imports and variables *your* change orphaned, but leave pre-existing dead code alone — mention it rather than deleting it. This keeps diffs reviewable and keeps your change from quietly breaking something unrelated.
+
+**Turn the task into a verifiable goal, then loop.** Restate vague asks as something you can actually check: "add validation" becomes "write tests for the invalid inputs, then make them pass"; "fix the bug" becomes "write a test that reproduces it, then make it pass." For anything multi-step, sketch a short plan with a verification check for each part. Strong success criteria are what let you work independently to the finish line instead of stopping every few minutes to ask whether you're on track.
+
+---
+
 ## 1. Names carry the meaning
 
 A name should tell the reader what something *is* or *does* without them having to go read its definition. Generic names force that lookup every single time, so they're banned.
@@ -263,6 +277,8 @@ Prefer immutability by default — return new values rather than mutating shared
 
 Run this against your own diff. If any answer is "no," fix it before finishing:
 
+- Did you surface assumptions and ambiguity up front rather than silently guessing, and is this the minimum that solves the problem (nothing speculative)?
+- Does every changed line trace directly to the request — no unrequested refactors, reformatting, or "improvements" to adjacent code?
 - Could a new teammate guess what every name means without reading its definition? No generic `data`/`temp`/`Manager` survivors?
 - Do schema and API names follow the conventions — `snake_case` fields, UUID ids, `created_date`/`last_modified_date` (or `*_at`) timestamps in UTC, and first/last name stored as separate fields?
 - Does every query select only the columns it uses and bound its result set (pagination), instead of `SELECT *` or loading everything into memory? Is filtering/counting done in the database, with no N+1 loops?

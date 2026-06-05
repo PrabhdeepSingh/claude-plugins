@@ -49,7 +49,7 @@ Mode words are parsed forgivingly — `quick`/`fast`/`lite` → `light`, and `th
 
 A skill, not a command — there's nothing to invoke. Once the plugin is installed, Claude consults it automatically before writing, generating, or refactoring code in any repo, so AI-written code lands in my style instead of generic boilerplate.
 
-It encodes the foundation across eleven areas:
+It opens with **working discipline** — how to approach the task, not just the output: think before coding and surface assumptions, build the minimum that solves the problem, make surgical changes that trace to the request, and turn vague asks into verifiable goals. Then it encodes the foundation across eleven areas:
 
 - **Naming** — intention-revealing names, no `data`/`temp`/`Manager` junk-drawer names.
 - **Schema & API conventions** — `snake_case` fields, UUID ids, `created_date`/`last_modified_date` timestamps in UTC, first/last name stored separately.
