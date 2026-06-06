@@ -17,7 +17,7 @@ Any time you are writing or reviewing: HTML templates, page components, routing 
 
 - **One `<h1>` per URL.** It should be the main on-page heading inside `<body>`, associated with the page's focus keyword. Never use it for a site name, nav label, or logo.
 - **Multiple `<h2>`/`<h3>` are fine.** Heading tags are for content hierarchy, not navigation elements.
-- **`<h>` tags must not appear inside navigation.** Navigation links that happen to be styled large are not headings.
+- **Heading tags (`<h1>`–`<h6>`) must not be used for navigation.** Nav links that happen to be styled large are not headings.
 - **Avoid useless anchor text.** "Read more," "click here," "view product," "visit page" tell neither the user nor the crawler what the destination is. Use descriptive text.
 - **Don't pile redundant links to the same URL.** A few repeats are normal and fine (a nav link plus a body link, an image plus its caption). But when one listing links to the same destination four times (image, title, price, "view details"), trim it — historically only the *first* link's anchor text to a given URL counts, so the extras add clutter without adding signal.
 - **Every page should have at least 250 words of indexable body content**, ideally above the fold, rendered directly in the HTML — not behind JavaScript execution.
@@ -56,7 +56,7 @@ Any time you are writing or reviewing: HTML templates, page components, routing 
 
 ## 6. Redirects
 
-- **Use `301` (permanent) for every permanent move** — URL changes, canonicalization, `http`→`https`, lowercase/trailing-slash enforcement. A `301` passes ranking signals to the new URL; a `302`/`307` does not, so using a temporary redirect for a permanent move leaks equity. Reserve `302`/`307` for genuinely temporary redirects (A/B tests, short-lived promos, maintenance). Never use JavaScript or meta-refresh redirects for either.
+- **Use `301` (permanent) for every permanent move** — URL changes, canonicalization, `http`→`https`, lowercase/trailing-slash enforcement. A `301` is the clear, unambiguous signal to move ranking to the new URL; a `302`/`307` says "temporary — keep the old URL," which is the wrong signal for a permanent move (Google may eventually treat a long-lived `302` as permanent, but don't leave it to that guesswork). Reserve `302`/`307` for genuinely temporary redirects (A/B tests, short-lived promos, maintenance). Never use JavaScript or meta-refresh redirects for either.
 - **No redirect chains.** Every redirect must point directly to the final destination URL.
 - **Legacy URLs with no relevant match** should `301` to the most relevant page.
 - **Deprecated URLs with no replacement** should return `410 Gone`, not `301` or `404`.
@@ -67,7 +67,7 @@ Any time you are writing or reviewing: HTML templates, page components, routing 
 - **All pages** marked up with `WebPage` schema (`https://schema.org/WebPage`).
 - Mark up every applicable on-page element with JSON-LD — never Microdata or RDFa. JSON-LD is the only format Google recommends going forward.
 - Common types to include where content exists:
-  - `Product`, `Price`, `Currency`
+  - `Product` — express pricing as a nested `Offer` (or `AggregateOffer`) using the `price` and `priceCurrency` properties (there is no `Price` or `Currency` type)
   - `ImageObject`
   - `AggregateRating`
   - `VideoObject`
