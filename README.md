@@ -9,7 +9,7 @@ Prabhdeep (Sonu) Singh's personal [Claude Code](https://claude.com/claude-code) 
 /plugin install sonu@prabhdeep-tools
 ```
 
-Run those once per device. After that, `/sonu:ship` is available in every repo on that machine, and the **code-standards** skill rides along automatically — no command to run, it just shapes how code gets written. To pull updates later:
+Run those once per device. After that, `/sonu:ship` is available in every repo on that machine, and the **code-standards**, **seo-standards**, and **content-seo** skills ride along automatically — no command to run, they just shape how code and content get written. To pull updates later:
 
 ```
 /plugin marketplace update prabhdeep-tools
@@ -67,6 +67,22 @@ Every rule explains *why* it's there, ships with good/bad examples so it actuall
 
 Edit `sonu/skills/code-standards/SKILL.md` to make it yours — it's plain Markdown.
 
+### `seo-standards` — technical SEO, baked in
+
+The HTML/template/plumbing side of SEO. Like `code-standards`, there's nothing to invoke — Claude reaches for it automatically whenever it touches anything served as a web page or that affects how one is crawled: page/component templates (HTML, JSX/TSX, Vue, Svelte, Astro), route and URL definitions, redirects, `<head>` metadata (title, meta description, canonical, robots, hreflang, Open Graph), schema.org JSON-LD, sitemaps, and robots.txt.
+
+It covers heading structure (one `<h1>` per URL, headings for hierarchy not nav), title/meta length, canonical tags, URL strategy, redirect rules (301/302/410), structured data, render-blocking JS/CSS, and indexation controls — every rule optimizing for the crawler and the human reader at once. The point: correct SEO is far cheaper to bake in at build time than to retrofit after launch.
+
+Edit `sonu/skills/seo-standards/SKILL.md` to tune it.
+
+### `content-seo` — write it so humans rank it and AI cites it
+
+The editorial counterpart to `seo-standards`: that one governs the plumbing, this one governs the *writing*. It fires automatically whenever Claude writes or edits prose meant to be published — blog posts, articles, guides, tutorials, landing/marketing copy, press releases, changelog and "what's new" entries, FAQs, docs, and Markdown content (`content/**/*.md`, `*.mdx`) plus its frontmatter.
+
+It encodes modern on-page SEO: start from a single search intent, structure a machine can extract, real depth and E-E-A-T over keyword stuffing, internal linking, image alt text, URL slugs, and featured-snippet / AI-citation formatting — so content doesn't just rank in the traditional top 10 but earns citations in AI answer engines (Google AI Overviews, ChatGPT, Claude, Perplexity, Gemini).
+
+Edit `sonu/skills/content-seo/SKILL.md` to tune it.
+
 ## Requirements
 
 - The [`gh`](https://cli.github.com/) CLI, authenticated (`gh auth status`).
@@ -90,9 +106,13 @@ claude-plugins/
     │   └── plugin.json
     ├── commands/
     │   └── ship.md          # the /sonu:ship command
-    └── skills/
-        └── code-standards/
-            └── SKILL.md     # the code-standards skill (auto-applied)
+    └── skills/              # auto-applied skills (nothing to invoke)
+        ├── code-standards/
+        │   └── SKILL.md     # how code gets written
+        ├── seo-standards/
+        │   └── SKILL.md     # technical SEO for web pages
+        └── content-seo/
+            └── SKILL.md     # editorial SEO for published prose
 ```
 
 ## License
