@@ -19,7 +19,7 @@ Any time you are writing or reviewing: HTML templates, page components, routing 
 - **Multiple `<h2>`/`<h3>` are fine.** Heading tags are for content hierarchy, not navigation elements.
 - **`<h>` tags must not appear inside navigation.** Navigation links that happen to be styled large are not headings.
 - **Avoid useless anchor text.** "Read more," "click here," "view product," "visit page" tell neither the user nor the crawler what the destination is. Use descriptive text.
-- **No duplicate links to the same URL within a page's DOM.** Multiple anchors (image, price, address, "view details") all pointing to the same URL dilute link equity. Use one canonical anchor per destination.
+- **Don't pile redundant links to the same URL.** A few repeats are normal and fine (a nav link plus a body link, an image plus its caption). But when one listing links to the same destination four times (image, title, price, "view details"), trim it — historically only the *first* link's anchor text to a given URL counts, so the extras add clutter without adding signal.
 - **Every page should have at least 250 words of indexable body content**, ideally above the fold, rendered directly in the HTML — not behind JavaScript execution.
 - **Text shown in images must also exist as real HTML text.** Crawlers cannot read image-embedded text.
 - **Links must not be inside `<form>` tags.** Important navigation must not be `<button>` or `<form>` — these are not crawlable as links.
@@ -27,7 +27,7 @@ Any time you are writing or reviewing: HTML templates, page components, routing 
 ## 2. Page titles and meta descriptions
 
 - **Page title: unique per URL, 50–60 characters (including spaces).**
-- **Meta description: unique per URL, up to 150 characters (including spaces).**
+- **Meta description: unique per URL, ~150–160 characters** (Google truncates around there; ~120 shows on mobile).
 - **Only one `<title>` element per page.**
 - Both should be manageable at the page level in any CMS without a deploy.
 
@@ -39,7 +39,7 @@ Any time you are writing or reviewing: HTML templates, page components, routing 
 
 ## 4. URL strategy
 
-- **No query parameters in indexable URLs.** Tracking codes use `#fragment` format (`#utm_source=…`), not `?param=value`.
+- **Keep the canonical URL clean — no parameters baked into it.** Campaign tracking uses standard query params (`?utm_source=…`); just point `rel=canonical` at the clean, parameter-free URL so the tracked variants aren't indexed as duplicates. Don't stuff tracking into the `#fragment` — analytics tools don't read it.
 - **All URLs forced lowercase** — serve a `301` from mixed-case to lowercase.
 - **Trailing slash enforced** — serve a `301` from the non-trailing-slash variant to the trailing-slash variant.
 - **No extraneous folders** like `/cms/`, `/content/`, `/app/` in public-facing URLs.
@@ -56,7 +56,7 @@ Any time you are writing or reviewing: HTML templates, page components, routing 
 
 ## 6. Redirects
 
-- **Only `301` permanent redirects** for all URL changes and canonicalization. Never `302`, JavaScript redirects, or meta-refresh redirects.
+- **Use `301` (permanent) for every permanent move** — URL changes, canonicalization, `http`→`https`, lowercase/trailing-slash enforcement. A `301` passes ranking signals to the new URL; a `302`/`307` does not, so using a temporary redirect for a permanent move leaks equity. Reserve `302`/`307` for genuinely temporary redirects (A/B tests, short-lived promos, maintenance). Never use JavaScript or meta-refresh redirects for either.
 - **No redirect chains.** Every redirect must point directly to the final destination URL.
 - **Legacy URLs with no relevant match** should `301` to the most relevant page.
 - **Deprecated URLs with no replacement** should return `410 Gone`, not `301` or `404`.
@@ -64,7 +64,7 @@ Any time you are writing or reviewing: HTML templates, page components, routing 
 
 ## 7. Schema.org markup
 
-- **All pages** marked up with `WebPage` schema (`http://schema.org/WebPage`).
+- **All pages** marked up with `WebPage` schema (`https://schema.org/WebPage`).
 - Mark up every applicable on-page element with JSON-LD — never Microdata or RDFa. JSON-LD is the only format Google recommends going forward.
 - Common types to include where content exists:
   - `Product`, `Price`, `Currency`
@@ -78,7 +78,7 @@ Any time you are writing or reviewing: HTML templates, page components, routing 
 
 - Links use anchor text only — not images, icons, or other non-text nodes as the sole link content.
 - Links must point to the canonical URL of the destination — not to a URL that redirects, is parameterized, or is a known duplicate.
-- One link per destination URL within any given page DOM.
+- Don't pepper a page with many redundant links to the same destination — a natural repeat (nav + contextual) is fine; trim boilerplate duplication.
 - Navigation must use **absolute URLs**, not relative ones, everywhere on the site.
 - Navigation must be HTML/CSS-renderable without JavaScript — menus must degrade gracefully for crawlers.
 
@@ -140,9 +140,9 @@ Run this against your diff or template. Fix any "no" before finishing:
 - Is there exactly one `<h1>` per page, connected to the focus keyword and not used in nav?
 - Is `rel="canonical"` present on every URL, using an absolute `https://` URL pointing to itself?
 - Is the `<title>` unique, 50–60 chars, and present exactly once?
-- Is the meta description unique and under 150 chars?
+- Is the meta description unique and ~150–160 chars?
 - Are all URLs lowercase, trailing-slash, parameter-free, and without extraneous folders?
-- Do all redirects use `301` (not `302`) and point directly to the final URL with no chains?
+- Does every *permanent* move use a `301` (not a `302`/`307`) and point directly to the final URL with no chains?
 - Is every anchor using descriptive text (no "read more"/"click here"), pointing to a canonical URL, and not duplicated within the DOM?
 - Is all indexable body content in the initial HTML response (not JavaScript-rendered)?
 - Is schema.org markup present as JSON-LD for every applicable on-page element?

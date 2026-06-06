@@ -11,7 +11,7 @@ This is the editorial counterpart to the technical [[seo-standards]] skill. That
 
 On-page SEO is no longer about keyword counts and word counts. In 2025-2026 it rests on three things: **genuine expertise**, **structure a machine can extract**, and **earning citations in AI answers**. Two things are true at once:
 
-- **The fundamentals are the price of entry.** AI Overviews now appear on roughly half of Google searches, and the pages they cite overwhelmingly *also* rank in the traditional top 10. So ranking organically is now a *prerequisite* for AI visibility, not an alternative to it.
+- **The fundamentals are the price of entry.** AI Overviews now appear on a large and growing share of Google searches, and the pages they cite overwhelmingly *also* rank in the traditional top 10. So ranking organically is now a *prerequisite* for AI visibility, not an alternative to it.
 - **A new layer sits on top.** Getting *cited* by AI answer engines (Google AI Overviews, ChatGPT, Claude, Perplexity, Gemini) rewards content that reads as **evidentiary** — quotes, statistics, citations, clear structure. Optimize for being *the cited source*, not just for a blue-link click, because many searches now end without one.
 
 Everything below serves both readers and machines — they almost always want the same thing: a clear, trustworthy, well-structured answer.
@@ -126,7 +126,7 @@ This is where modern content SEO and AI-answer optimization converge. The format
 
 - **Lead each section with a direct 40–60 word answer** placed immediately under a question-style heading, *then* expand. This "answer-first" shape is what gets pulled into featured snippets and AI summaries.
 - **Use structure machines can lift:** short paragraphs (1–3 sentences), bulleted and numbered lists, comparison tables, bolded key phrases.
-- **Make it evidentiary** — this is the strongest lever for getting cited by LLMs. In a large study of AI answer engines, the biggest gains came from **attributed expert quotes (~+41%)**, **statistics and data (~+30%)**, and **inline citations to sources (~+30%)**, while **keyword stuffing cost ~9%**. So: cite sources, quote named experts, include real numbers, and write clearly.
+- **Make it evidentiary** — this is the strongest lever for getting cited by LLMs. In a 2024 Princeton study of generative engines (the paper that coined "GEO"), the biggest gains came from **attributed expert quotes (~+41%)**, **statistics and data (~+30%)**, and **inline citations to sources (~+30%)**, while **keyword stuffing reduced visibility (~-9%)**. Treat the exact percentages as directional, but the direction is robust: cite sources, quote named experts, include real numbers, and write clearly.
 - **Publish original information** — first-hand testing, original data, a genuine point of view. "Information gain" (something not already on every other page) is what both Google and AI engines reward.
 - **Keep facts consistent** with what's stated elsewhere about you and the topic, and **keep content fresh** (a real "Last updated" date helps, especially with Perplexity).
 
