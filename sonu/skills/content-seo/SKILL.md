@@ -53,7 +53,7 @@ Prefer: 7 Project Management Tips for Remote Teams — Acme
 
 ## 3. Meta descriptions
 
-Not a ranking factor — but it's your ad copy in the results, and CTR is an engagement signal that matters indirectly.
+Not a ranking factor — but it's your ad copy in the results: a stronger description wins more clicks (more traffic) from the same position. Don't treat CTR itself as a ranking lever, though — Google says click metrics aren't a direct ranking signal.
 
 - **150–160 characters** (≈120 shows on mobile). Beyond ~160 truncates.
 - **Address the intent directly**, include the primary keyword naturally (it gets **bolded** when it matches the query), and add a soft CTA ("See the data", "Learn how").

@@ -22,7 +22,7 @@ Any time you are writing or reviewing: HTML templates, page components, routing 
 - **Don't pile redundant links to the same URL.** A few repeats are normal and fine (a nav link plus a body link, an image plus its caption). But when one listing links to the same destination four times (image, title, price, "view details"), trim it — historically only the *first* link's anchor text to a given URL counts, so the extras add clutter without adding signal.
 - **Every page should have at least 250 words of indexable body content**, ideally above the fold, rendered directly in the HTML — not behind JavaScript execution.
 - **Text shown in images must also exist as real HTML text.** Crawlers cannot read image-embedded text.
-- **Links must not be inside `<form>` tags.** Important navigation must not be `<button>` or `<form>` — these are not crawlable as links.
+- **Build navigation from real `<a href>` links, not controls.** Crawlers follow anchors but may not treat `<button>`, form submissions, or JS click handlers as links — so don't use those for navigation. (An `<a href>` is perfectly crawlable even inside a `<form>`.)
 
 ## 2. Page titles and meta descriptions
 
@@ -65,7 +65,7 @@ Any time you are writing or reviewing: HTML templates, page components, routing 
 ## 7. Schema.org markup
 
 - **All pages** marked up with `WebPage` schema (`https://schema.org/WebPage`).
-- Mark up every applicable on-page element with JSON-LD — never Microdata or RDFa. JSON-LD is the only format Google recommends going forward.
+- Mark up every applicable on-page element with **JSON-LD** — Google's recommended format and the easiest to maintain. (Google still parses Microdata and RDFa, but prefer JSON-LD for new work.)
 - Common types to include where content exists:
   - `Product` — express pricing as a nested `Offer` (or `AggregateOffer`) using the `price` and `priceCurrency` properties (there is no `Price` or `Currency` type)
   - `ImageObject`
@@ -76,10 +76,10 @@ Any time you are writing or reviewing: HTML templates, page components, routing 
 
 ## 8. Internal linking
 
-- Links use anchor text only — not images, icons, or other non-text nodes as the sole link content.
+- Every link must carry meaningful, machine-readable text — visible anchor text, or a descriptive `alt`/`aria-label` when the link wraps an image or icon. Avoid links whose only content is an undescribed image.
 - Links must point to the canonical URL of the destination — not to a URL that redirects, is parameterized, or is a known duplicate.
 - Don't pepper a page with many redundant links to the same destination — a natural repeat (nav + contextual) is fine; trim boilerplate duplication.
-- Navigation must use **absolute URLs**, not relative ones, everywhere on the site.
+- Prefer **absolute URLs** in navigation — not because relative URLs can't be crawled (they can), but because they're unambiguous about the canonical destination and sidestep relative-path duplication bugs.
 - Navigation must be HTML/CSS-renderable without JavaScript — menus must degrade gracefully for crawlers.
 
 ## 9. JavaScript and content rendering
@@ -143,7 +143,7 @@ Run this against your diff or template. Fix any "no" before finishing:
 - Is the meta description unique and ~150–160 chars?
 - Are all URLs lowercase, trailing-slash, parameter-free, and without extraneous folders?
 - Does every *permanent* move use a `301` (not a `302`/`307`) and point directly to the final URL with no chains?
-- Is every anchor using descriptive text (no "read more"/"click here"), pointing to a canonical URL, and not duplicated within the DOM?
+- Is every anchor using descriptive text (no "read more"/"click here") and pointing to a canonical URL, without piling on redundant duplicate links to the same destination?
 - Is all indexable body content in the initial HTML response (not JavaScript-rendered)?
 - Is schema.org markup present as JSON-LD for every applicable on-page element?
 - Is non-critical JS/CSS externalized and minified? No inline styles, no `<script>` blocks except JSON-LD?
