@@ -202,13 +202,20 @@ mutation($id:ID!){ resolveReviewThread(input:{threadId:$id}){ thread{ isResolved
    Then re-trigger the bots:
    - **Copilot:** `gh pr edit $PR --add-reviewer "@copilot"` (fallback if it errors: GraphQL `requestReviews` with `botIds:["BOT_kgDOCnlnWA"]` — Copilot's node id — and `union:true`).
    - **Other bots** generally re-review automatically on a new push (your Phase 4 `git push`). For any that don't, drop their re-review mention as an issue comment (`@coderabbitai review`, `@sourcery-ai review`, `@greptileai`, `@ellipsis-dev`, `/review` for Qodo).
-2. Wait for activity **newer than `$PREV_AT`** with the same settle-loop as 2C (background until-loop), comparing the max bot review timestamp against `$PREV_AT`. ISO-8601 sorts lexicographically, so a string `>` is a valid recency test — but **do not write `[ "$MAX_AT" \> "$PREV_AT" ]`**: this harness runs the loop under `zsh`, whose `[`/`test` builtin rejects `\>` with `condition expected: >`, so the loop silently never fires and burns its full timeout. Use one of these portable forms instead — `[[ ... > ... ]]` (works in both bash and zsh) or a `sort`-based check:
+2. Wait for activity **newer than `$PREV_AT`** using the explicit loop below. Run it as a background until-loop (do NOT foreground-sleep).
+
+   **CRITICAL: run this loop separately from the Phase 7 CI poll. Never combine them into one loop.** Two conditions (re-review timestamp AND CI buckets) cannot be safely merged — the variable-capture patterns are incompatible and a combined loop will stall. Run this re-review loop first, collect new findings, then run the CI poll loop in Phase 7.
+
+   ISO-8601 sorts lexicographically, so a string `>` is a valid recency test — but **do not write `[ "$MAX_AT" \> "$PREV_AT" ]`**: this harness runs under `zsh`, whose `[`/`test` builtin rejects `\>` with `condition expected: >`. Use `[[ ... > ... ]]` instead (works in both bash and zsh):
    ```bash
-   # portable recency check (works under bash AND zsh):
-   if [ -n "$MAX_AT" ] && [[ "$MAX_AT" > "$PREV_AT" ]]; then echo "NEW_REVIEW:$MAX_AT"; exit 0; fi
-   # or, builtin-agnostic, using sort -- newest sorts last:
-   # newest=$(printf '%s\n%s\n' "$PREV_AT" "$MAX_AT" | sort | tail -1)
-   # [ "$newest" = "$MAX_AT" ] && [ "$MAX_AT" != "$PREV_AT" ] && { echo "NEW_REVIEW:$MAX_AT"; exit 0; }
+   BOT_RE='copilot|coderabbit|aikido|qodo|greptile|ellipsis|sourcery|cubic|korbit'
+   for i in $(seq 1 20); do
+     MAX_AT=$(gh pr view $PR --json reviews \
+       --jq "[.reviews[] | select(.author.login | ascii_downcase | test(\"$BOT_RE\"))] | (map(.submittedAt) | max) // \"\"" 2>/dev/null)
+     if [ -n "$MAX_AT" ] && [[ "$MAX_AT" > "$PREV_AT" ]]; then echo "NEW_REVIEW:$MAX_AT"; exit 0; fi
+     sleep 30
+   done
+   echo "REREVIEW_TIMEOUT"
    ```
    Re-run `/security-review` on the new diff if the fixes touched security-relevant code (and the mode runs it).
 3. Fetch only **new** bot comments — track comment ids already handled and diff against the full registry-matched list:
@@ -237,7 +244,9 @@ gh api "repos/$REPO/branches/$BASE/protection/required_status_checks" --jq '.con
 - **If the branch is protected with required checks:** prefer `gh pr merge $PR --auto --squash --delete-branch`. With required checks present, `--auto` genuinely gates — it merges only once they pass. You may still poll (below) to report status, but the gating is real.
 - **If the branch is unprotected** (the `required_status_checks` call errored or returned empty): `--auto` does NOT gate — it merges immediately. So **you** poll and gate manually.
 
-Poll the **non-deploy-preview** checks only — `gh pr checks --watch` would block on slow deploy previews. Run this as a background until-loop (don't foreground-sleep). Require the safety-check set to be **non-empty** before breaking — right after PR creation GitHub can return an empty list before Actions register, and `jq all([])` is vacuously `true`, which would otherwise fall through to merge before any check ran:
+Poll the **non-deploy-preview** checks only — `gh pr checks --watch` would block on slow deploy previews. Run this as a background until-loop (don't foreground-sleep). Require the safety-check set to be **non-empty** before breaking — right after PR creation GitHub can return an empty list before Actions register, and `jq all([])` is vacuously `true`, which would otherwise fall through to merge before any check ran.
+
+**jq boolean pattern warning:** Do NOT write `done=$(jq -e '...' && echo "yes" || echo "no")`. `jq -e` always prints `true`/`false` to stdout before `&&` runs, so `$()` captures `"true\nyes"` — a multi-line string that never equals `"yes"` and the loop never breaks. The pattern below pipes through `>/dev/null 2>&1` to discard jq's output and uses only its exit code to drive `break` — copy it exactly, don't adapt it:
 ```bash
 PREVIEW='vercel|netlify|cloudflare|render|preview|deploy'
 for i in $(seq 1 30); do
