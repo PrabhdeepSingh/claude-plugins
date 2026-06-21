@@ -116,7 +116,7 @@ It encodes a strict test-first methodology with honest carve-outs (spikes are th
 - **What to test** — behavior, boundaries, edge cases, error paths; skip trivial pass-throughs and generated code.
 - **The bug-fix reflex** — reproduce the bug with a failing test before fixing it, every time.
 
-Every rule explains the *why*, ships with Avoid/Prefer code examples, and the redgreen-refactor section shows the full three-step sequence end-to-end. Tests are held to the same bar as production code via `code-standards`.
+Every rule explains the *why*, ships with Avoid/Prefer code examples, and the red-green-refactor section shows the full three-step sequence end-to-end. Tests are held to the same bar as production code via `code-standards`.
 
 Edit `sonu/skills/tdd/SKILL.md` to make it yours — it's plain Markdown.
 

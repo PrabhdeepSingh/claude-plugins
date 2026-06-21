@@ -1,6 +1,6 @@
 ---
 name: code-standards
-description: Prabhdeep (Sonu) Singh's personal coding standards — the house rules for writing code the way he does. Covers intention-revealing naming (never generic names like data/info/temp/manager/helper), small single-purpose modular functions, readable guard-clause control flow, strict separation of concerns, no inline styles, and no magic values. Use this skill whenever writing, generating, refactoring, or reviewing ANY code in ANY language — even when the user doesn't mention "standards" or "style." It defines the baseline quality bar for all code produced here. If you're about to write or edit code, consult this first. (Pairs with the [[tdd]] skill for the full red-green-refactor discipline — tests as the design tool, not an afterthought.)
+description: Prabhdeep (Sonu) Singh's personal coding standards — the house rules for writing code the way he does. Covers intention-revealing naming (never generic names like data/info/temp/manager/helper), small single-purpose modular functions, readable guard-clause control flow, strict separation of concerns, no inline styles, and no magic values. Use this skill whenever writing, generating, refactoring, or reviewing ANY code in ANY language — even when the user doesn't mention "standards" or "style." It defines the baseline quality bar for all code produced here. If you're about to write or edit code, consult this first. (Pairs with the [[tdd]] skill, which covers the full red-green-refactor discipline.)
 ---
 
 # Code Standards — write it like Sonu would
