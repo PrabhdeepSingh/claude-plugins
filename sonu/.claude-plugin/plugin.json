@@ -1,11 +1,11 @@
 {
   "name": "sonu",
-  "version": "1.4.0",
-  "description": "Prabhdeep (Sonu)'s personal Claude Code toolkit. Includes /sonu:ship — a PR babysitter that branches, commits, opens a PR, gathers Claude + every enabled AI reviewer (Copilot, CodeRabbit, Aikido, …), fixes/justifies/resolves every finding, loops until clean, then merges — autonomously and repo-agnostic — plus the code-standards skill that auto-applies Sonu's coding foundation (naming, modular design, schema/API conventions, safe data access, logging, input validation, and injection/leak prevention) to all AI-written code, the seo-standards skill that bakes best-in-class technical SEO into every web page (HTML structure, canonical tags, schema.org JSON-LD, URL strategy, redirects, performance, and indexation controls), and the content-seo skill that applies editorial/on-page SEO to all published writing (search intent, titles/metas, headings, internal linking, featured-snippet and AI-citation formatting, E-E-A-T, and anti-patterns).",
+  "version": "1.5.0",
+  "description": "Prabhdeep (Sonu)'s personal Claude Code toolkit. Includes /sonu:ship — a PR babysitter that branches, commits, opens a PR, gathers Claude + every enabled AI reviewer (Copilot, CodeRabbit, Aikido, …), fixes/justifies/resolves every finding, loops until clean, then merges — autonomously and repo-agnostic — plus the code-standards skill that auto-applies Sonu's coding foundation (naming, modular design, schema/API conventions, safe data access, logging, input validation, and injection/leak prevention) to all AI-written code, the seo-standards skill that bakes best-in-class technical SEO into every web page (HTML structure, canonical tags, schema.org JSON-LD, URL strategy, redirects, performance, and indexation controls), the content-seo skill that applies editorial/on-page SEO to all published writing (search intent, titles/metas, headings, internal linking, featured-snippet and AI-citation formatting, E-E-A-T, and anti-patterns), and the design-tree skill + /sonu:design-tree command that make Claude design by an explicit branching tree — interviewing first for shared understanding, then recording every decision point with its genuine alternatives, chosen branch + rationale, and preserved rejected branches.",
   "author": {
     "name": "Prabhdeep Singh",
     "email": "pssingh0101@gmail.com"
   },
   "license": "MIT",
-  "keywords": ["pull-request", "code-review", "copilot", "coderabbit", "automation", "git", "github", "coding-standards", "code-style", "seo", "content-seo", "skill"]
+  "keywords": ["pull-request", "code-review", "copilot", "coderabbit", "automation", "git", "github", "coding-standards", "code-style", "seo", "content-seo", "design-tree", "design-decisions", "skill"]
 }

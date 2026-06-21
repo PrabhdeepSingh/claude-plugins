@@ -43,6 +43,25 @@ The change's review depth scales to the diff. You can force it:
 
 Mode words are parsed forgivingly — `quick`/`fast`/`lite` → `light`, and `thorough`/`deep`/`max` (typos included) → `full`. The mode only scales *Claude's own* reviews; the external bots auto-run on the repo regardless, so they cost the same whether the babysitter waits for them or not.
 
+### `/sonu:design-tree` — design tree mapper
+
+Maps any design problem as an explicit branching tree instead of one linear narrative. Pair it with `/sonu:ship` for complete PR lifecycle coverage: tree the design first, then ship the implementation.
+
+What it does:
+
+1. **Interviews you** to reach shared understanding — intent, constraints, success criteria, non-goals — before mapping a single decision point. This is the highest-leverage step, and it's always first.
+2. **Finds the real forks** — only decision points where the design could genuinely go in ≥2 consequential ways.
+3. **Records every branch**: chosen option with the decisive reason, rejected options with the reason each lost.
+4. **Preserves the rejected branches** so decisions don't get silently relitigated and you have a real fork to backtrack to if a downstream choice invalidates an earlier one.
+5. **Folds into the plan file** when in plan mode (as a `## Design Tree` section), or prints in-chat when called standalone.
+
+```
+/sonu:design-tree                  # tree the current design or active plan
+/sonu:design-tree auth system      # tree a specific topic
+```
+
+The `design-tree` skill (below) auto-applies the same methodology in plan mode without needing an explicit invocation.
+
 ## Skills
 
 ### `code-standards` — code the way I do
@@ -83,6 +102,23 @@ It encodes modern on-page SEO: start from a single search intent, structure a ma
 
 Edit `sonu/skills/content-seo/SKILL.md` to tune it.
 
+### `design-tree` — decide by branching, not by marching
+
+A skill, not a command — there's nothing to invoke in plan mode, it fires automatically when you're designing or planning an implementation approach. The explicit counterpart is `/sonu:design-tree` (above), which you can call manually at any time.
+
+It encodes a design methodology built around one core idea: design is traversing a branching tree, not marching a line. What that looks like in practice:
+
+- **Interview first.** Before branching anything, ask 2–4 targeted questions to confirm intent, constraints, success criteria, and non-goals. Designing the right problem saves more context and tokens than anything else.
+- **Find the real forks.** Only decision points where the design could genuinely go in ≥2 consequential ways — not trivia, not forced choices.
+- **Enumerate genuine alternatives** at every fork. No strawmen invented to be knocked down.
+- **Record the chosen branch** with a decisive reason (a real constraint, trade-off, or irreversibility) — not a vague preference.
+- **Keep the rejected branches** with the reason each lost. Stops silent relitigation; preserves real forks to return to.
+- **Backtrack deliberately** to a recorded fork when a downstream decision invalidates an earlier choice, rather than patching forward.
+
+The tree is written as a compact nested-bullet notation (`✓ chosen — reason`, `✗ rejected — why`) that's scannable in seconds. In plan mode it becomes a `## Design Tree` section in the plan file.
+
+Edit `sonu/skills/design-tree/SKILL.md` to make it yours — it's plain Markdown.
+
 ## Requirements
 
 - The [`gh`](https://cli.github.com/) CLI, authenticated (`gh auth status`).
@@ -105,14 +141,17 @@ claude-plugins/
     ├── .claude-plugin/
     │   └── plugin.json
     ├── commands/
-    │   └── ship.md          # the /sonu:ship command
+    │   ├── ship.md          # the /sonu:ship command
+    │   └── design-tree.md   # the /sonu:design-tree command
     └── skills/              # auto-applied skills (nothing to invoke)
         ├── code-standards/
         │   └── SKILL.md     # how code gets written
         ├── seo-standards/
         │   └── SKILL.md     # technical SEO for web pages
-        └── content-seo/
-            └── SKILL.md     # editorial SEO for published prose
+        ├── content-seo/
+        │   └── SKILL.md     # editorial SEO for published prose
+        └── design-tree/
+            └── SKILL.md     # design by branching tree, not linear narrative
 ```
 
 ## License
