@@ -45,9 +45,12 @@ class Account {
 }
 
 // Test passes. Now Step 3 (Refactor): add the guard clause cleanly, still green.
-withdraw(amount) {
-  if (amount > this.balance) throw new Error('Insufficient funds');
-  this.balance -= amount;
+class Account {
+  constructor({ balance }) { this.balance = balance; }
+  withdraw(amount) {
+    if (amount > this.balance) throw new Error('Insufficient funds');
+    this.balance -= amount;
+  }
 }
 // Run the test — still green. Then write the next failing test for the error case.
 ```
