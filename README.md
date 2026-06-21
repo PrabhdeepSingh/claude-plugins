@@ -9,7 +9,7 @@ Prabhdeep (Sonu) Singh's personal [Claude Code](https://claude.com/claude-code) 
 /plugin install sonu@prabhdeep-tools
 ```
 
-Run those once per device. After that, `/sonu:ship` is available in every repo on that machine, and the **code-standards**, **seo-standards**, and **content-seo** skills ride along automatically — no command to run, they just shape how code and content get written. To pull updates later:
+Run those once per device. After that, `/sonu:ship` is available in every repo on that machine, and the **code-standards**, **tdd**, **seo-standards**, and **content-seo** skills ride along automatically — no command to run, they just shape how code and content get written. To pull updates later:
 
 ```
 /plugin marketplace update prabhdeep-tools
@@ -42,6 +42,18 @@ The change's review depth scales to the diff. You can force it:
 | `/sonu:ship full` | Deep Claude code + security review, full re-review loop. |
 
 Mode words are parsed forgivingly — `quick`/`fast`/`lite` → `light`, and `thorough`/`deep`/`max` (typos included) → `full`. The mode only scales *Claude's own* reviews; the external bots auto-run on the repo regardless, so they cost the same whether the babysitter waits for them or not.
+
+### `/sonu:tdd` — drive a change test-first
+
+Runs the red-green-refactor loop on a named feature, bug, or behavior. Invokes the `tdd` skill directly.
+
+```
+/sonu:tdd                          # apply test-first methodology to the current change
+/sonu:tdd cart checkout flow       # drive a specific feature test-first
+/sonu:tdd fix the off-by-one bug   # reproduce with a failing test, then fix
+```
+
+The `tdd` skill (below) auto-applies the same methodology whenever code is written or changed, without needing an explicit invocation.
 
 ### `/sonu:design-tree` — design tree mapper
 
@@ -85,6 +97,28 @@ It opens with **working discipline** — how to approach the task, not just the 
 Every rule explains *why* it's there, ships with good/bad examples so it actually sticks, and ends with a self-check the model runs against its own diff. When it's editing an existing codebase, matching that codebase's conventions wins over the guide.
 
 Edit `sonu/skills/code-standards/SKILL.md` to make it yours — it's plain Markdown.
+
+### `tdd` — test-driven development, baked in
+
+A skill, not a command — there's nothing to invoke. Once the plugin is installed, Claude follows the red-green-refactor discipline automatically whenever it writes, changes, or tests code in any repo — even when "TDD" or "tests" aren't mentioned. It also fires on the explicit `/sonu:tdd` command.
+
+It encodes a strict test-first methodology with honest carve-outs (spikes are thrown away and rebuilt test-first; code never lands without tests) across eleven areas:
+
+- **Red-green-refactor** — failing test first, minimum code to green, refactor under protection. Small steps, run tests constantly.
+- **Test-first discipline** — the one carve-out: exploratory spikes to learn a shape, discarded entirely before building the real thing test-first.
+- **Behavior not implementation** — assert observable outcomes, never private state or internal call counts, so refactors don't break tests.
+- **Arrange-Act-Assert** — one behavior per test, three clean phases, one reason to fail.
+- **Spec-sentence naming** — test names document what broke and under what condition; the suite reads as a specification.
+- **Test qualities** — fast (milliseconds), isolated (no shared mutable state, no ordering), deterministic (injected clock/seed, no real I/O in unit tests), self-validating.
+- **Test doubles** — mock only at architectural seams (database, network, clock); real domain objects throughout the core; no mock returning a mock.
+- **The testing pyramid** — many unit tests, fewer integration, fewest end-to-end; push behavior down to the unit level.
+- **Coverage as byproduct** — use it to find gaps, not to hit a number; a test with no meaningful assertion is negative value.
+- **What to test** — behavior, boundaries, edge cases, error paths; skip trivial pass-throughs and generated code.
+- **The bug-fix reflex** — reproduce the bug with a failing test before fixing it, every time.
+
+Every rule explains the *why*, ships with Avoid/Prefer code examples, and the redgreen-refactor section shows the full three-step sequence end-to-end. Tests are held to the same bar as production code via `code-standards`.
+
+Edit `sonu/skills/tdd/SKILL.md` to make it yours — it's plain Markdown.
 
 ### `seo-standards` — technical SEO, baked in
 
@@ -142,10 +176,13 @@ claude-plugins/
     │   └── plugin.json
     ├── commands/
     │   ├── ship.md          # the /sonu:ship command
-    │   └── design-tree.md   # the /sonu:design-tree command
+    │   ├── design-tree.md   # the /sonu:design-tree command
+    │   └── tdd.md           # the /sonu:tdd command
     └── skills/              # auto-applied skills (nothing to invoke)
         ├── code-standards/
         │   └── SKILL.md     # how code gets written
+        ├── tdd/
+        │   └── SKILL.md     # test-driven development — red-green-refactor
         ├── seo-standards/
         │   └── SKILL.md     # technical SEO for web pages
         ├── content-seo/
