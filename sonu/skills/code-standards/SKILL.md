@@ -1,6 +1,6 @@
 ---
 name: code-standards
-description: Prabhdeep (Sonu) Singh's personal coding standards — the house rules for writing code the way he does. Covers intention-revealing naming (never generic names like data/info/temp/manager/helper), small single-purpose modular functions, readable guard-clause control flow, strict separation of concerns, no inline styles, and no magic values. Use this skill whenever writing, generating, refactoring, or reviewing ANY code in ANY language — even when the user doesn't mention "standards" or "style." It defines the baseline quality bar for all code produced here. If you're about to write or edit code, consult this first.
+description: Prabhdeep (Sonu) Singh's personal coding standards — the house rules for writing code the way he does. Covers intention-revealing naming (never generic names like data/info/temp/manager/helper), small single-purpose modular functions, readable guard-clause control flow, strict separation of concerns, no inline styles, and no magic values. Use this skill whenever writing, generating, refactoring, or reviewing ANY code in ANY language — even when the user doesn't mention "standards" or "style." It defines the baseline quality bar for all code produced here. If you're about to write or edit code, consult this first. (Pairs with the [[tdd]] skill, which covers the full red-green-refactor discipline.)
 ---
 
 # Code Standards — write it like Sonu would
@@ -23,7 +23,7 @@ The numbered sections below describe what finished code should look like. These 
 
 **Make surgical changes.** Touch only what the task requires. When editing existing code, resist the urge to "improve" adjacent lines, reformat, or refactor things that aren't broken — match the surrounding style even where you'd personally do it differently. Every changed line should trace directly back to the request. Clean up the imports and variables *your* change orphaned, but don't go out of scope to delete pre-existing dead code unrelated to your task — flag it to the reviewer instead. (When dead code is in scope, delete it rather than commenting it out — section 3.) This keeps diffs reviewable and keeps your change from quietly breaking something unrelated.
 
-**Turn the task into a verifiable goal, then loop.** Restate vague asks as something you can actually check: "add validation" becomes "write tests for the invalid inputs, then make them pass"; "fix the bug" becomes "write a test that reproduces it, then make it pass." For anything multi-step, sketch a short plan with a verification check for each part. Strong success criteria are what let you work independently to the finish line instead of stopping every few minutes to ask whether you're on track.
+**Turn the task into a verifiable goal, then loop.** Restate vague asks as something you can actually check: "add validation" becomes "write tests for the invalid inputs, then make them pass"; "fix the bug" becomes "write a test that reproduces it, then make it pass." For anything multi-step, sketch a short plan with a verification check for each part. Strong success criteria are what let you work independently to the finish line instead of stopping every few minutes to ask whether you're on track. The full discipline — red-green-refactor, what to test, how to name tests, when to mock — lives in [[tdd]].
 
 ---
 
