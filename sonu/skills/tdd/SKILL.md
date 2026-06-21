@@ -155,17 +155,17 @@ These properties are non-negotiable. A test suite that doesn't have them isn't a
 **Deterministic.** A test that sometimes passes and sometimes fails is worse than useless — it trains you to ignore red. The usual culprits are the real clock, random numbers, and the file system. Inject dependencies so tests control them.
 
 ```js
-// Avoid: depends on the real clock — breaks at a future date, non-deterministic
+// Avoid: depends on the real clock — non-deterministic across time
 test('marks payment as overdue after 30 days', () => {
-  const payment = new Payment({ dueDate: new Date('2026-01-01') });
-  // This passes only when the wall-clock date is after 2026-01-31
+  const payment = new Payment({ dueDate: new Date('2099-01-01') });
+  // Fails today; passes after 2099-01-31 — the result changes with the calendar
   expect(payment.isOverdue()).toBe(true);
 });
 
 // Prefer: inject the clock so the test controls time
 test('marks payment as overdue after 30 days', () => {
-  const frozenClock = { now: () => new Date('2026-02-15') };
-  const payment = new Payment({ dueDate: new Date('2026-01-01'), clock: frozenClock });
+  const frozenClock = { now: () => new Date('2099-02-15') };
+  const payment = new Payment({ dueDate: new Date('2099-01-01'), clock: frozenClock });
   expect(payment.isOverdue()).toBe(true);
 });
 ```
