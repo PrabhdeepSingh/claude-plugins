@@ -15,7 +15,7 @@
       },
       "category": "workflow",
       "license": "MIT",
-      "keywords": ["pull-request", "code-review", "copilot", "coderabbit", "automation", "git", "github", "coding-standards", "code-style", "skill"],
+      "keywords": ["pull-request", "code-review", "copilot", "coderabbit", "automation", "git", "github", "coding-standards", "code-style", "design-tree", "design-decisions", "skill"],
       "source": "./sonu"
     }
   ]
