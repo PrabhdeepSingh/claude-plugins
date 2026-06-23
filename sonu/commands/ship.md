@@ -21,7 +21,7 @@ Handles everything from the current working-tree state through a clean, merged P
 
 ## Effort mode — right-size the spend to the change
 
-`$ARGUMENTS` may carry a mode. Parse it forgivingly (it's read by you, not a strict parser) — accept synonyms and misspellings:
+`$ARGUMENTS` may carry a mode (the text typed after the command; if that token appears literally or is empty, default to `auto`). Parse it forgivingly (it's read by you, not a strict parser) — accept synonyms and misspellings:
 
 - **`light`** ← also `lite`, `quick`, `fast`, `cheap`, `min`, and obvious typos.
 - **`full`** ← also `thorough` (and misspellings like `thurough`/`thourough`), `deep`, `max`, `heavy`.

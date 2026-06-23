@@ -4,6 +4,8 @@ Prabhdeep (Sonu) Singh's personal [Claude Code](https://claude.com/claude-code) 
 
 ## Install
 
+### Claude Code
+
 ```
 /plugin marketplace add PrabhdeepSingh/claude-plugins
 /plugin install sonu@prabhdeep-tools
@@ -16,6 +18,14 @@ Run those once per device. After that, `/sonu:ship` is available in every repo o
 ```
 
 > Commands from a plugin are namespaced as `/<plugin>:<command>` — that's why it's `/sonu:ship`, not `/ship`. The slash menu autocompletes, so typing `ship` finds it.
+
+### Cursor
+
+1. Open **Cursor Settings → Plugins**.
+2. Add a custom marketplace pointing at this repo: `PrabhdeepSingh/claude-plugins`.
+3. Find the **sonu** plugin and click **Install**.
+
+After that, skills auto-apply in every session and `/sonu:ship`, `/sonu:tdd`, and `/sonu:design-tree` appear in Cursor's slash-command menu. Updates are pulled when you sync the marketplace in Cursor Settings.
 
 ## Commands
 
@@ -169,11 +179,15 @@ Edit `sonu/skills/design-tree/SKILL.md` to make it yours — it's plain Markdown
 ```
 claude-plugins/
 ├── .claude-plugin/
-│   └── marketplace.json     # marketplace manifest (name: prabhdeep-tools)
+│   └── marketplace.json     # Claude Code marketplace manifest (name: prabhdeep-tools)
+├── .cursor-plugin/
+│   └── marketplace.json     # Cursor marketplace manifest (same plugin, official Cursor path)
 ├── LICENSE                  # MIT
 └── sonu/                    # the "sonu" plugin (your personal namespace)
     ├── .claude-plugin/
-    │   └── plugin.json
+    │   └── plugin.json      # Claude Code plugin manifest
+    ├── .cursor-plugin/
+    │   └── plugin.json      # Cursor plugin manifest (mirrors the Claude one)
     ├── commands/
     │   ├── ship.md          # the /sonu:ship command
     │   ├── design-tree.md   # the /sonu:design-tree command

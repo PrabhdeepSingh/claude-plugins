@@ -6,9 +6,9 @@ allowed-tools: Skill, Read, Write, Edit
 
 # /design-tree — map a decision as a branching tree
 
-Invoke the `design-tree` skill against `$ARGUMENTS`.
+Invoke the `design-tree` skill against the user's request (`$ARGUMENTS` — the text typed after the command; if that token appears literally or is empty, use the current design, plan, or discussion in context instead).
 
-If `$ARGUMENTS` is provided, it names the specific design topic or decision to tree. If empty, apply the skill to the current design, plan, or discussion in context.
+If a specific design topic or decision is named, tree that. If nothing is named, apply the skill to the current design, plan, or discussion in context.
 
 **Where the tree goes:**
 - If a plan file is active (you are in plan mode and the plan file path is known), write or update the `## Design Tree` section in that file.

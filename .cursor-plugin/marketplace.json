@@ -1,0 +1,21 @@
+{
+  "name": "prabhdeep-tools",
+  "description": "Prabhdeep Singh's personal Claude Code tools.",
+  "owner": {
+    "name": "Prabhdeep Singh",
+    "email": "pssingh0101@gmail.com"
+  },
+  "plugins": [
+    {
+      "name": "sonu",
+      "description": "Prabhdeep (Sonu)'s personal Claude Code toolkit. Includes /sonu:ship — a PR babysitter that gathers Claude + every enabled AI reviewer (Copilot, CodeRabbit, Aikido, …), fixes/justifies/resolves every finding, loops until clean, then merges — autonomously and repo-agnostic — plus the code-standards, tdd, seo-standards, and content-seo skills that auto-apply Sonu's coding, test-driven development, and SEO foundations to all AI-written code and content, the /sonu:tdd command for explicit test-first sessions, and the design-tree skill + /sonu:design-tree command that make Claude design by an explicit branching tree.",
+      "author": {
+        "name": "Prabhdeep Singh"
+      },
+      "category": "workflow",
+      "license": "MIT",
+      "keywords": ["pull-request", "code-review", "copilot", "coderabbit", "automation", "git", "github", "coding-standards", "code-style", "tdd", "test-driven-development", "testing", "design-tree", "design-decisions", "skill"],
+      "source": "./sonu"
+    }
+  ]
+}
