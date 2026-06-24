@@ -50,7 +50,7 @@ When `light` skips a review, say so in one line in the final report — don't le
    If `gh repo view` fails (no GitHub remote), stop and tell the owner — this flow needs a GitHub remote.
 2. `git status` and `git diff --stat` — understand what changed. Use the line count + file types to pick the effort mode (above).
 3. If on the default branch (`$BASE`), branch: `git checkout -b <kebab-name-matching-task>`.
-4. Existing PR on this branch? `gh pr list --head "$(git branch --show-current)" --json number,url`. If one exists, record its number as `PR` and skip **only the PR-creation step (Phase 1.5)** — you must still stage, commit, push, and run self-review (Phase 1.1–1.4), otherwise reviews run against the stale remote state instead of the just-finished work.
+4. Existing PR on this branch? `gh pr list --head "$(git branch --show-current)" --json number,url`. If one exists, record its number as `PR` and skip **only the `gh pr create` call (Phase 1.5)** — you must still stage, commit, push, and run self-review (Phase 1.1–1.4). After self-review, update the existing PR body to include the latest `RISKS` list in the `## Risk / reviewer attention` section: `gh pr edit $PR --body "$(gh pr view $PR --json body -q .body | <replace or append the Risk section>)"` — otherwise the PR body reflects stale risk info and reviews run against the new diff with no risk context.
 
 ---
 

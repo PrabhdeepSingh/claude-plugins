@@ -4,7 +4,7 @@ argument-hint: "[feature, fix, or task to build]"
 allowed-tools: Skill, Read, Write, Edit, Bash, EnterPlanMode, ExitPlanMode
 ---
 
-# /sonu:build — decide → build → hand back
+# /build — decide → build → hand back
 
 **Contract:** this command sequences the implementation lifecycle — design, build, self-review — and then hands back. It pauses **once** (for you to approve the design) and stops **once** (at a green suite, before shipping). It never commits, never merges. It delegates to existing skills; it does not re-implement them. Run `/sonu:ship` when you're ready to push.
 
@@ -39,6 +39,7 @@ Enter plan mode to run the design phase. This is the only pause in the flow — 
 1. `EnterPlanMode` — switches to read-only; the design tree will be written into the plan file.
 2. `Skill(sonu:design-tree)` — interview first (2–4 questions to establish shared understanding, intent, constraints, done-when); then tree the real decision points. The tree lands in the plan file's `## Design Tree` section per design-tree's existing plan-mode behavior.
 3. `ExitPlanMode` — **this is the gate.** Your approval of the plan = approval of the design. Do not proceed to Phase 2 until ExitPlanMode is called and approved.
+   - **If the plan is rejected:** stay in plan mode, revise the design tree or re-interview the user to address the concern, and call `ExitPlanMode` again. Repeat until approved. Do not proceed to Phase 2 on a rejected plan.
 
 After the gate, you are back in execution mode (writes are legal again).
 

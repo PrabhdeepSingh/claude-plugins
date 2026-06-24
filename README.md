@@ -11,7 +11,7 @@ Prabhdeep (Sonu) Singh's personal [Claude Code](https://claude.com/claude-code) 
 /plugin install sonu@prabhdeep-tools
 ```
 
-Run those once per device. After that, `/sonu:build` and `/sonu:ship` are available in every repo on that machine, and the **code-standards**, **tdd**, **seo-standards**, **content-seo**, **design-tree**, and **self-review** skills ride along automatically — no command to run, they just shape how code gets written. To pull updates later:
+Run those once per device. After that, `/sonu:build` and `/sonu:ship` are available in every repo on that machine, and the **code-standards**, **tdd**, **seo-standards**, **content-seo**, **design-tree**, and **self-review** skills ride along automatically — no command to run, they just shape how code and content get written. To pull updates later:
 
 ```
 /plugin marketplace update prabhdeep-tools
