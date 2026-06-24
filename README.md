@@ -11,7 +11,7 @@ Prabhdeep (Sonu) Singh's personal [Claude Code](https://claude.com/claude-code) 
 /plugin install sonu@prabhdeep-tools
 ```
 
-Run those once per device. After that, `/sonu:ship` is available in every repo on that machine, and the **code-standards**, **tdd**, **seo-standards**, and **content-seo** skills ride along automatically — no command to run, they just shape how code and content get written. To pull updates later:
+Run those once per device. After that, `/sonu:build` and `/sonu:ship` are available in every repo on that machine, and the **code-standards**, **tdd**, **seo-standards**, **content-seo**, **design-tree**, and **self-review** skills ride along automatically — no command to run, they just shape how code gets written. To pull updates later:
 
 ```
 /plugin marketplace update prabhdeep-tools
@@ -25,9 +25,28 @@ Run those once per device. After that, `/sonu:ship` is available in every repo o
 2. Add a custom marketplace pointing at this repo: `PrabhdeepSingh/claude-plugins`.
 3. Find the **sonu** plugin and click **Install**.
 
-After that, skills auto-apply in every session and `/sonu:ship`, `/sonu:tdd`, and `/sonu:design-tree` appear in Cursor's slash-command menu. Updates are pulled when you sync the marketplace in Cursor Settings.
+After that, skills auto-apply in every session and `/sonu:build`, `/sonu:ship`, `/sonu:tdd`, and `/sonu:design-tree` appear in Cursor's slash-command menu. Updates are pulled when you sync the marketplace in Cursor Settings.
 
 ## Commands
+
+### `/sonu:build` — decide → build → hand back
+
+The spine of the plugin — a thin conductor that sequences the whole implementation lifecycle so the individual skills work together as a pipeline instead of one-off tools.
+
+What it does:
+
+1. **Triage** the working tree — size (trivial vs. substantial), kind (bug vs. feature), surface (web → SEO bars). One line.
+2. **Design**, in real plan mode — runs `design-tree` so you interview first and tree the real decision points. **`ExitPlanMode` is the approval gate.** Trivial changes skip this entirely.
+3. **Build test-first** — runs `tdd` under `code-standards` (and SEO bars when relevant); **runs the suite via Bash** to confirm green. Never takes green on faith.
+4. **Self-review + hand back** — lists the 3–5 riskiest things in the diff, then stops: *"Green and ready. Review the diff, then run `/sonu:ship`."* Never commits or merges.
+
+Two human checkpoints: approve the design (ExitPlanMode), then review the diff and choose to run ship. Everything in between is autonomous.
+
+```
+/sonu:build                                # build whatever's in context
+/sonu:build add cart checkout flow         # build a specific feature
+/sonu:build fix the off-by-one in totals   # drive a specific fix
+```
 
 ### `/sonu:ship` — PR babysitter
 
@@ -146,6 +165,16 @@ It encodes modern on-page SEO: start from a single search intent, structure a ma
 
 Edit `sonu/skills/content-seo/SKILL.md` to tune it.
 
+### `self-review` — point attention at the riskiest parts
+
+A skill, not a command — there's nothing to invoke. Once the plugin is installed, Claude runs it automatically at two moments: before handing back from `/sonu:build` (so you know where to look before you run `/sonu:ship`), and before creating the PR in `/sonu:ship` (so the riskiest items are embedded in the PR body for traceability and surfaced in the final report).
+
+What it produces: a plain-language list of the **3–5 spots in the diff** that a reviewer should look hardest at — subtle logic, security-relevant surfaces, data integrity risk, broad blast radius, untested edges, silent behavior changes. One line per item with `file:line` where helpful.
+
+What it explicitly is **not**: a score, a grade, a gate, or an approval. Self-scoring rubber-stamps the model's own work; the value is directing *your* eyes to the corners that will otherwise get skimmed. The list ends with a plain statement to that effect.
+
+The same reasoning applies when you ask for a self-review manually — "what should I look at?", "what's risky here?", "self-review this." If the diff is genuinely low-risk, it says so rather than inventing items to fill the list.
+
 ### `design-tree` — decide by branching, not by marching
 
 A skill, not a command — there's nothing to invoke in plan mode, it fires automatically when you're designing or planning an implementation approach. The explicit counterpart is `/sonu:design-tree` (above), which you can call manually at any time.
@@ -189,6 +218,7 @@ claude-plugins/
     ├── .cursor-plugin/
     │   └── plugin.json      # Cursor plugin manifest (mirrors the Claude one)
     ├── commands/
+    │   ├── build.md         # the /sonu:build command (conductor)
     │   ├── ship.md          # the /sonu:ship command
     │   ├── design-tree.md   # the /sonu:design-tree command
     │   └── tdd.md           # the /sonu:tdd command
@@ -201,8 +231,10 @@ claude-plugins/
         │   └── SKILL.md     # technical SEO for web pages
         ├── content-seo/
         │   └── SKILL.md     # editorial SEO for published prose
-        └── design-tree/
-            └── SKILL.md     # design by branching tree, not linear narrative
+        ├── design-tree/
+        │   └── SKILL.md     # design by branching tree, not linear narrative
+        └── self-review/
+            └── SKILL.md     # 3–5 riskiest things in the diff — pointer, not a score
 ```
 
 ## License

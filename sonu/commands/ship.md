@@ -50,7 +50,7 @@ When `light` skips a review, say so in one line in the final report — don't le
    If `gh repo view` fails (no GitHub remote), stop and tell the owner — this flow needs a GitHub remote.
 2. `git status` and `git diff --stat` — understand what changed. Use the line count + file types to pick the effort mode (above).
 3. If on the default branch (`$BASE`), branch: `git checkout -b <kebab-name-matching-task>`.
-4. Existing PR on this branch? `gh pr list --head "$(git branch --show-current)" --json number,url`. If one exists, record its number as `PR` and skip **only the PR-creation step (Phase 1.4)** — you must still stage, commit, and push the current working-tree changes (Phase 1.1–1.3), otherwise reviews run against the stale remote state instead of the just-finished work.
+4. Existing PR on this branch? `gh pr list --head "$(git branch --show-current)" --json number,url`. If one exists, record its number as `PR` and skip **only the PR-creation step (Phase 1.5)** — you must still stage, commit, push, and run self-review (Phase 1.1–1.4), otherwise reviews run against the stale remote state instead of the just-finished work.
 
 ---
 
@@ -59,18 +59,24 @@ When `light` skips a review, say so in one line in the final report — don't le
 1. Stage relevant files **by name**. Never `git add -A` — exclude `.env*`, secrets, unrelated files.
 2. Commit in the repo style (imperative, ≤72-char subject). **No AI attribution / no `Co-Authored-By` trailer** (see the contract above).
 3. `git push -u origin "$(git branch --show-current)"`.
-4. Create the PR **and request Copilot in the same command** (`--reviewer "@copilot"` triggers Copilot review on creation — Copilot is the one major reviewer that does NOT auto-fire on PR open, so it must be requested). Do not put any AI-attribution line in the body:
+4. **Run `Skill(sonu:self-review)` on the committed diff** (`git show HEAD` / `git diff HEAD^ HEAD` — the working tree is clean at this point, so `git diff HEAD` would return nothing). This surfaces the 3–5 riskiest spots in the change so they can be embedded in the PR body for traceability and shown to the owner. Capture the list — call it `RISKS`.
+5. Create the PR **and request Copilot in the same command** (`--reviewer "@copilot"` triggers Copilot review on creation — Copilot is the one major reviewer that does NOT auto-fire on PR open, so it must be requested). Do not put any AI-attribution line in the body. Embed the `RISKS` list from step 4 in the `## Risk / reviewer attention` section:
    ```bash
    gh pr create --reviewer "@copilot" --title "<imperative title>" --body "$(cat <<'EOF'
    ## Summary
    - <bullet>
+
+   ## Risk / reviewer attention
+   - <risk 1 from self-review>
+   - <risk 2 from self-review>
+   ...
 
    ## Test plan
    - <bullet>
    EOF
    )"
    ```
-5. Record `PR` (number) and the URL. Report both to the owner.
+6. Record `PR` (number) and the URL. Report both to the owner.
 
 > If automatic Copilot review is already enabled on the repo, `--reviewer "@copilot"` is harmless (idempotent). If the repo has no Copilot access, the request errors — note it and continue with whatever else reviews.
 
@@ -269,6 +275,7 @@ Final report to the owner:
 - PR number + URL
 - Effort mode used, and any review deliberately skipped (so a skip never reads as "clean")
 - AI reviewers that participated (e.g. Copilot, CodeRabbit) + any expected-but-absent
+- **Risk / reviewer attention** — the 3–5 items from the self-review (same list as in the PR body)
 - **Fixed** (brief bullets)
 - **Justified** (bullets + the reasoning given to the bots)
 - Merge state: auto-merge enabled / merged / awaiting checks
