@@ -11,7 +11,7 @@ Prabhdeep (Sonu) Singh's personal [Claude Code](https://claude.com/claude-code) 
 /plugin install sonu@prabhdeep-tools
 ```
 
-Run those once per device. After that, `/sonu:build` and `/sonu:ship` are available in every repo on that machine, and the **code-standards**, **tdd**, **seo-standards**, **content-seo**, **design-tree**, and **self-review** skills ride along automatically — no command to run, they just shape how code and content get written. To pull updates later:
+Run those once per device. After that, `/sonu:build` and `/sonu:ship` are available in every repo on that machine, and the **code-standards**, **tdd**, **seo-standards**, **content-seo**, **design-tree**, **self-review**, and **pr-conventions** skills ride along automatically — no command to run, they just shape how code and content get written. To pull updates later:
 
 ```
 /plugin marketplace update prabhdeep-tools
@@ -54,9 +54,9 @@ Takes a finished change from working tree to a clean, merged PR — autonomously
 
 What it does:
 
-1. **Branch, commit, open a PR** (no AI-attribution trailers — commits read as your own).
+1. **Branch, commit, open a PR** with the right per-change-type description (feature / bugfix / hotfix / chore / refactor / docs / perf / release) — reusing the repo's own `PULL_REQUEST_TEMPLATE` if one exists. No AI-attribution trailers — commits and the PR body read as your own.
 2. **Gathers every review source**: its own Claude `/code-review` + `/security-review`, plus **every AI reviewer bot enabled on the repo** — detected by who actually posts on the PR (Copilot, CodeRabbit, Aikido, Qodo, Greptile, Ellipsis, Sourcery, Cubic, Korbit, …). No config needed; it adapts per-repo. Copilot is requested automatically since it's the one that doesn't auto-fire.
-3. **Dedups, fixes, or justifies** every finding, then **replies to and resolves** each bot's review threads.
+3. **Dedups, fixes, or justifies** every finding. Replies to **bot threads** (with resolve) and **human reviewer threads** (reply only — never auto-resolves a human's comment). Keeps the PR description current as fixes land.
 4. **Loops** through re-reviews until clean.
 5. **Merges** once the safety checks (everything but deploy previews) pass.
 
@@ -165,6 +165,19 @@ It encodes modern on-page SEO: start from a single search intent, structure a ma
 
 Edit `sonu/skills/content-seo/SKILL.md` to tune it.
 
+### `pr-conventions` — right template, living description, honest replies
+
+A skill, not a command — there's nothing to invoke. Once the plugin is installed, Claude uses it automatically inside `/sonu:ship` to author PR descriptions, keep them current, and reply to review threads. Also callable standalone when you're crafting a PR body or responding to comments outside the ship flow.
+
+What it does:
+
+1. **Discovers the team's own template first** — scans for `.github/PULL_REQUEST_TEMPLATE.md` (and the multi-template directory variant) before reaching for any built-in. The team standard wins; built-ins are the fallback.
+2. **Picks the right built-in template** from eight types: feature, bugfix, hotfix, chore, refactor, docs, perf, release — detected from the branch name, conventional-commit prefix on the commits, or the diff. Each template includes the sections that matter for that change type and nothing else.
+3. **Keeps the description current** as fixes land and re-reviews cycle through — refreshing Summary/Changes bullets and the Risk section in-place so re-reviewers see the actual state, not the opening snapshot.
+4. **Supplies reply templates** for every review-thread scenario (fixed / justified / false-positive / partial / question). Bot threads get replied to and resolved; human threads get replied to and left open — presumptuously closing a person's feedback thread is not this skill's call.
+
+Edit `sonu/skills/pr-conventions/SKILL.md` to tune the templates or add new change types.
+
 ### `self-review` — point attention at the riskiest parts
 
 A skill, not a command — there's nothing to invoke. Once the plugin is installed, Claude runs it automatically at two moments: before handing back from `/sonu:build` (so you know where to look before you run `/sonu:ship`), and before creating the PR in `/sonu:ship` (so the riskiest items are embedded in the PR body for traceability and surfaced in the final report).
@@ -233,8 +246,10 @@ claude-plugins/
         │   └── SKILL.md     # editorial SEO for published prose
         ├── design-tree/
         │   └── SKILL.md     # design by branching tree, not linear narrative
-        └── self-review/
-            └── SKILL.md     # 3–5 riskiest things in the diff — pointer, not a score
+        ├── self-review/
+        │   └── SKILL.md     # 3–5 riskiest things in the diff — pointer, not a score
+        └── pr-conventions/
+            └── SKILL.md     # per-type PR templates, living description, reply wording
 ```
 
 ## License

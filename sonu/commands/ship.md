@@ -50,7 +50,7 @@ When `light` skips a review, say so in one line in the final report — don't le
    If `gh repo view` fails (no GitHub remote), stop and tell the owner — this flow needs a GitHub remote.
 2. `git status` and `git diff --stat` — understand what changed. Use the line count + file types to pick the effort mode (above).
 3. If on the default branch (`$BASE`), branch: `git checkout -b <kebab-name-matching-task>`.
-4. Existing PR on this branch? `gh pr list --head "$(git branch --show-current)" --json number,url`. If one exists, record its number as `PR` and skip **only the `gh pr create` call (Phase 1.5)** — you must still stage, commit, push, and run self-review (Phase 1.1–1.4). After self-review, update the existing PR body: read the current body with `gh pr view $PR --json body -q .body`, insert or replace the `## Risk / reviewer attention` section with the new `RISKS` list, then write it back with `gh pr edit $PR --body '<updated body>'`. Otherwise the PR body reflects stale risk info and reviewers see a new diff with no risk context.
+4. Existing PR on this branch? `gh pr list --head "$(git branch --show-current)" --json number,url`. If one exists, record its number as `PR` and skip **only the `gh pr create` call (Phase 1.5)** — you must still stage, commit, push, and run self-review (Phase 1.1–1.4). After self-review, refresh the PR description: invoke `Skill(sonu:pr-conventions)` (Section C — *Keep the description current*) to re-render the body in place — updating Summary/Changes and refreshing the Risk section from the new `RISKS` list while preserving the team-template structure. Write it back with `gh pr edit $PR --body "$BODY"`. Otherwise the PR body reflects stale risk info and reviewers see a new diff with no context.
 
 ---
 
@@ -60,21 +60,9 @@ When `light` skips a review, say so in one line in the final report — don't le
 2. Commit in the repo style (imperative, ≤72-char subject). **No AI attribution / no `Co-Authored-By` trailer** (see the contract above).
 3. `git push -u origin "$(git branch --show-current)"`.
 4. **Run `Skill(sonu:self-review)` on the committed diff** (`git show HEAD` / `git diff HEAD^ HEAD` — the working tree is clean at this point, so `git diff HEAD` would return nothing). This surfaces the 3–5 riskiest spots in the change so they can be embedded in the PR body for traceability and shown to the owner. Capture the list — call it `RISKS`.
-5. Create the PR **and request Copilot in the same command** (`--reviewer "@copilot"` triggers Copilot review on creation — Copilot is the one major reviewer that does NOT auto-fire on PR open, so it must be requested). Do not put any AI-attribution line in the body. Embed the `RISKS` list from step 4 in the `## Risk / reviewer attention` section:
+5. **Invoke `Skill(sonu:pr-conventions)`** to compose the PR body — the skill scans for a team `PULL_REQUEST_TEMPLATE` first (wins over built-ins if found), classifies the change type from the branch name / commit prefix / diff, fills the matching per-type template, and embeds the `RISKS` list from step 4 in the risk section. Do not put any AI-attribution line in the body. Create the PR **and request Copilot in the same command** (`--reviewer "@copilot"` triggers Copilot review on creation — Copilot is the one major reviewer that does NOT auto-fire on PR open, so it must be requested):
    ```bash
-   gh pr create --reviewer "@copilot" --title "<imperative title>" --body "$(cat <<'EOF'
-   ## Summary
-   - <bullet>
-
-   ## Risk / reviewer attention
-   - <risk 1 from self-review>
-   - <risk 2 from self-review>
-   ...
-
-   ## Test plan
-   - <bullet>
-   EOF
-   )"
+   gh pr create --reviewer "@copilot" --title "<imperative title>" --body "$BODY"
    ```
 6. Record `PR` (number) and the URL. Report both to the owner.
 
@@ -142,18 +130,24 @@ gh api "/repos/$REPO/pulls/$PR/reviews" --paginate \
   --jq "[.[] | select(.user.login | ascii_downcase | test(\"$BOT_RE\")) | {login:.user.login, state:.state, body:.body}]"
 ```
 
+Also harvest **human inline review comments** for Phase 5 reply handling (non-bot, non-App logins posting inline thread comments):
+```bash
+gh api "/repos/$REPO/pulls/$PR/comments" --paginate \
+  --jq "[.[] | select(.user.login | ascii_downcase | test(\"$BOT_RE\") | not) | select(.user.type != \"Bot\") | {id:.id, login:.user.login, path:.path, line:.line, body:.body}]"
+```
+
 ---
 
 ## Phase 3 — Deduplicate and triage
 
-Merge all sources — your Claude code review (2A), your Claude security review (2B), and every AI bot from 2C — into one deduplicated list:
+Merge all sources — your Claude code review (2A), your Claude security review (2B), AI bot findings from 2C, and **human inline comments** from 2C — into one deduplicated list:
 
 - **Duplicate** (any two sources flag the same file+issue): one entry, address once. (Bots overlap a lot — expect heavy dedup.)
 - **Valid** → `FIX`.
 - **Already correct / intentional** → `JUSTIFY`.
 - **Nitpick / style** → `JUSTIFY`, unless it violates a repo convention (e.g. `CODING.md` / `CONTRIBUTING.md`) — then `FIX`.
 
-Track each item's `source` and, for bot findings, the `login` + `comment_id` — bot inline comments get a reply+resolve in Phase 5; your own Claude findings are just fixed.
+Track each item's `source` (`claude`, `bot`, or `human`) and, for bot and human findings, the `login` + `comment_id` — bots get reply+resolve in Phase 5; humans get reply-only (no resolve); your own Claude findings are just fixed.
 
 ---
 
@@ -161,11 +155,18 @@ Track each item's `source` and, for bot findings, the `login` + `comment_id` —
 
 For each `FIX`: apply the change, commit (`git commit -m "fix: <what>"` — group related fixes; **no `Co-Authored-By` trailer**). For a finding you judge a false positive, leave a brief `// TODO(review): <why this is safe>` rather than contorting the code. After all fixes, `git push`. **Capture the head SHA** for the reply messages: `SHA=$(git rev-parse --short HEAD)`.
 
+Then refresh the PR description: invoke `Skill(sonu:pr-conventions)` (Section C — *Keep the description current*) to update Summary/Changes bullets to reflect the fixes and re-render the Risk section if the fix surface changed. This applies on the first fix pass and within every cycle of the Phase 6 loop.
+
 ---
 
-## Phase 5 — Reply to and resolve every AI-bot thread
+## Phase 5 — Reply to every review thread; resolve bot threads
 
-Applies to **bot inline comments only** — your own Claude code-review and security-review findings have no thread to answer. The reply + resolve mechanics are identical for every bot (Copilot, CodeRabbit, Greptile, …) because they all post standard PR review threads. For **every** bot inline comment (both `FIX` and `JUSTIFY`):
+Applies to **all inline comments** — bot threads and human reviewer threads. Your own Claude code-review and security-review findings have no thread to answer. Reply wording comes from `Skill(sonu:pr-conventions)` Section D. Mechanics differ by source:
+
+- **Bot threads** (Copilot, CodeRabbit, Greptile, …): reply + resolve the thread (see Resolve section below).
+- **Human threads**: reply only — never resolve a human's thread; leave that to them.
+
+For **every** inline comment (both `FIX` and `JUSTIFY`):
 
 ### Reply (the PR number is in the path)
 ```bash
@@ -278,4 +279,5 @@ Final report to the owner:
 - **Risk / reviewer attention** — the 3–5 items from the self-review (same list as in the PR body)
 - **Fixed** (brief bullets)
 - **Justified** (bullets + the reasoning given to the bots)
+- **Human threads replied to** — N comments answered; none auto-resolved (resolution left to the reviewer)
 - Merge state: auto-merge enabled / merged / awaiting checks
