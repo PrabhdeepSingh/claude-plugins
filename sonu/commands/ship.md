@@ -212,7 +212,12 @@ mutation($id:ID!){ resolveReviewThread(input:{threadId:$id}){ thread{ isResolved
 
 ## Phase 6 — Re-review loop
 
-(`light` mode: at most 1 cycle. `auto`/`full`: up to 3.)
+**Mandatory whenever Phase 4 committed any fixes.** The only valid skip is a pure JUSTIFY pass where Phase 4 made zero commits — if no code changed, there is nothing new for the bots to re-read. The cycle cap limits how many times you loop, not whether you loop:
+
+| Mode | Cycles |
+|------|--------|
+| `light` | exactly 1 |
+| `auto` / `full` | up to 3 |
 
 1. **Capture each bot's current latest review timestamp first** — a rerun must wait for activity *newer* than what's already there, or it exits instantly on the existing reviews:
    ```bash
