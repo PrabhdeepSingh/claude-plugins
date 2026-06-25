@@ -50,7 +50,15 @@ When `light` skips a review, say so in one line in the final report — don't le
    If `gh repo view` fails (no GitHub remote), stop and tell the owner — this flow needs a GitHub remote.
 2. `git status` and `git diff --stat` — understand what changed. Use the line count + file types to pick the effort mode (above).
 3. If on the default branch (`$BASE`), branch: `git checkout -b <kebab-name-matching-task>`.
-4. Existing PR on this branch? `gh pr list --head "$(git branch --show-current)" --json number,url`. If one exists, record its number as `PR` and skip **only the `gh pr create` call (Phase 1.5)** — you must still stage, commit, push, and run self-review (Phase 1.1–1.4). After self-review, refresh the PR description: invoke `Skill(sonu:pr-conventions)` (Section C — *Keep the description current*) to re-render the body in place — updating Summary/Changes and refreshing the Risk section from the new `RISKS` list while preserving the team-template structure. Write it back with `gh pr edit $PR --body "$BODY"`. Otherwise the PR body reflects stale risk info and reviewers see a new diff with no context.
+4. Existing PR on this branch? `gh pr list --head "$(git branch --show-current)" --json number,url`. If one exists, record its number as `PR` and skip **only the `gh pr create` call (Phase 1.5)** — you must still stage, commit, push, and run self-review (Phase 1.1–1.4). After self-review, refresh the PR description: invoke `Skill(sonu:pr-conventions)` (Section C — *Keep the description current*) to re-render the body in place — updating Summary/Changes and refreshing the Risk section from the new `RISKS` list while preserving the team-template structure. Capture the updated body into `BODY` explicitly before writing it back (passing an unset variable to `--body` will blank the PR description):
+   ```bash
+   BODY=$(cat <<'PREOF'
+   <updated body text from Skill(sonu:pr-conventions) Section C — replace this block>
+   PREOF
+   )
+   gh pr edit $PR --body "$BODY"
+   ```
+   Otherwise the PR body reflects stale risk info and reviewers see a new diff with no context.
 
 ---
 
@@ -60,8 +68,12 @@ When `light` skips a review, say so in one line in the final report — don't le
 2. Commit in the repo style (imperative, ≤72-char subject). **No AI attribution / no `Co-Authored-By` trailer** (see the contract above).
 3. `git push -u origin "$(git branch --show-current)"`.
 4. **Run `Skill(sonu:self-review)` on the committed diff** (`git show HEAD` / `git diff HEAD^ HEAD` — the working tree is clean at this point, so `git diff HEAD` would return nothing). This surfaces the 3–5 riskiest spots in the change so they can be embedded in the PR body for traceability and shown to the owner. Capture the list — call it `RISKS`.
-5. **Invoke `Skill(sonu:pr-conventions)`** to compose the PR body — the skill scans for a team `PULL_REQUEST_TEMPLATE` first (wins over built-ins if found), classifies the change type from the branch name / commit prefix / diff, fills the matching per-type template, and embeds the `RISKS` list from step 4 in the risk section. Do not put any AI-attribution line in the body. Create the PR **and request Copilot in the same command** (`--reviewer "@copilot"` triggers Copilot review on creation — Copilot is the one major reviewer that does NOT auto-fire on PR open, so it must be requested):
+5. **Invoke `Skill(sonu:pr-conventions)`** to compose the PR body — the skill scans for a team `PULL_REQUEST_TEMPLATE` first (wins over built-ins if found), classifies the change type from the branch name / commit prefix / diff, fills the matching per-type template, and embeds the `RISKS` list from step 4 in the risk section. Do not put any AI-attribution line in the body. **Capture the composed text into `BODY` explicitly** (never pass `--body "$BODY"` with an unset variable — that opens the PR with a blank description):
    ```bash
+   BODY=$(cat <<'PREOF'
+   <body text composed by Skill(sonu:pr-conventions) — replace this entire block>
+   PREOF
+   )
    gh pr create --reviewer "@copilot" --title "<imperative title>" --body "$BODY"
    ```
 6. Record `PR` (number) and the URL. Report both to the owner.
@@ -130,8 +142,9 @@ gh api "/repos/$REPO/pulls/$PR/reviews" --paginate \
   --jq "[.[] | select(.user.login | ascii_downcase | test(\"$BOT_RE\")) | {login:.user.login, state:.state, body:.body}]"
 ```
 
-Also harvest **human inline review comments** for Phase 5 reply handling (non-bot, non-App logins posting inline thread comments):
+Also harvest **human inline review comments** for Phase 5 reply handling. Re-declare `BOT_RE` in this command — each Bash invocation is its own shell, so the variable from the wait-loop above is not automatically in scope:
 ```bash
+BOT_RE='copilot|coderabbit|aikido|qodo|greptile|ellipsis|sourcery|cubic|korbit'
 gh api "/repos/$REPO/pulls/$PR/comments" --paginate \
   --jq "[.[] | select(.user.login | ascii_downcase | test(\"$BOT_RE\") | not) | select(.user.type != \"Bot\") | {id:.id, login:.user.login, path:.path, line:.line, body:.body}]"
 ```
@@ -178,8 +191,8 @@ gh api -X POST "/repos/$REPO/pulls/$PR/comments/$COMMENT_ID/replies" \
   -f body="Keeping as-is — <reason, referencing the convention/constraint>."
 ```
 
-### Resolve the thread
-Get thread ids, matching each thread's first comment `databaseId` to the bot `COMMENT_ID`s you replied to:
+### Resolve the thread (bot threads only — never resolve a human's thread)
+Get thread ids, matching each thread's first comment `databaseId` to the **bot** `COMMENT_ID`s you replied to. Skip any `COMMENT_ID` whose `source` is `human`:
 ```bash
 gh api graphql -f query='
 query($owner:String!,$repo:String!,$pr:Int!){
@@ -225,12 +238,17 @@ mutation($id:ID!){ resolveReviewThread(input:{threadId:$id}){ thread{ isResolved
    echo "REREVIEW_TIMEOUT"
    ```
    Re-run `/security-review` on the new diff if the fixes touched security-relevant code (and the mode runs it).
-3. Fetch only **new** bot comments — track comment ids already handled and diff against the full registry-matched list:
+3. Fetch only **new** comments — both bot and human inline — that you haven't already handled. Re-declare `BOT_RE` (each Bash call is a separate shell):
    ```bash
+   BOT_RE='copilot|coderabbit|aikido|qodo|greptile|ellipsis|sourcery|cubic|korbit'
+   # New bot comments:
    gh api "/repos/$REPO/pulls/$PR/comments" --paginate \
      --jq "[.[] | select(.user.login | ascii_downcase | test(\"$BOT_RE\")) | {id:.id, login:.user.login, path:.path, line:.line, body:.body}]"
+   # New human comments:
+   gh api "/repos/$REPO/pulls/$PR/comments" --paginate \
+     --jq "[.[] | select(.user.login | ascii_downcase | test(\"$BOT_RE\") | not) | select(.user.type != \"Bot\") | {id:.id, login:.user.login, path:.path, line:.line, body:.body}]"
    ```
-   Drop ids you've already replied to/resolved.
+   Drop ids you've already replied to/resolved (from prior loop cycles).
 4. New actionable comments → back to Phase 3 with only those.
 5. All bots approved or quiet (no new actionable comments) → Phase 7.
 

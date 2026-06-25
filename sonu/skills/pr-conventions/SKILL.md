@@ -20,19 +20,23 @@ A PR body is the reviewer's briefing: it should match the change type so reviewe
 Before reaching for a built-in template, scan for the repo's own PR template. The team standard wins.
 
 ```bash
-# First-hit scan (case-insensitive; check in order):
+# Single-file locations take precedence over multi-template directories.
+# Check files first; only look for a directory if no file is found.
+TEMPLATE_FOUND=""
 for f in \
   ".github/PULL_REQUEST_TEMPLATE.md" ".github/PULL_REQUEST_TEMPLATE.txt" \
   ".github/pull_request_template.md" ".github/pull_request_template.txt" \
   "PULL_REQUEST_TEMPLATE.md" "PULL_REQUEST_TEMPLATE.txt" \
   "docs/PULL_REQUEST_TEMPLATE.md" "docs/PULL_REQUEST_TEMPLATE.txt"; do
-  [ -f "$f" ] && { echo "SINGLE:$f"; break; }
+  [ -f "$f" ] && { TEMPLATE_FOUND="SINGLE:$f"; break; }
 done
-# Also check multi-template directories:
-for d in ".github/PULL_REQUEST_TEMPLATE" ".github/pull_request_template" \
-          "PULL_REQUEST_TEMPLATE" "docs/PULL_REQUEST_TEMPLATE"; do
-  [ -d "$d" ] && { echo "MULTI:$d"; break; }
-done
+if [ -z "$TEMPLATE_FOUND" ]; then
+  for d in ".github/PULL_REQUEST_TEMPLATE" ".github/pull_request_template" \
+            "PULL_REQUEST_TEMPLATE" "docs/PULL_REQUEST_TEMPLATE"; do
+    [ -d "$d" ] && { TEMPLATE_FOUND="MULTI:$d"; break; }
+  done
+fi
+echo "$TEMPLATE_FOUND"
 ```
 
 | Found | Action |
@@ -60,24 +64,31 @@ Before filling the template, look for an issue reference. It belongs in the PR b
 
 ```bash
 BRANCH=$(git branch --show-current)
+# $BASE is set by /sonu:ship Phase 0. When invoked standalone, derive it:
+BASE=${BASE:-$(git symbolic-ref refs/remotes/origin/HEAD 2>/dev/null | sed 's|.*/||')}
+BASE=${BASE:-main}
 LOG=$(git log "origin/$BASE..HEAD" --oneline 2>/dev/null)
 
 # Pattern 1 — GitHub issue number: #123 in branch or commits
 GH_ISSUE=$(echo "$BRANCH $LOG" | grep -oE '#[0-9]+' | head -1)
 
-# Pattern 2 — tracker key (JIRA, Linear, Shortcut, etc.): ABC-123 in branch or commits
-TRACKER_KEY=$(echo "$BRANCH $LOG" | grep -oE '\b[A-Z]{2,10}-[0-9]+\b' | head -1)
+# Pattern 2 — tracker key (JIRA, Linear, etc.): ABC-123 in branch or commits
+# Note: grep -E does not support \b word boundaries (treats \b as backspace).
+# The uppercase-only pattern is distinctive enough without them in this context.
+TRACKER_KEY=$(echo "$BRANCH $LOG" | grep -oE '[A-Z]{2,10}-[0-9]+' | head -1)
+
+# Pattern 3 — Shortcut: sc-123 or ch123 in branch or commits
+SC_KEY=$(echo "$BRANCH $LOG" | grep -oiE '(sc-[0-9]+|ch[0-9]+)' | head -1)
 ```
 
-**Format the link based on what you found:**
+**Format the link based on what you found (check in order; first hit wins):**
 
 | Found | Formatted link |
 |-------|----------------|
-| GitHub issue `#123` | `Closes #123` — GitHub closes the issue automatically on merge |
-| JIRA key `ABC-123` | `[ABC-123](https://<org>.atlassian.net/browse/ABC-123)` — fill the org from `JIRA_URL` env var or the git remote domain if it includes `atlassian.net` |
-| Linear key `LIN-123` | `[LIN-123](https://linear.app/<workspace>/issue/LIN-123)` — fill the workspace from `LINEAR_WORKSPACE` env var or the branch URL if available |
-| Shortcut `sc-123` or `ch123` | `[sc-123](https://app.shortcut.com/<workspace>/story/123)` |
-| Key found, org/workspace unknown | Use `Fixes ABC-123` as plain text — better than a broken link; the reviewer can follow up |
+| GitHub issue `#123` (`$GH_ISSUE`) | `Closes #123` — GitHub closes the issue automatically on merge |
+| JIRA/Linear key `ABC-123` (`$TRACKER_KEY`) | JIRA: `[ABC-123](https://<org>.atlassian.net/browse/ABC-123)` — fill org from `JIRA_URL` env var or git remote domain if it contains `atlassian.net`; Linear: `[LIN-123](https://linear.app/<workspace>/issue/LIN-123)` — fill workspace from `LINEAR_WORKSPACE` env var |
+| Shortcut `sc-123` / `ch123` (`$SC_KEY`) | `[sc-123](https://app.shortcut.com/<workspace>/story/123)` |
+| Key found, org/workspace unknown | Use `Fixes ABC-123` as plain text — better than a broken link |
 | Nothing found | Omit the issue line entirely — don't invent a reference |
 
 **Where to embed it:** add the formatted issue link as the **last bullet of `## Summary`** in whatever template is being filled (built-in or team), e.g. `- Closes #123` or `- Fixes [ABC-123](url)`. If the team template already has an issue-link placeholder, fill that instead.
