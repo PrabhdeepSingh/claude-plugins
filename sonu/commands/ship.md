@@ -1,7 +1,8 @@
 ---
-description: Branch, commit, open PR, gather Claude + every enabled AI reviewer (Copilot, CodeRabbit, etc.), fix/justify/resolve every finding, loop until clean, then merge
+description: Branch, commit, open PR, gather Claude + every enabled AI reviewer (Copilot, CodeRabbit, etc.), fix/justify/resolve every finding, loop until clean, then merge. Run only when implementation is finished — to design and build the change first, use /sonu:build.
 argument-hint: "[light|full]"
 allowed-tools: Bash, Read, Edit, Write, Skill
+disable-model-invocation: true
 ---
 
 # /ship — PR Babysitter
@@ -17,6 +18,18 @@ Handles everything from the current working-tree state through a clean, merged P
 
 **No AI attribution.** Do NOT add `Co-Authored-By` trailers, "Generated with Claude Code" lines, or any other AI/tool attribution to commits or the PR body. Commits and PRs read as the owner's own work.
 
+**Shell discipline — every Bash call is a fresh shell.** No variable survives from one snippet to the next. Every fenced snippet below therefore begins with the declarations it needs (`BOT_RE`, `REPO`, `PR`, …) — keep those lines when you run it, and substitute literal values where a snippet says `<PR number>` or `<value from step N>`. Never delete a leading declaration because "it was already set earlier" — it wasn't, and an unset variable here fails *silently*: an empty `$BOT_RE` makes jq's `test("")` match **every** login (humans get treated as bots), and an empty `$PR` turns API calls into invisible 404s inside loops.
+
+**State ledger — survive long runs.** A full ship run spans many tool calls and background waits; if the conversation gets compacted mid-run, your memory of "where was I" is the first casualty. So keep a ledger on disk, inside the `.git` directory (never committable, always repo-local):
+
+```bash
+LEDGER="$(git rev-parse --git-dir)/sonu-ship-ledger.md"
+```
+
+- **Create it in Phase 0** and **rewrite it at the end of every phase** with the current facts, one per line: `repo:`, `base:`, `branch:`, `pr:`, `mode:`, `phase_done:`, `cycles_used:`, `last_fix_sha:`, `prev_at:`, `handled_comment_ids:` (comma-separated), `open_items:` (anything mid-flight).
+- **Whenever you are unsure of the current state** — after a context compaction, a long wait, or an interrupted turn — read the ledger *before* touching the PR, and resume from `phase_done`, not from memory. The ledger is the source of truth for literal values the snippets need (`PR`, `PREV_AT`, handled IDs).
+- **Delete it after the merge** (`rm -f "$LEDGER"`) as part of the final report — a stale ledger must never leak into the next run.
+
 ---
 
 ## Effort mode — right-size the spend to the change
@@ -31,7 +44,7 @@ The mode scales **only the reviews you pay for** — your own `/code-review` and
 
 | Mode | Your `/code-review` | Your `/security-review` | Re-review loop |
 |------|---------------------|--------------------------|----------------|
-| **light** | low effort; skip entirely if the diff is trivial (≤ ~10 lines, only CSS/markup/docs/config/comments, no logic) | skip unless a security-relevant file is touched (auth, api, sql, middleware, crypto, payments/stripe, env, session, headers, file I/O) | 1 cycle max |
+| **light** | low effort; skip entirely if the diff is trivial (≤ ~10 lines, only CSS/markup/docs/config/comments, no logic) | skip unless a security-relevant file is touched (auth, api, sql, middleware, crypto, payments/stripe, env, session, headers, file I/O) | exactly 1 |
 | **auto** | trivial diff → treat as **light**; > 200 lines or security-relevant files → treat as **full**; otherwise medium effort | run unless the diff is trivial and non-security | up to 3 cycles |
 | **full** | high effort | always | up to 3 cycles |
 
@@ -48,10 +61,12 @@ When `light` skips a review, say so in one line in the final report — don't le
    BASE=$(gh repo view --json defaultBranchRef -q .defaultBranchRef.name)  # e.g. main / master
    ```
    If `gh repo view` fails (no GitHub remote), stop and tell the owner — this flow needs a GitHub remote.
-2. `git status` and `git diff --stat` — understand what changed. Use the line count + file types to pick the effort mode (above).
-3. If on the default branch (`$BASE`), branch: `git checkout -b <kebab-name-matching-task>`.
-4. Existing PR on this branch? `gh pr list --head "$(git branch --show-current)" --json number,url`. If one exists, record its number as `PR` and skip **only the `gh pr create` call (Phase 1.5)** — you must still stage, commit, push, and run self-review (Phase 1.1–1.4). After self-review, refresh the PR description: invoke `Skill(sonu:pr-conventions)` (Section C — *Keep the description current*) to re-render the body in place — updating Summary/Changes and refreshing the Risk section from the new `RISKS` list while preserving the team-template structure. Capture the updated body into `BODY` explicitly before writing it back (passing an unset variable to `--body` will blank the PR description):
+2. **Initialize the state ledger** (see the contract above): write `repo:`, `base:`, `branch:`, `mode:`, `phase_done: 0` to `$(git rev-parse --git-dir)/sonu-ship-ledger.md`. Update it at the end of every phase from here on.
+3. `git status` and `git diff --stat` — understand what changed. Use the line count + file types to pick the effort mode (above).
+4. If on the default branch (`$BASE`), branch: `git checkout -b <kebab-name-matching-task>`.
+5. Existing PR on this branch? `gh pr list --head "$(git branch --show-current)" --json number,url`. If one exists, record its number as `PR` and skip **only the `gh pr create` call (Phase 1.5)** — you must still stage, commit, push, and run self-review (Phase 1.1–1.4). After self-review, refresh the PR description: invoke `Skill(sonu:pr-conventions)` (Section C — *Keep the description current*) to re-render the body in place — updating Summary/Changes and refreshing the Risk section from the new `RISKS` list while preserving the team-template structure. Capture the updated body into `BODY` explicitly before writing it back (passing an unset variable to `--body` will blank the PR description):
    ```bash
+   # Compose this at column 0 — a heredoc terminator (PREOF) must start the line, unindented.
    BODY=$(cat <<'PREOF'
    <updated body text from Skill(sonu:pr-conventions) Section C — replace this block>
    PREOF
@@ -70,6 +85,7 @@ When `light` skips a review, say so in one line in the final report — don't le
 4. **Run `Skill(sonu:self-review)` on the committed diff** (`git show HEAD` / `git diff HEAD^ HEAD` — the working tree is clean at this point, so `git diff HEAD` would return nothing). This surfaces the 3–5 riskiest spots in the change so they can be embedded in the PR body for traceability and shown to the owner. Capture the list — call it `RISKS`.
 5. **Invoke `Skill(sonu:pr-conventions)`** to compose the PR body — the skill scans for a team `PULL_REQUEST_TEMPLATE` first (wins over built-ins if found), classifies the change type from the branch name / commit prefix / diff, fills the matching per-type template, and embeds the `RISKS` list from step 4 in the risk section. Do not put any AI-attribution line in the body. **Capture the composed text into `BODY` explicitly** (never pass `--body "$BODY"` with an unset variable — that opens the PR with a blank description):
    ```bash
+   # Compose this at column 0 — a heredoc terminator (PREOF) must start the line, unindented.
    BODY=$(cat <<'PREOF'
    <body text composed by Skill(sonu:pr-conventions) — replace this entire block>
    PREOF
@@ -115,6 +131,8 @@ Per the effort mode, invoke `/security-review` on the diff — or skip when the 
 Opening the PR triggered every enabled bot; Copilot was requested. Wait for them with a **background until-loop** (do NOT foreground-sleep — it's blocked in this harness). Run via Bash with `run_in_background: true`. You don't know the full guest list in advance, so wait until activity settles: break once Copilot has reviewed AND the set of participating bots has been stable for two consecutive polls (no newcomers), or after ~10 min.
 ```bash
 BOT_RE='copilot|coderabbit|aikido|qodo|greptile|ellipsis|sourcery|cubic|korbit'
+REPO=$(gh repo view --json nameWithOwner -q .nameWithOwner)
+PR=<PR number from Phase 1>   # substitute the literal number — an empty $PR 404s invisibly here
 prev=""; stable=0
 for i in $(seq 1 20); do
   # union of bot logins seen across reviews + inline comments + issue comments
@@ -131,20 +149,22 @@ for i in $(seq 1 20); do
 done
 echo "BOTS_TIMEOUT:$prev"; exit 0
 ```
-If it times out with some bots still absent, surface that and continue with whoever did post (the Phase 6 loop catches stragglers). Then fetch every bot's inline comments (this is the registry-matched harvest):
+If it times out with some bots still absent, surface that and continue with whoever did post (the Phase 6 loop catches stragglers). Then fetch every bot's inline comments and review-level summaries (some bots put findings in the review body, not inline). This is the registry-matched harvest — the leading declarations are load-bearing (see Shell discipline above):
 ```bash
+BOT_RE='copilot|coderabbit|aikido|qodo|greptile|ellipsis|sourcery|cubic|korbit'
+REPO=$(gh repo view --json nameWithOwner -q .nameWithOwner)
+PR=<PR number from Phase 1>
 gh api "/repos/$REPO/pulls/$PR/comments" --paginate \
   --jq "[.[] | select(.user.login | ascii_downcase | test(\"$BOT_RE\")) | {id:.id, login:.user.login, path:.path, line:.line, body:.body}]"
-```
-Also grab each bot's review-level summary (some put findings in the review body, not inline):
-```bash
 gh api "/repos/$REPO/pulls/$PR/reviews" --paginate \
   --jq "[.[] | select(.user.login | ascii_downcase | test(\"$BOT_RE\")) | {login:.user.login, state:.state, body:.body}]"
 ```
 
-Also harvest **human inline review comments** for Phase 5 reply handling. Re-declare `BOT_RE` in this command — each Bash invocation is its own shell, so the variable from the wait-loop above is not automatically in scope:
+Also harvest **human inline review comments** for Phase 5 reply handling:
 ```bash
 BOT_RE='copilot|coderabbit|aikido|qodo|greptile|ellipsis|sourcery|cubic|korbit'
+REPO=$(gh repo view --json nameWithOwner -q .nameWithOwner)
+PR=<PR number from Phase 1>
 gh api "/repos/$REPO/pulls/$PR/comments" --paginate \
   --jq "[.[] | select(.user.login | ascii_downcase | test(\"$BOT_RE\") | not) | select(.user.type != \"Bot\") | {id:.id, login:.user.login, path:.path, line:.line, body:.body}]"
 ```
@@ -182,18 +202,19 @@ Applies to **all inline comments** — bot threads and human reviewer threads. Y
 For **every** inline comment (both `FIX` and `JUSTIFY`):
 
 ### Reply (the PR number is in the path)
+
+The reply **wording** comes from `Skill(sonu:pr-conventions)` Section D — that table is the single home for reply phrasing (fixed / justified / false-positive / partial / question); don't restate or improvise it here. The **mechanics** are this endpoint (substitute literal values for `$REPO`, `$PR`, `$COMMENT_ID` — you compose each call yourself, so a bad value fails loudly):
 ```bash
-# Fixed:
 gh api -X POST "/repos/$REPO/pulls/$PR/comments/$COMMENT_ID/replies" \
-  -f body="Fixed in $SHA — <one line on what changed>."
-# Justified:
-gh api -X POST "/repos/$REPO/pulls/$PR/comments/$COMMENT_ID/replies" \
-  -f body="Keeping as-is — <reason, referencing the convention/constraint>."
+  -f body="<reply text from pr-conventions Section D>"
 ```
 
 ### Resolve the thread (bot threads only — never resolve a human's thread)
 Get thread ids, matching each thread's first comment `databaseId` to the **bot** `COMMENT_ID`s you replied to. Skip any `COMMENT_ID` whose `source` is `human`:
 ```bash
+REPO=$(gh repo view --json nameWithOwner -q .nameWithOwner)
+OWNER=${REPO%%/*}; NAME=${REPO##*/}
+PR=<PR number from Phase 1>
 gh api graphql -f query='
 query($owner:String!,$repo:String!,$pr:Int!){
   repository(owner:$owner,name:$repo){ pullRequest(number:$pr){
@@ -219,10 +240,13 @@ mutation($id:ID!){ resolveReviewThread(input:{threadId:$id}){ thread{ isResolved
 | `light` | exactly 1 |
 | `auto` / `full` | up to 3 |
 
-1. **Capture each bot's current latest review timestamp first** — a rerun must wait for activity *newer* than what's already there, or it exits instantly on the existing reviews:
+1. **Capture each bot's current latest review timestamp first** — a rerun must wait for activity *newer* than what's already there, or it exits instantly on the existing reviews. Echo the value; step 2's loop needs it as a literal:
    ```bash
+   BOT_RE='copilot|coderabbit|aikido|qodo|greptile|ellipsis|sourcery|cubic|korbit'
+   PR=<PR number from Phase 1>
    PREV_AT=$(gh pr view $PR --json reviews \
      --jq "[.reviews[] | select(.author.login | ascii_downcase | test(\"$BOT_RE\"))] | (map(.submittedAt) | max) // \"\"")
+   echo "PREV_AT=$PREV_AT"
    ```
    Then re-trigger the bots:
    - **Copilot:** `gh pr edit $PR --add-reviewer "@copilot"` (fallback if it errors: GraphQL `requestReviews` with `botIds:["BOT_kgDOCnlnWA"]` — Copilot's node id — and `union:true`).
@@ -231,9 +255,13 @@ mutation($id:ID!){ resolveReviewThread(input:{threadId:$id}){ thread{ isResolved
 
    **CRITICAL: run this loop separately from the Phase 7 CI poll. Never combine them into one loop.** Two conditions (re-review timestamp AND CI buckets) cannot be safely merged — the variable-capture patterns are incompatible and a combined loop will stall. Run this re-review loop first, collect new findings, then run the CI poll loop in Phase 7.
 
-   ISO-8601 sorts lexicographically, so a string `>` is a valid recency test — but **do not write `[ "$MAX_AT" \> "$PREV_AT" ]`**: this harness runs under `zsh`, whose `[`/`test` builtin rejects `\>` with `condition expected: >`. Use `[[ ... > ... ]]` instead (works in both bash and zsh):
+   ISO-8601 sorts lexicographically, so a string `>` is a valid recency test — but **do not write `[ "$MAX_AT" \> "$PREV_AT" ]`**: this harness runs under `zsh`, whose `[`/`test` builtin rejects `\>` with `condition expected: >`. Use `[[ ... > ... ]]` instead (works in both bash and zsh). Paste the literal `PREV_AT` value from step 1 — this loop runs in a fresh shell, and with an empty `PREV_AT` the `>` test is true for *any* existing review, so the loop exits instantly and the re-review findings are never collected (the exact incident the mandatory-loop rule above exists to prevent). The guard makes that mistake loud instead of silent:
    ```bash
    BOT_RE='copilot|coderabbit|aikido|qodo|greptile|ellipsis|sourcery|cubic|korbit'
+   PR=<PR number from Phase 1>
+   PREV_AT='<literal value echoed in step 1>'
+   # If step 1 genuinely echoed empty (no bot has reviewed yet), set PREV_AT='0' — it sorts before any ISO date.
+   [ -n "$PREV_AT" ] || { echo "PREV_AT is empty — paste the step 1 value (or '0' if step 1 found no prior bot review)"; exit 1; }
    for i in $(seq 1 20); do
      MAX_AT=$(gh pr view $PR --json reviews \
        --jq "[.reviews[] | select(.author.login | ascii_downcase | test(\"$BOT_RE\"))] | (map(.submittedAt) | max) // \"\"" 2>/dev/null)
@@ -243,15 +271,18 @@ mutation($id:ID!){ resolveReviewThread(input:{threadId:$id}){ thread{ isResolved
    echo "REREVIEW_TIMEOUT"
    ```
    Re-run `/security-review` on the new diff if the fixes touched security-relevant code (and the mode runs it).
-3. Fetch only **new** comments — both bot and human inline — that you haven't already handled. Re-declare `BOT_RE` (each Bash call is a separate shell):
+3. Fetch only **new** comments — both bot and human inline — that you haven't already handled. Exclude your own login from the human fetch: the replies you posted in Phase 5 are new comment ids, so without this filter they resurface as "new human comments" every cycle and a literal executor replies to itself:
    ```bash
    BOT_RE='copilot|coderabbit|aikido|qodo|greptile|ellipsis|sourcery|cubic|korbit'
+   REPO=$(gh repo view --json nameWithOwner -q .nameWithOwner)
+   PR=<PR number from Phase 1>
+   ME=$(gh api user --jq .login)
    # New bot comments:
    gh api "/repos/$REPO/pulls/$PR/comments" --paginate \
      --jq "[.[] | select(.user.login | ascii_downcase | test(\"$BOT_RE\")) | {id:.id, login:.user.login, path:.path, line:.line, body:.body}]"
-   # New human comments:
+   # New human comments (not a bot, not you):
    gh api "/repos/$REPO/pulls/$PR/comments" --paginate \
-     --jq "[.[] | select(.user.login | ascii_downcase | test(\"$BOT_RE\") | not) | select(.user.type != \"Bot\") | {id:.id, login:.user.login, path:.path, line:.line, body:.body}]"
+     --jq "[.[] | select(.user.login | ascii_downcase | test(\"$BOT_RE\") | not) | select(.user.type != \"Bot\") | select(.user.login != \"$ME\") | {id:.id, login:.user.login, path:.path, line:.line, body:.body}]"
    ```
    Drop ids you've already replied to/resolved (from prior loop cycles).
 4. New actionable comments → back to Phase 3 with only those.
@@ -265,35 +296,48 @@ mutation($id:ID!){ resolveReviewThread(input:{threadId:$id}){ thread{ isResolved
 
 **You are the merge gate.** The safety checks (everything except deploy-preview checks like Vercel / Netlify / Cloudflare Pages) must all be **passing** before you merge. Never merge while a safety check is pending or failing.
 
-First, figure out which checks are required and whether the branch is protected:
+First, figure out which checks are required and whether the branch is protected. Check **both** protection systems — classic branch protection AND repository rulesets (the modern default; a rulesets-protected branch 404s on the classic endpoint and would otherwise be misclassified as unprotected):
 ```bash
-# Required status checks from branch protection, if any (empty/❌ if branch is unprotected):
+REPO=$(gh repo view --json nameWithOwner -q .nameWithOwner)
+BASE=$(gh repo view --json defaultBranchRef -q .defaultBranchRef.name)
+# Classic branch protection (errors if not classic-protected):
 gh api "repos/$REPO/branches/$BASE/protection/required_status_checks" --jq '.contexts // .checks' 2>/dev/null
+# Repository rulesets (empty array [] if none apply to this branch):
+gh api "repos/$REPO/rules/branches/$BASE" --jq '[.[] | select(.type == "required_status_checks")]' 2>/dev/null
 ```
 
-- **If the branch is protected with required checks:** prefer `gh pr merge $PR --auto --squash --delete-branch`. With required checks present, `--auto` genuinely gates — it merges only once they pass. You may still poll (below) to report status, but the gating is real.
-- **If the branch is unprotected** (the `required_status_checks` call errored or returned empty): `--auto` does NOT gate — it merges immediately. So **you** poll and gate manually.
+- **If either call shows required checks:** prefer `gh pr merge $PR --auto --squash --delete-branch`. With required checks present, `--auto` genuinely gates — it merges only once they pass. You may still poll (below) to report status, but the gating is real.
+- **If both come back empty/error** (truly unprotected): `--auto` does NOT gate — it merges immediately. So **you** poll and gate manually.
 
 Poll the **non-deploy-preview** checks only — `gh pr checks --watch` would block on slow deploy previews. Run this as a background until-loop (don't foreground-sleep). Require the safety-check set to be **non-empty** before breaking — right after PR creation GitHub can return an empty list before Actions register, and `jq all([])` is vacuously `true`, which would otherwise fall through to merge before any check ran.
 
-**jq boolean pattern warning:** Do NOT write `done=$(jq -e '...' && echo "yes" || echo "no")`. `jq -e` always prints `true`/`false` to stdout before `&&` runs, so `$()` captures `"true\nyes"` — a multi-line string that never equals `"yes"` and the loop never breaks. The pattern below pipes through `>/dev/null 2>&1` to discard jq's output and uses only its exit code to drive `break` — copy it exactly, don't adapt it:
+**jq boolean pattern warning:** Do NOT write `done=$(jq -e '...' && echo "yes" || echo "no")`. `jq -e` always prints `true`/`false` to stdout before `&&` runs, so `$()` captures `"true\nyes"` — a multi-line string that never equals `"yes"` and the loop never breaks. The pattern below pipes through `>/dev/null 2>&1` to discard jq's output and uses only its exit code to drive `break` — copy it exactly, don't adapt it.
+
+**Buckets:** `gh pr checks` buckets each check as `pass`, `fail`, `pending`, `skipping`, or `cancel`. Only `pass` and `skipping` are safe to merge on. A **cancelled** check is a check that did not run to completion — treat it exactly like a failure, never like a pass (the naive `all(. != "pending")` break condition would merge right past it):
 ```bash
 PREVIEW='vercel|netlify|cloudflare|render|preview|deploy'
+PR=<PR number from Phase 1>
 for i in $(seq 1 30); do
   safety=$(gh pr checks $PR --json name,bucket --jq "[.[] | select(.name | test(\"$PREVIEW\"; \"i\") | not)]")
-  echo "$safety" | jq -e '(length > 0) and (map(.bucket) | all(. != "pending"))' >/dev/null 2>&1 && break
+  echo "$safety" | jq -e '(length > 0) and (map(.bucket) | all(. == "pass" or . == "skipping"))' >/dev/null 2>&1 && { echo "SAFETY_GREEN"; break; }
+  echo "$safety" | jq -e 'map(.bucket) | any(. == "fail" or . == "cancel")' >/dev/null 2>&1 && { echo "SAFETY_RED"; break; }
   sleep 30
 done
-echo "$safety" | jq '{failing: [.[]|select(.bucket=="fail").name], pending: [.[]|select(.bucket=="pending").name], passed: [.[]|select(.bucket=="pass").name]}'
+echo "$safety" | jq '{failing: [.[]|select(.bucket=="fail" or .bucket=="cancel").name], pending: [.[]|select(.bucket=="pending").name], passed: [.[]|select(.bucket=="pass" or .bucket=="skipping").name]}'
 gh pr view $PR --json mergeStateStatus,mergeable --jq '{mergeStateStatus, mergeable}'  # want CLEAN / MERGEABLE
 ```
-- **Any safety check failing** → stop, fix it (loop back to Phase 4) or hand to the owner. Never merge red CI.
-- **Any safety check still pending** → keep waiting; do not merge yet.
+- **`SAFETY_RED` (any safety check failing or cancelled)** → stop, fix it (loop back to Phase 4) or hand to the owner. Never merge red or cancelled CI.
+- **Loop timed out with checks still pending** → keep waiting; do not merge yet.
 - **All safety checks pass** (deploy preview may still be running) → merge and delete the branch:
   ```bash
   gh pr merge $PR --squash --delete-branch
   ```
 - `--delete-branch` also switches your local checkout back to `$BASE`. After it runs, `git checkout $BASE` is a no-op and a separate `git branch -D` will report "not found" — that's expected, not an error.
+
+Delete the state ledger — the run is over and a stale ledger must not leak into the next one:
+```bash
+rm -f "$(git rev-parse --git-dir)/sonu-ship-ledger.md"
+```
 
 Final report to the owner:
 - PR number + URL
@@ -304,3 +348,15 @@ Final report to the owner:
 - **Justified** (bullets + the reasoning given to the bots)
 - **Human threads replied to** — N comments answered; none auto-resolved (resolution left to the reviewer)
 - Merge state: auto-merge enabled / merged / awaiting checks
+
+---
+
+## Provenance and maintenance
+
+Volatile facts in this file, last verified 2026-07. Re-verify before relying on them if this file hasn't been touched in a while:
+
+- **Bot login registry** (Phase 2) — logins change when vendors rebrand. Re-verify by opening any recent PR the bots reviewed and reading `gh api "/repos/<repo>/pulls/<pr>/reviews" --jq '.[].user.login'`. This registry is the **canonical home**; `pr-conventions` Section D references it rather than keeping its own copy.
+- **Copilot GraphQL node id** `BOT_kgDOCnlnWA` (Phase 6 fallback) — re-verify: `gh api '/users/copilot-pull-request-reviewer[bot]' --jq .node_id` (the account is a Bot, so a GraphQL `user()` lookup returns NOT_FOUND — that error does not mean the id is stale), or check the timeline of a PR where Copilot was requested.
+- **`gh pr checks` bucket names** (`pass|fail|pending|skipping|cancel`, Phase 7) — re-verify: `gh pr checks --help`.
+- **Rulesets endpoint** `repos/{repo}/rules/branches/{branch}` (Phase 7) — re-verify: `gh api repos/cli/cli/rules/branches/trunk --jq length`.
+- **`gh pr view --json reviewRequests` returning empty for bot reviewers** (Phase 1 note) — re-verify against a PR with Copilot requested.

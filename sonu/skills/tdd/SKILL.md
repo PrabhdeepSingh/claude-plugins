@@ -1,6 +1,6 @@
 ---
 name: tdd
-description: Test-driven development — the red-green-refactor discipline for writing code that's correct by design, not by accident. INVOKE THIS PROACTIVELY — even when the user never says "TDD" or "tests" — whenever writing or changing code, implementing a feature, fixing a bug, adding or running tests, naming or structuring a test suite, or choosing what to mock. The test comes first; the code earns its keep by making the test pass. Covers the red-green-refactor loop, test-first discipline with honest carve-outs, testing behavior not implementation, AAA structure, spec-sentence naming, test qualities (fast/isolated/deterministic), test doubles and when not to mock, the testing pyramid, coverage as a byproduct not a target, and the bug-fix reflex. (Pairs with the [[code-standards]] skill — tests are code held to the same bar.)
+description: Test-driven development — the red-green-refactor discipline for writing code that's correct by design, not by accident. INVOKE THIS PROACTIVELY — even when the user never says "TDD" or "tests" — whenever writing or changing code, implementing a feature, fixing a bug, adding or running tests, naming or structuring a test suite, or choosing what to mock. Covers the red-green-refactor loop, test-first discipline with honest carve-outs, testing behavior not implementation, AAA structure, spec-sentence naming, test qualities (fast/isolated/deterministic), test doubles and when not to mock, the testing pyramid, coverage as a byproduct not a target, the bug-fix reflex, and the never-weaken-a-failing-test rule (no updating expectations to match broken code, no skips, no broadened assertions). (Pairs with the [[code-standards]] skill — tests are code held to the same bar.)
 ---
 
 # TDD — test-first, every time
@@ -27,7 +27,7 @@ Every increment of behavior follows three steps, in order:
 
 Keep steps small. A step that feels too big is too big — shrink it.
 
-**Example — incrementally building a `withdraw` method:**
+**Example — incrementally building a `withdraw` method.** Each block below is the full state of the file *after* that step — not a single file to concatenate and run:
 
 ```js
 // Step 1 (Red): write the failing test first.
@@ -37,14 +37,36 @@ test('reduces balance by withdrawal amount', () => {
   account.withdraw(50);
   expect(account.balance).toBe(50);
 });
+```
 
+```js
 // Step 2 (Green): the simplest code that makes the test pass.
+class Account {
+  constructor(opts) { this.balance = opts.balance; }
+  withdraw(amount) { this.balance -= amount; }
+}
+```
+
+```js
+// Step 3 (Refactor): clean up under green — clearer names, no NEW behavior.
+// (Adding a feature here would be untested code; that belongs in the next loop.)
 class Account {
   constructor({ balance }) { this.balance = balance; }
   withdraw(amount) { this.balance -= amount; }
 }
+// Run the test — still green. The loop restarts for the next behavior:
+```
 
-// Test passes. Now Step 3 (Refactor): add the guard clause cleanly, still green.
+```js
+// Step 1 again (Red): failing test for the error case.
+test('rejects withdrawal when balance is insufficient', () => {
+  const account = new Account({ balance: 30 });
+  expect(() => account.withdraw(50)).toThrow('Insufficient funds');
+});
+```
+
+```js
+// Step 2 again (Green): the guard clause, driven by the failing test above.
 class Account {
   constructor({ balance }) { this.balance = balance; }
   withdraw(amount) {
@@ -52,7 +74,7 @@ class Account {
     this.balance -= amount;
   }
 }
-// Run the test — still green. Then write the next failing test for the error case.
+// Both tests green. Refactor if needed, then on to the next behavior.
 ```
 
 The loop enforces discipline: the test defines the expectation; the code satisfies it; neither grows beyond what's needed.
@@ -246,7 +268,7 @@ Test the things that can go wrong:
 
 Skip trivial pass-throughs, generated code, and pure configuration wiring.
 
-**The bug-fix reflex.** Before fixing any bug, write a test that reproduces it. Confirm the test fails. Then fix the bug. Confirm the test passes. This is non-negotiable: it proves the fix works, prevents the regression from returning, and often reveals the bug was more general than it first appeared.
+**The bug-fix reflex.** Before fixing any bug, write a test that reproduces it. Confirm the test fails. Then fix the bug. Confirm the test passes. This is non-negotiable: it proves the fix works, prevents the regression from returning, and often reveals the bug was more general than it first appeared. (Finding the root cause in the first place — reproduce, hypothesize, bisect — is the [[debugging]] skill's territory; this reflex is how the found fix gets pinned.)
 
 ```js
 // Avoid: patch the bug and ship — no proof it's fixed, no protection against regression
@@ -261,7 +283,39 @@ test('rejects negative withdrawal amount', () => {
 // Watch it fail → add the guard in withdraw() → watch it pass → done
 ```
 
-## 11. Tests are first-class code
+## 11. When a test fails, the test is innocent
+
+A failing test is the system working. The default assumption — always — is that **the code is wrong, not the test**. Weakening a test to make it pass converts a loud, findable failure into a silent bug with a green checkmark on it, which is strictly worse than no test at all.
+
+These moves are banned as a *first response* to a red test:
+
+- **Updating the expected value to whatever the code currently produces.** That's not fixing the test; it's enshrining the bug as the spec.
+- **Deleting, skipping, or quarantining the test** (`.skip`, `xfail`, commenting it out) to unblock yourself.
+- **Broadening the assertion** until it can't fail (`toBe(42)` → `toBeDefined()`, exact match → "contains").
+- **Adding sleeps or retries** to outlast a timing failure instead of finding the race.
+- **Wrapping the failing call in try/catch** inside the test so the assertion is never reached.
+- **Mocking away the collaborator that's failing** so the broken path is no longer exercised.
+
+A test change is legitimate in exactly two cases, and both require saying so out loud: (1) **the specification actually changed** — a requirement is different now, and you can point to where that decision came from; or (2) **the test violated section 3** — it asserted implementation details, and a refactor broke the test without changing observable behavior. In both cases, state the justification with the change. If you can't articulate which case applies, the code is wrong — go fix it.
+
+```js
+// Bug: withdraw() lets the balance go negative. The test correctly fails.
+
+// Avoid: "fixing" the test to match what the code does
+test('withdrawal can overdraw the account', () => {
+  const account = new Account({ balance: 30 });
+  account.withdraw(50);
+  expect(account.balance).toBe(-20);   // the bug is now the spec, and it's green
+});
+
+// Prefer: the test stays; the code changes until it passes
+test('rejects withdrawal when balance is insufficient', () => {
+  const account = new Account({ balance: 30 });
+  expect(() => account.withdraw(50)).toThrow('Insufficient funds');
+});
+```
+
+## 12. Tests are first-class code
 
 A test suite that's hard to read is a test suite nobody trusts. Apply [[code-standards]] to test code with the same discipline as production code: intention-revealing names, small focused helpers, guard clauses, no magic numbers, no commented-out tests, no duplication. Test factories and shared fixtures deserve the same care as the code they exercise. If the test body is long enough to need scrolling, extract helpers.
 
@@ -280,6 +334,7 @@ Run this against your own diff. Fix any "no" before finishing:
 - Are test doubles used only at architectural seams — real domain objects throughout the core, fakes only at I/O boundaries?
 - If this was a bug fix, did you write a failing test that reproduced the bug *before* you fixed it?
 - Does each new test actually fail before the implementation and pass after? (A test that's always green proved nothing.)
+- If any existing test changed, can you name which legitimate case applies — spec change (say where it came from) or implementation-detail cleanup — and is there zero weakening (no updated-to-actual expectations, no skips, no broadened assertions, no sleeps, no try/catch around the failure)?
 - Is the test code held to the same naming, clarity, and structure bar as [[code-standards]]?
 
 A passing test suite is only as trustworthy as the discipline behind it. If you're not confident the tests would catch a regression, they wouldn't.

@@ -1,0 +1,3 @@
+# Personal, machine-local Claude Code settings (permission allowlists etc.) — never commit.
+.claude/settings.local.json
+.DS_Store

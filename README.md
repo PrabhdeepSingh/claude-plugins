@@ -11,7 +11,7 @@ Prabhdeep (Sonu) Singh's personal [Claude Code](https://claude.com/claude-code) 
 /plugin install sonu@prabhdeep-tools
 ```
 
-Run those once per device. After that, `/sonu:build` and `/sonu:ship` are available in every repo on that machine, and the **code-standards**, **tdd**, **seo-standards**, **content-seo**, **design-tree**, **self-review**, and **pr-conventions** skills ride along automatically — no command to run, they just shape how code and content get written. To pull updates later:
+Run those once per device. After that, `/sonu:build`, `/sonu:ship`, `/sonu:tdd`, `/sonu:design-tree`, and `/sonu:self-review` are available in every repo on that machine, and the **code-standards**, **tdd**, **debugging**, **safe-migrations**, **infra-standards**, **observability**, **seo-standards**, **content-seo**, **design-tree**, **self-review**, and **pr-conventions** skills ride along automatically — no command to run, they just shape how code and content get written. To pull updates later:
 
 ```
 /plugin marketplace update prabhdeep-tools
@@ -25,7 +25,7 @@ Run those once per device. After that, `/sonu:build` and `/sonu:ship` are availa
 2. Add a custom marketplace pointing at this repo: `PrabhdeepSingh/claude-plugins`.
 3. Find the **sonu** plugin and click **Install**.
 
-After that, skills auto-apply in every session and `/sonu:build`, `/sonu:ship`, `/sonu:tdd`, and `/sonu:design-tree` appear in Cursor's slash-command menu. Updates are pulled when you sync the marketplace in Cursor Settings.
+After that, skills auto-apply in every session and the `/sonu:*` commands appear in Cursor's slash-command menu. Updates are pulled when you sync the marketplace in Cursor Settings. (One difference: Cursor has no Claude Code-style plan mode, so `/sonu:build`'s design gate runs in-chat there — the command adapts automatically.)
 
 ## Commands
 
@@ -55,7 +55,7 @@ Takes a finished change from working tree to a clean, merged PR — autonomously
 What it does:
 
 1. **Branch, commit, open a PR** with the right per-change-type description (feature / bugfix / hotfix / chore / refactor / docs / perf / release) — reusing the repo's own `PULL_REQUEST_TEMPLATE` if one exists. No AI-attribution trailers — commits and the PR body read as your own.
-2. **Gathers every review source**: its own Claude `/code-review` + `/security-review`, plus **every AI reviewer bot enabled on the repo** — detected by who actually posts on the PR (Copilot, CodeRabbit, Aikido, Qodo, Greptile, Ellipsis, Sourcery, Cubic, Korbit, …). No config needed; it adapts per-repo. Copilot is requested automatically since it's the one that doesn't auto-fire.
+2. **Gathers every review source**: its own Claude `/code-review` + `/security-review`, plus **every AI reviewer bot enabled on the repo** — detected by who actually posts on the PR (Copilot, CodeRabbit, and the rest of the registry maintained in `ship.md` Phase 2). No config needed; it adapts per-repo. Copilot is requested automatically since it's the one that doesn't auto-fire.
 3. **Dedups, fixes, or justifies** every finding. Replies to **bot threads** (with resolve) and **human reviewer threads** (reply only — never auto-resolves a human's comment). Keeps the PR description current as fixes land.
 4. **Loops** through re-reviews until clean.
 5. **Merges** once the safety checks (everything but deploy previews) pass.
@@ -103,13 +103,17 @@ What it does:
 
 The `design-tree` skill (below) auto-applies the same methodology in plan mode without needing an explicit invocation.
 
+### `/sonu:self-review` — where should a reviewer look?
+
+Runs the `self-review` skill on demand: the 3–5 riskiest spots in the current diff (untracked files and multi-commit branches included), in plain language, ending with an explicit "this is a pointer, not an approval." `/sonu:build` and `/sonu:ship` already run it automatically at the right moments — this command is for everywhere else.
+
 ## Skills
 
 ### `code-standards` — code the way I do
 
 A skill, not a command — there's nothing to invoke. Once the plugin is installed, Claude consults it automatically before writing, generating, or refactoring code in any repo, so AI-written code lands in my style instead of generic boilerplate.
 
-It opens with **working discipline** — how to approach the task, not just the output: think before coding and surface assumptions, build the minimum that solves the problem, make surgical changes that trace to the request, and turn vague asks into verifiable goals. Then it encodes the foundation across eleven areas:
+It opens with **working discipline** — how to approach the task, not just the output: think before coding and surface assumptions, build the minimum that solves the problem, look for an existing implementation (codebase, stdlib, dependencies) before writing a fresh one, make surgical changes that trace to the request (reverting dead ends completely), and turn vague asks into verifiable goals — claiming only outcomes you actually observed. Then it encodes the foundation across thirteen areas:
 
 - **Naming** — intention-revealing names, no `data`/`temp`/`Manager` junk-drawer names.
 - **Schema & API conventions** — `snake_case` fields, UUID ids, `created_date`/`last_modified_date` timestamps in UTC, first/last name stored separately.
@@ -122,6 +126,8 @@ It opens with **working discipline** — how to approach the task, not just the 
 - **Input validation & injection** — validate untrusted input at the boundary, parameterize every query.
 - **Information leaks** — generic API errors with detail logged internally, no auth/account enumeration.
 - **State** — immutability by default, tight scope.
+- **Tooling diagnostics** — fix the cause, never bare-suppress (`as any`, `@ts-ignore`, `eslint-disable` need a narrow scope and a stated reason).
+- **API design** — responses built from explicit field allowlists (never a serialized entity — no leaked hashes/tokens/internal flags), honest status codes, one error shape, pagination from day one, staged deprecation for breaking changes.
 
 Every rule explains *why* it's there, ships with good/bad examples so it actually sticks, and ends with a self-check the model runs against its own diff. When it's editing an existing codebase, matching that codebase's conventions wins over the guide.
 
@@ -131,7 +137,7 @@ Edit `sonu/skills/code-standards/SKILL.md` to make it yours — it's plain Markd
 
 A skill, not a command — there's nothing to invoke. Once the plugin is installed, Claude follows the red-green-refactor discipline automatically whenever it writes, changes, or tests code in any repo — even when "TDD" or "tests" aren't mentioned. It also fires on the explicit `/sonu:tdd` command.
 
-It encodes a strict test-first methodology with honest carve-outs (spikes are thrown away and rebuilt test-first; code never lands without tests) across eleven areas:
+It encodes a strict test-first methodology with honest carve-outs (spikes are thrown away and rebuilt test-first; code never lands without tests) across twelve areas:
 
 - **Red-green-refactor** — failing test first, minimum code to green, refactor under protection. Small steps, run tests constantly.
 - **Test-first discipline** — the one carve-out: exploratory spikes to learn a shape, discarded entirely before building the real thing test-first.
@@ -144,10 +150,29 @@ It encodes a strict test-first methodology with honest carve-outs (spikes are th
 - **Coverage as byproduct** — use it to find gaps, not to hit a number; a test with no meaningful assertion is negative value.
 - **What to test** — behavior, boundaries, edge cases, error paths; skip trivial pass-throughs and generated code.
 - **The bug-fix reflex** — reproduce the bug with a failing test before fixing it, every time.
+- **The test is innocent** — a failing test means the code is wrong, not the test; no updating expectations to match broken output, no skips, no broadened assertions, no sleeps.
 
 Every rule explains the *why*, ships with Avoid/Prefer code examples, and the red-green-refactor section shows the full three-step sequence end-to-end. Tests are held to the same bar as production code via `code-standards`.
 
 Edit `sonu/skills/tdd/SKILL.md` to make it yours — it's plain Markdown.
+
+### `debugging` — hypothesis testing, not patch roulette
+
+A skill, not a command — it fires automatically whenever Claude is diagnosing anything broken: an error message, a stack trace, a failing or flaky test, a crash, unexpected output, a regression, a production incident. When the bug is a production report, it **pulls the real event instead of debugging the paraphrase** — discovering from the repo whether the project uses Sentry, Datadog, Azure Application Insights, CloudWatch, or plain logs, fetching the exact exception, breadcrumbs, frequency, and first-seen release (via MCP server, API, or CLI — or asking for access rather than improvising), and treating what it finds as production data that never leaks into code, commits, or PRs. It encodes the scientific debugging loop: **reproduce first** (no reproduction, no fix), **read the actual error** (verbatim, first-error-in-the-log, no pattern-matched diagnoses), **locate the origin, not the surface** (trace the bad state back to where it was made wrong — never patch where it exploded), **one hypothesis → one change → one observation** (never two variables at once), **instrument and bisect** instead of guessing, **revert dead ends completely** (no fossils of failed attempts under the final fix), **prove the fix** (the reproduction passes AND you can say why in one sentence, pinned with a regression test via `tdd`), and **know when to stop** (three dead hypotheses → reframe; escalate with a structured summary of what's ruled out).
+
+Edit `sonu/skills/debugging/SKILL.md` to make it yours — it's plain Markdown.
+
+### `safe-migrations` — the schema change and the safe path to it are different artifacts
+
+A skill, not a command — it fires automatically whenever Claude writes or edits a database migration, an `ALTER TABLE`, a backfill, or any change where code and schema move together. It encodes zero-downtime discipline: every migration stays compatible one release in each direction (rolling deploys mean old code meets new schema), breaking changes decompose into **expand → migrate → contract** across separate releases, destructive operations ship alone one release late, backfills run as batched/resumable/idempotent jobs (never inside the deploy), every step has a tested down path or an explicit `IRREVERSIBLE` marker, lock-aware DDL forms, and rehearsal against production-shaped data.
+
+### `infra-standards` — infrastructure is code: reviewed, planned, least-privileged, boring
+
+A skill, not a command — it fires automatically on any infra surface: Terraform/Bicep/CloudFormation, Dockerfiles, CI pipelines (GitHub Actions, Azure Pipelines), Vercel config, env/secrets handling. It encodes: no clickops (console changes are drift; codify or they don't exist), read the plan before apply (every `destroy`/`replace` line explained), secrets only from secret stores (never in source, tfvars, images, or pipeline logs), Dockerfile baselines (pinned bases, multi-stage, non-root, cache-aware layers, pinned deploy tags), CI discipline (build once and promote, scoped tokens, pinned actions — and **never green a pipeline by weakening it**), least privilege everywhere, and idempotency as the IaC contract.
+
+### `observability` — instrument for the question you'll ask at 2am
+
+A skill, not a command — it fires automatically when creating a service, endpoint, or job, or adding metrics/tracing/error capture/health checks/alerts. It encodes the producing side of what `debugging` consumes: the four questions every operation must answer from telemetry alone (traffic, errors, latency, saturation), the metric cardinality trap (no unbounded labels), trace-context propagation, liveness-vs-readiness health endpoints that don't cause restart storms, error capture tagged with the release (what makes first-seen bisection possible), and alert quality — page on user-facing symptoms only, every alert actionable and owned, delete what gets ignored. Instrumentation ships with the feature, not after the incident.
 
 ### `seo-standards` — technical SEO, baked in
 
@@ -205,6 +230,14 @@ The tree is written as a compact nested-bullet notation (`✓ chosen — reason`
 
 Edit `sonu/skills/design-tree/SKILL.md` to make it yours — it's plain Markdown.
 
+## Developing this plugin
+
+Contributor tooling is **repo-local, not shipped** — it lives in this repo's `.claude/` directory, so it loads automatically for anyone working *on* the plugin (a clone of this repo) and never reaches marketplace users, who'd have no use for it:
+
+- **`plugin-dev` skill** (`.claude/skills/plugin-dev/`) — the maintainer's handbook: the architecture contract (which decisions are load-bearing and why), the five house rules, plugin/skill/command mechanics, the house authoring shape, and the trap catalogue mined from this repo's own incident history. It fires automatically when you edit any component here.
+- **`/validate`** (`.claude/commands/validate.md`) — the CI this repo doesn't have: manifests parse and stay in sync, the marketplace description names every shipped component, frontmatter parses, every embedded shell snippet passes `bash -n` **and** `zsh -n`, no named sources, no AI attribution, ship's bot-registry copies identical, cross-references resolve, README inventory complete. Run it before any PR here.
+- **`/release`** (`.claude/commands/release.md`) — the five-home version sync: semver decision, the description sync across both `plugin.json` and both `marketplace.json` files plus this README, `/validate`, hand-off to `/sonu:ship`, and the post-merge tag. Exists because both failure modes it prevents have actually happened here.
+
 ## Requirements
 
 - The [`gh`](https://cli.github.com/) CLI, authenticated (`gh auth status`).
@@ -220,6 +253,13 @@ Edit `sonu/skills/design-tree/SKILL.md` to make it yours — it's plain Markdown
 
 ```
 claude-plugins/
+├── .claude/                 # repo-local contributor tooling (NOT shipped to marketplace users)
+│   ├── commands/
+│   │   ├── validate.md      # /validate — mechanical checks for this repo
+│   │   └── release.md       # /release — five-home version sync for this repo
+│   └── skills/
+│       └── plugin-dev/
+│           └── SKILL.md     # maintainer's handbook: house rules, mechanics, trap catalogue
 ├── .claude-plugin/
 │   └── marketplace.json     # Claude Code marketplace manifest (name: prabhdeep-tools)
 ├── .cursor-plugin/
@@ -229,17 +269,26 @@ claude-plugins/
     ├── .claude-plugin/
     │   └── plugin.json      # Claude Code plugin manifest
     ├── .cursor-plugin/
-    │   └── plugin.json      # Cursor plugin manifest (mirrors the Claude one)
+    │   └── plugin.json      # Cursor plugin manifest (byte-identical mirror of the Claude one)
     ├── commands/
-    │   ├── build.md         # the /sonu:build command (conductor)
-    │   ├── ship.md          # the /sonu:ship command
-    │   ├── design-tree.md   # the /sonu:design-tree command
-    │   └── tdd.md           # the /sonu:tdd command
+    │   ├── build.md         # /sonu:build — conductor: design gate → tdd build → risk hand-back
+    │   ├── ship.md          # /sonu:ship — PR babysitter
+    │   ├── design-tree.md   # /sonu:design-tree
+    │   ├── tdd.md           # /sonu:tdd
+    │   └── self-review.md   # /sonu:self-review
     └── skills/              # auto-applied skills (nothing to invoke)
         ├── code-standards/
         │   └── SKILL.md     # how code gets written
         ├── tdd/
         │   └── SKILL.md     # test-driven development — red-green-refactor
+        ├── debugging/
+        │   └── SKILL.md     # scientific debugging — reproduce, one hypothesis, revert dead ends
+        ├── safe-migrations/
+        │   └── SKILL.md     # zero-downtime schema changes — expand → migrate → contract
+        ├── infra-standards/
+        │   └── SKILL.md     # IaC, Docker, CI/CD, secrets — plan before apply
+        ├── observability/
+        │   └── SKILL.md     # metrics, traces, health checks, alerts worth paging on
         ├── seo-standards/
         │   └── SKILL.md     # technical SEO for web pages
         ├── content-seo/
@@ -251,6 +300,16 @@ claude-plugins/
         └── pr-conventions/
             └── SKILL.md     # per-type PR templates, living description, reply wording
 ```
+
+## Troubleshooting
+
+| Symptom | Likely cause → fix |
+|---|---|
+| A `/sonu:` command doesn't appear in the slash menu | Plugin not installed on this machine, or the session predates the install → re-run the two install commands, then start a new session. |
+| A skill didn't fire when it should have | Skills trigger off their `description` matching the task. Name it explicitly ("apply the code-standards skill") — and if that keeps happening for a legitimate task, the description needs richer triggers: file an issue or PR. |
+| Behavior doesn't match this README | Installed copies are **version-pinned** — they don't track `main`. Run `/plugin marketplace update prabhdeep-tools`, then compare your installed version against the latest release tag. |
+| `/plugin marketplace update` says up-to-date but a fix you saw on `main` is missing | That fix hasn't been released yet (no version bump). Nothing propagates until a release — see `.claude/commands/release.md` in this repo. |
+| `/sonu:ship` stalls waiting for bots | The repo may simply have no AI reviewer bots enabled; the wait loop times out (~10 min) and proceeds with whoever posted. That's expected, not a hang. |
 
 ## License
 
