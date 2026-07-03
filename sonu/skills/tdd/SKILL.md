@@ -27,7 +27,7 @@ Every increment of behavior follows three steps, in order:
 
 Keep steps small. A step that feels too big is too big — shrink it.
 
-**Example — incrementally building a `withdraw` method:**
+**Example — incrementally building a `withdraw` method.** Each block below is the full state of the file *after* that step — not a single file to concatenate and run:
 
 ```js
 // Step 1 (Red): write the failing test first.
@@ -37,13 +37,17 @@ test('reduces balance by withdrawal amount', () => {
   account.withdraw(50);
   expect(account.balance).toBe(50);
 });
+```
 
+```js
 // Step 2 (Green): the simplest code that makes the test pass.
 class Account {
   constructor(opts) { this.balance = opts.balance; }
   withdraw(amount) { this.balance -= amount; }
 }
+```
 
+```js
 // Step 3 (Refactor): clean up under green — clearer names, no NEW behavior.
 // (Adding a feature here would be untested code; that belongs in the next loop.)
 class Account {
@@ -51,13 +55,17 @@ class Account {
   withdraw(amount) { this.balance -= amount; }
 }
 // Run the test — still green. The loop restarts for the next behavior:
+```
 
+```js
 // Step 1 again (Red): failing test for the error case.
 test('rejects withdrawal when balance is insufficient', () => {
   const account = new Account({ balance: 30 });
   expect(() => account.withdraw(50)).toThrow('Insufficient funds');
 });
+```
 
+```js
 // Step 2 again (Green): the guard clause, driven by the failing test above.
 class Account {
   constructor({ balance }) { this.balance = balance; }
