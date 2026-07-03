@@ -1,5 +1,5 @@
 ---
-description: Sequence decide → build → hand back for any feature or fix. Triage the change, run design-tree in plan mode (with you as the approval gate), build test-first under code-standards, then surface the riskiest parts before handing back to /sonu:ship. Never commits or merges.
+description: Sequence decide → build → hand back for any feature or fix. Triage the change, run design-tree in plan mode (with you as the approval gate), build test-first under code-standards, then surface the riskiest parts before handing back to /sonu:ship. Never commits or merges. Not for already-built changes (run /sonu:ship) or design-only exploration (run /sonu:design-tree).
 argument-hint: "[feature, fix, or task to build]"
 allowed-tools: Skill, Read, Write, Edit, Bash, EnterPlanMode, ExitPlanMode
 ---
@@ -16,7 +16,7 @@ Apply this to `$ARGUMENTS` — the text typed after the command. If that token a
 
 **Read the working tree:**
 ```bash
-git status
+git status --porcelain   # includes untracked (??) files — git diff HEAD does NOT show those
 git diff --stat HEAD
 ```
 
@@ -40,6 +40,7 @@ Enter plan mode to run the design phase. This is the only pause in the flow — 
 2. `Skill(sonu:design-tree)` — interview first (2–4 questions to establish shared understanding, intent, constraints, done-when); then tree the real decision points. The tree lands in the plan file's `## Design Tree` section per design-tree's existing plan-mode behavior.
 3. `ExitPlanMode` — **this is the gate.** Your approval of the plan = approval of the design. Do not proceed to Phase 2 until ExitPlanMode is called and approved.
    - **If the plan is rejected:** stay in plan mode, revise the design tree or re-interview the user to address the concern, and call `ExitPlanMode` again. Repeat until approved. Do not proceed to Phase 2 on a rejected plan.
+   - **If plan-mode tools are unavailable in this environment** (e.g. Cursor, or any harness without `EnterPlanMode`/`ExitPlanMode`): run the design-tree interview and print the tree in-chat instead, then ask the user for explicit approval of the design and treat their approval message as the gate. The gate itself is non-negotiable; only its mechanism adapts.
 
 After the gate, you are back in execution mode (writes are legal again).
 
@@ -65,7 +66,7 @@ Build the change test-first under the active quality bars:
 1. `Skill(sonu:self-review)` — list the 3–5 riskiest things in the diff in plain language. A pointer for your review, not a score or an approval.
 2. Print a brief **built summary**:
    - What was built (one sentence).
-   - Diff stat: `git diff --stat HEAD`.
+   - Diff stat: `git diff --stat HEAD` **plus** the untracked files from `git status --porcelain` — brand-new files (the common case for a fresh feature) do not appear in `git diff HEAD` at all, and a summary that omits them under-reports the change.
    - The self-review risk list from step 1.
 3. Stop with:
 

@@ -1,6 +1,6 @@
 ---
 name: design-tree
-description: Make design decisions as an explicit branching tree instead of one linear narrative — interviewing the user for shared understanding first, then weighing real alternatives at each decision point. INVOKE THIS PROACTIVELY whenever planning or designing an implementation approach, weighing how to build a feature, choosing between architectures / libraries / data models / APIs, or working in plan mode — even when the user never says "design tree."
+description: Make design decisions as an explicit branching tree with recorded alternatives and rationale, instead of one linear narrative. INVOKE THIS PROACTIVELY whenever planning or designing an implementation approach, weighing how to build a feature, choosing between architectures / libraries / data models / APIs, or working in plan mode — even when the user never says "design tree." Skip it for trivial or forced changes where no genuine alternatives exist.
 ---
 
 # Design Tree — decide by branching, not by marching
@@ -27,6 +27,7 @@ How to interview well:
 - **Keep it tight.** 2–4 questions, not an interrogation. If you find yourself wanting to ask more, the problem is underspecified enough to warrant a scoping pass before designing anything.
 - **Pin down success criteria explicitly.** "How will we know it's working?" is often the most clarifying question — it reveals scope, correctness bars, and non-goals at once.
 - **Ask about constraints early.** Constraints eliminate whole branches before you draw them, so surfacing them first makes the rest cheaper.
+- **Know when not to interview.** If the request already states intent, constraints, and success criteria, don't ask rote questions to satisfy this step — say what you understood and proceed. And if no user can answer (a non-interactive run, a subagent, a headless session), skip the interview entirely: state the assumptions you're proceeding on, and mark any node those assumptions leave genuinely open with `[?]` (Section 8) instead of stalling.
 
 **Example:** before designing an auth system, don't tree OAuth vs. magic links vs. passwords — ask: Is this customer-facing or internal? What's the session-lifetime expectation? Do we own the identity store or integrate with an existing one? One answer might make three branches irrelevant.
 
@@ -139,7 +140,7 @@ Use a compact nested-bullet format. Scannable at a glance, not prose.
 
 ## Self-check before you call it done
 
-- Did you interview the user before treeing anything? Did you confirm intent, constraints, success criteria, and at least one non-goal?
+- Did you interview the user before treeing anything (or, if the request was already fully specified or no user could answer, did you state your assumptions explicitly)? Did you confirm intent, constraints, success criteria, and at least one non-goal?
 - Does every node represent a genuinely consequential fork — not a trivial or forced choice?
 - Does every node have ≥2 honest alternatives, with no strawmen invented to be knocked down?
 - Is the chosen branch's rationale a decisive reason (constraint, concrete trade-off, irreversibility), not a vague preference?

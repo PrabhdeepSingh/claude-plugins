@@ -1,11 +1,11 @@
 ---
 name: self-review
-description: Surface the 3–5 riskiest parts of the current diff in plain language so a human reviewer knows exactly where to look hardest. INVOKE THIS PROACTIVELY whenever a change is finished and about to be handed off, reviewed, or shipped — even when the user never says "self-review."
+description: Surface the 3–5 riskiest parts of the current diff in plain language so a human reviewer knows exactly where to look hardest. INVOKE THIS PROACTIVELY whenever a change is finished and about to be handed off, reviewed, or shipped — even when the user never says "self-review." Not a substitute for an actual code review — it points attention; it does not find or fix bugs.
 ---
 
 # Self-review — point attention, don't bless the change
 
-A self-review is not a score. It is not an approval. It is a pointer: *here are the spots a reviewer should look hardest at, and here is why.* Self-scoring rubber-stamps (the model that wrote the code is the least reliable judge of whether it's right). The value is directing human attention toward the risky corners — exactly what gets skimmed in a real review.
+A self-review is not a score. It is not an approval. It is a pointer: *here are the spots a reviewer should look hardest at, and here is why.* Self-scoring rubber-stamps the model's own work — the model that wrote the code is the least reliable judge of whether it's right. The value is directing human attention toward the risky corners — exactly what gets skimmed in a real review.
 
 ## When to apply this
 
@@ -18,11 +18,12 @@ A self-review is not a score. It is not an approval. It is a pointer: *here are 
 **1. Read the diff.**
 
 Pick the right diff command for the current state:
-- **Uncommitted changes** (working tree dirty): `git diff HEAD`
+- **Uncommitted changes** (working tree dirty): `git diff HEAD` — **plus** `git status --porcelain` to catch untracked files. Brand-new files never added to the index do not appear in `git diff HEAD` at all; read each untracked file directly and include it in the review. A change made entirely of new files (a fresh module plus its tests) is the classic case where `git diff HEAD` shows nothing while there is plenty to review.
 - **Just committed** (working tree clean, reviewing what was just committed): `git show HEAD` or `git diff HEAD^ HEAD`
 - **Staged only**: `git diff --cached`
+- **Whole branch, about to open a PR** (clean multi-commit branch): `git diff origin/<base>...HEAD` (three dots = diff from the merge base). Reviewing only the last commit on a multi-commit branch misses risks in the earlier ones.
 
-If the working tree is clean and there is no recent commit to review, say so and stop — don't invent risks on a clean tree.
+If the working tree is clean, there are no untracked files, and there is no recent commit or branch to review, say so and stop — don't invent risks on a clean tree.
 
 **2. Identify the 3–5 riskiest spots.**
 
@@ -60,7 +61,7 @@ End the list with a single line:
 
 ## Self-check before you call it done
 
-- Did you actually read the diff, or are you working from memory?
+- Did you actually read the diff, or are you working from memory? Did it include untracked files and, for a branch review, every commit since the merge base?
 - Is every risk concrete — a specific file, behavior, or condition — not a vague "this could be better"?
 - Did you avoid inventing risks just to fill the list? If it's low-risk, say so.
 - Did you end with the explicit non-approval line?

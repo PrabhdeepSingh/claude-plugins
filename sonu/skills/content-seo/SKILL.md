@@ -9,7 +9,7 @@ This is the editorial counterpart to the technical [[seo-standards]] skill. That
 
 ## The shift that frames everything
 
-On-page SEO is no longer about keyword counts and word counts. In 2025-2026 it rests on three things: **genuine expertise**, **structure a machine can extract**, and **earning citations in AI answers**. Two things are true at once:
+On-page SEO is no longer about keyword counts and word counts. It now rests on three things: **genuine expertise**, **structure a machine can extract**, and **earning citations in AI answers**. Two things are true at once (the ecosystem claims below were last verified 2026-07 — see Provenance):
 
 - **The fundamentals are the price of entry.** AI Overviews now appear on a large and growing share of Google searches, and the pages they cite overwhelmingly *also* rank in the traditional top 10. So ranking organically is now a *prerequisite* for AI visibility, not an alternative to it.
 - **A new layer sits on top.** Getting *cited* by AI answer engines (Google AI Overviews, ChatGPT, Claude, Perplexity, Gemini) rewards content that reads as **evidentiary** — quotes, statistics, citations, clear structure. Optimize for being *the cited source*, not just for a blue-link click, because many searches now end without one.
@@ -126,7 +126,7 @@ This is where modern content SEO and AI-answer optimization converge. The format
 
 - **Lead each section with a direct 40–60 word answer** placed immediately under a question-style heading, *then* expand. This "answer-first" shape is what gets pulled into featured snippets and AI summaries.
 - **Use structure machines can lift:** short paragraphs (1–3 sentences), bulleted and numbered lists, comparison tables, bolded key phrases.
-- **Make it evidentiary** — this is the strongest lever for getting cited by LLMs. In a 2024 Princeton study of generative engines (the paper that coined "GEO"), the biggest gains came from **attributed expert quotes (~+41%)**, **statistics and data (~+30%)**, and **inline citations to sources (~+30%)**, while **keyword stuffing reduced visibility (~-9%)**. Treat the exact percentages as directional, but the direction is robust: cite sources, quote named experts, include real numbers, and write clearly.
+- **Make it evidentiary** — this is the strongest lever for getting cited by LLMs. Measurements of generative engines consistently find the same ranking of what earns citations: **attributed expert quotes** gain the most, followed by **concrete statistics and data** and **inline citations to sources** — while **keyword stuffing actively reduces AI visibility**. So: quote named experts, include real numbers, link to evidence, and write clearly. The mechanism is intuitive — an answer engine cites the page that gives it quotable, attributable material.
 - **Publish original information** — first-hand testing, original data, a genuine point of view. "Information gain" (something not already on every other page) is what both Google and AI engines reward.
 - **Keep facts consistent** with what's stated elsewhere about you and the topic, and **keep content fresh** (a real "Last updated" date helps, especially with Perplexity).
 
@@ -181,3 +181,16 @@ Run this against the piece. Fix any "no" before it ships:
 - Does it demonstrate **E-E-A-T** — clear authorship, first-hand experience, accurate sourced facts — and read as **made to help the reader**, not to game search?
 - If AI-assisted: has a **human added original value and verified the facts** (no fabricated stats or quotes)?
 - Free of every anti-pattern in §13?
+
+---
+
+## Provenance and maintenance
+
+The editorial fundamentals here (intent, structure, E-E-A-T, anti-patterns) are durable. The **ecosystem claims** are not — they were last verified **2026-07** and should be re-checked with a web search before being asserted as current:
+
+- AI Overviews prevalence and the "cited pages also rank top-10" overlap (intro).
+- The `llms.txt` adoption status and Google's public position on it (§ "A note on llms.txt").
+- Freshness signals mattering "especially with Perplexity" (§10).
+- Which answer engines matter (the named set in the intro will age).
+
+**Numeric limits live elsewhere:** title (~50–60 chars) and meta-description (~150–160) targets are stated editorially here, but their canonical home is [[seo-standards]] §2 — if the numbers ever change, change them there and re-sync the mentions here. These two files drifted apart once before; keep one home per number.

@@ -1,13 +1,15 @@
 ---
-description: Drive a feature, bug fix, or behavior change test-first using the red-green-refactor loop.
+description: Drive a feature, bug fix, or behavior change test-first using the red-green-refactor loop. For the full design → build → hand-off lifecycle, use /sonu:build instead — it runs this methodology as its build phase.
 argument-hint: "[feature, bug, or behavior to drive with tests]"
 allowed-tools: Skill, Read, Write, Edit
 ---
 
 # /tdd — drive this change test-first
 
-Invoke the `tdd` skill against the user's request (`$ARGUMENTS` — the text typed after the command; if that token appears literally or is empty, use the current request in context instead).
+Invoke the `sonu:tdd` skill against the user's request (`$ARGUMENTS` — the text typed after the command; if that token appears literally or is empty, use the current request in context instead).
 
 If a feature, bug, or behavior is named, start the red-green-refactor loop on it: write the failing test first, then write the minimum code to make it pass, then refactor under the green test. If nothing is named, apply the methodology to the current change in context.
+
+**When NOT to use this:** for a full feature you intend to design, build, and hand off, run `/sonu:build` instead — it runs this same test-first methodology as its build phase, but adds the design gate before and the self-review after. `/sonu:tdd` alone skips both.
 
 **What it produces:** writes test and implementation files directly to the working tree using the Edit/Write tools — not a printed plan. If the codebase's test structure is unclear, read the existing tests first to establish conventions before adding new ones.

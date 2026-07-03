@@ -1,6 +1,6 @@
 ---
 name: code-standards
-description: Prabhdeep (Sonu) Singh's personal coding standards — the house rules for writing code the way he does. Covers intention-revealing naming (never generic names like data/info/temp/manager/helper), small single-purpose modular functions, readable guard-clause control flow, strict separation of concerns, no inline styles, and no magic values. Use this skill whenever writing, generating, refactoring, or reviewing ANY code in ANY language — even when the user doesn't mention "standards" or "style." It defines the baseline quality bar for all code produced here. If you're about to write or edit code, consult this first. (Pairs with the [[tdd]] skill, which covers the full red-green-refactor discipline.)
+description: Prabhdeep (Sonu) Singh's personal coding standards — the house rules for writing code the way he does. Covers working discipline (including reuse-before-reimplementing), intention-revealing naming, schema/API conventions (snake_case fields, UUID ids, UTC timestamps), readability and guard clauses, modularity and function-size limits, separation of concerns, safe data access (pagination, no N+1), presentation/logic separation, error handling, logging, input validation and injection defense, information-leak prevention, state/immutability, and API design (response allowlisting — never serialize a raw entity — honest status codes, one error shape, pagination, staged deprecation). Use this skill whenever writing, generating, refactoring, or reviewing ANY code in ANY language — including database schema design, API endpoint design, SQL/queries, logging, validation, and error handling — even when the user doesn't mention "standards" or "style." It defines the baseline quality bar for all code produced here. If you're about to write or edit code, consult this first. (Pairs with the [[tdd]] skill, which covers the full red-green-refactor discipline.)
 ---
 
 # Code Standards — write it like Sonu would
@@ -15,15 +15,34 @@ When you finish a change, run the self-check at the bottom against your own diff
 
 ## How you work — discipline before output
 
-The numbered sections below describe what finished code should look like. These four habits describe how to get there, and they head off the most common ways an AI coding session goes off the rails: confidently building the wrong thing, over-engineering, and leaving collateral damage in the diff. They bias toward care over raw speed — on a genuinely trivial change, use judgment.
+The numbered sections below describe what finished code should look like. These five habits describe how to get there, and they head off the most common ways an AI coding session goes off the rails: confidently building the wrong thing, over-engineering, re-implementing what already exists, and leaving collateral damage in the diff. They bias toward care over raw speed — on a genuinely trivial change, use judgment.
 
-**Think before you code.** Don't assume your way past ambiguity. If a request has more than one reasonable reading, surface the options instead of silently picking one. State the assumptions you're working from, and if a simpler approach exists than the one asked for, say so. When something is genuinely unclear and a wrong guess would be expensive to unwind, stop and ask rather than building on the guess. A clarifying question up front is cheap; a confident wrong implementation is not.
+**Think before you code.** Don't assume your way past ambiguity. If a request has more than one reasonable reading, surface the options instead of silently picking one. State the assumptions you're working from, and if a simpler approach exists than the one asked for, say so. When something is genuinely unclear and a wrong guess would be expensive to unwind, stop and ask rather than building on the guess. A clarifying question up front is cheap; a confident wrong implementation is not. That includes the requester's premises: if the request assumes something the codebase contradicts ("just update the config flag" when no such flag exists), surface the mismatch before implementing — confident phrasing doesn't make it true.
 
 **Build the minimum that solves the problem.** Write the least code that fully does what was asked, and nothing speculative — no abstractions for single-use code, no configurability nobody requested, no error handling for cases that can't occur. (The rule of three from section 4 applies here too: don't generalize until you've actually seen the repetition.) If a senior engineer would call it overcomplicated, it is. Simplify.
 
-**Make surgical changes.** Touch only what the task requires. When editing existing code, resist the urge to "improve" adjacent lines, reformat, or refactor things that aren't broken — match the surrounding style even where you'd personally do it differently. Every changed line should trace directly back to the request. Clean up the imports and variables *your* change orphaned, but don't go out of scope to delete pre-existing dead code unrelated to your task — flag it to the reviewer instead. (When dead code is in scope, delete it rather than commenting it out — section 3.) This keeps diffs reviewable and keeps your change from quietly breaking something unrelated.
+**Look before you write.** The most common way ten lines becomes two hundred is re-implementing something that already exists. Before writing any helper, utility, or algorithm, search in this order: the codebase (grep for the concept; read the `utils`/`lib`/shared folders), the language's standard library, then the project's existing framework and dependencies. Write it fresh only when that search comes up empty. This matters doubly for a model: generating new code is *easier* than reading existing code, so the pull is always toward a fresh implementation — resist it, because the codebase then carries two versions and the next reader inherits both.
 
-**Turn the task into a verifiable goal, then loop.** Restate vague asks as something you can actually check: "add validation" becomes "write tests for the invalid inputs, then make them pass"; "fix the bug" becomes "write a test that reproduces it, then make it pass." For anything multi-step, sketch a short plan with a verification check for each part. Strong success criteria are what let you work independently to the finish line instead of stopping every few minutes to ask whether you're on track. The full discipline — red-green-refactor, what to test, how to name tests, when to mock — lives in [[tdd]].
+Two corollaries. **Don't guess APIs**: when calling anything beyond the language's core — especially a less-common library — verify the method, signature, and options against the *installed* version (the types in `node_modules`, the pinned version's docs, `pip show`), not against memory; a plausible-looking call to an API that doesn't exist is a classic AI-authored bug. And **the inverse of reuse is dependency discipline**: don't install a new package for what the stdlib or an existing dependency already does. A new dependency is an architectural decision — a maintenance obligation, a security surface, an upgrade treadmill — and needs stating why the existing options don't suffice, not a reflex `npm install`.
+
+```js
+// Avoid: hand-rolling what the platform (or a nearby helper) already does
+function groupUsersByRole(users) {
+  const grouped = {};
+  for (const user of users) {
+    if (!grouped[user.role]) grouped[user.role] = [];
+    grouped[user.role].push(user);
+  }
+  return grouped;
+}
+
+// Prefer: found by checking the stdlib first
+const usersByRole = Object.groupBy(users, user => user.role);
+```
+
+**Make surgical changes.** Touch only what the task requires. When editing existing code, resist the urge to "improve" adjacent lines, reformat, or refactor things that aren't broken — match the surrounding style even where you'd personally do it differently. Every changed line should trace directly back to the request. Clean up the imports and variables *your* change orphaned, but don't go out of scope to delete pre-existing dead code unrelated to your task — flag it to the reviewer instead. (When dead code is in scope, delete it rather than commenting it out — section 3.) This keeps diffs reviewable and keeps your change from quietly breaking something unrelated. The same discipline applies to your own dead ends: **when an approach fails, revert it fully before trying the next one.** A diff must not carry the fossils of abandoned attempts — a stray import from approach A, a half-wired helper from approach B — layered under the fix that finally worked.
+
+**Turn the task into a verifiable goal, then loop.** Restate vague asks as something you can actually check: "add validation" becomes "write tests for the invalid inputs, then make them pass"; "fix the bug" becomes "write a test that reproduces it, then make it pass." For anything multi-step, sketch a short plan with a verification check for each part. Strong success criteria are what let you work independently to the finish line instead of stopping every few minutes to ask whether you're on track. And **claim only what you observed**: "tests pass" means you ran them in this session and saw green — never assert an outcome you didn't watch happen, and when reporting a result, show the command and its actual output. An unverified "this should work now" costs the reader more than an honest "I couldn't run this because X." The full discipline — red-green-refactor, what to test, how to name tests, when to mock — lives in [[tdd]].
 
 ---
 
@@ -66,6 +85,7 @@ Data outlives code. A column name or API field gets baked into the database, int
 - **Date and time fields read as `<thing>_date` or `<thing>_at`** and are named for the event, not the type: `created_date`, `last_modified_date` (or `created_at`, `updated_at`). Pick one of those two conventions per project and never mix them. Store timestamps in UTC and let the presentation layer localize; a naive local-time timestamp is a bug waiting for a daylight-saving boundary.
 - **Store names as separate fields** — `first_name` and `last_name` (or `given_name`/`family_name`), never a single `full_name` you have to split. Splitting a full name is locale-hostile and lossy (middle names, two-word surnames, ordering all break). Composing a display name from parts is trivial and always correct; decomposing one never is.
 - **Booleans read as a question in data too** — `is_active`, `has_subscription`, `can_refund` — so a row is self-describing.
+- **Money is never a float.** Binary floating point can't represent most decimal amounts exactly (`0.1 + 0.2 !== 0.3`), and rounding errors compound. Store integer minor units (`total_amount_cents`) or a decimal type, and say the currency (a field or a documented convention).
 
 **Example — a well-named record:**
 ```json
@@ -75,7 +95,8 @@ Data outlives code. A column name or API field gets baked into the database, int
   "first_name": "Ada",
   "last_name": "Lovelace",
   "is_active": true,
-  "total_amount": 149.00,
+  "total_amount_cents": 14900,
+  "currency": "USD",
   "created_date": "2026-05-01T14:32:00Z",
   "last_modified_date": "2026-05-03T09:10:00Z"
 }
@@ -113,6 +134,8 @@ Comments explain **why**, not **what** — the code already says what. A comment
 ## 4. Small, single-purpose, modular pieces
 
 A function should do one thing at one level of abstraction. If you need "and" to describe it (`validateAndSaveAndNotify`), it's three functions. Small focused pieces are easier to name, test, reuse, and reason about — and they make diffs reviewable.
+
+**Concrete tripwire: a function pushing past ~30–40 lines, or one that needs blank-line "sections" or `// --- step 2 ---` comments to stay readable, is asking to be split.** Those section markers are the function telling you its parts already have names — extract them. This is a heuristic, not a law (a flat mapping table or exhaustive `switch` can legitimately run long), but once you cross it, the burden of proof flips: justify keeping it whole rather than assuming it's fine. "It all fits on my screen" is not a justification.
 
 Separate concerns by layer. Business logic doesn't belong in UI components; data access (SQL, fetch calls) doesn't belong in controllers or views. Keep a clean seam between "what the app decides" and "how it's shown" and "where it's stored," so each can change without dragging the others along.
 
@@ -175,6 +198,24 @@ The same instinct applies everywhere: no magic numbers or magic strings buried i
 ## 7. Fail loudly and handle errors honestly
 
 Don't swallow errors. An empty `catch {}` turns a bug into a silent mystery that surfaces somewhere unrelated. Catch only what you can actually handle, handle it at the level that has enough context to decide, and otherwise let it propagate. Validate inputs at the system's boundaries (API edges, user input, external data) so the core can trust what it's working with. Error messages should give the reader enough to act — what failed and ideally why.
+
+**The silent fallback is the polished version of the empty catch — and it's worse.** `catch { return [] }` or `?? defaultValue` on a failure path *looks* like robustness, but it converts a crash (loud, findable, fixed today) into wrong data (silent, trusted, discovered months later in a report someone acted on). A fallback is legitimate only when the degraded behavior is a *product decision* — "show cached prices if the pricing service is down" — and even then it logs the failure and is visibly a fallback. When you find yourself adding one just to make an error go away, you're not handling the error; you're hiding it from the person who needs to know.
+
+```js
+// Avoid: a failure becomes an empty dashboard that everyone believes
+async function getMonthlyRevenue(customerId) {
+  try {
+    return await revenueApi.fetch(customerId);
+  } catch {
+    return 0;   // "robust" — and now a down API reads as zero revenue
+  }
+}
+
+// Prefer: handle what's decided, propagate what isn't
+async function getMonthlyRevenue(customerId) {
+  return revenueApi.fetch(customerId); // caller decides; the error stays loud
+}
+```
 
 ## 8. Logging: through one helper, never raw `console.log`
 
@@ -273,24 +314,69 @@ if (!user || !passwordValid) {
 
 Prefer immutability by default — return new values rather than mutating shared state in place. Shared mutable state is the source of most "how did it get into THAT state" bugs. Keep variable scope as tight as possible; declare things close to where they're used, not at the top of a giant function.
 
+## 12. When the tooling objects, fix the cause — don't silence the messenger
+
+A type error, a lint violation, a compiler warning, a failing pre-commit hook: each one is the toolchain telling you something is wrong. Suppressing it — `as any`, `@ts-ignore`, `eslint-disable`, `# type: ignore`, `@SuppressWarnings`, `--force`, `--no-verify` — makes the message go away and leaves the problem in place, now invisible. Under pressure this is the single most tempting shortcut, which is exactly why it's the one to refuse: the suppression outlives the deadline, and the next reader inherits code the tooling can no longer protect.
+
+The rule: **suppression is a last resort, never a first response, and it never ships bare.** Work the actual cause first — fix the type, restructure the code, satisfy the rule. If, after that, you judge the diagnostic to be genuinely wrong (a known false positive, a library with broken types), suppress at the *narrowest possible scope* (one line, never a file or a rule globally) and attach a comment stating why it's a false positive and what would make the suppression removable. A bare `@ts-ignore` with no reason is a defect, not a fix. (The same principle governs failing tests — [[tdd]]'s "the test is innocent" rule — and runtime errors, section 7. The pattern is one and the same: don't make the signal go away without addressing what it signals.)
+
+## 13. API design: the response is a contract, not a data dump
+
+An endpoint's response gets baked into clients you don't control — so what you return, you maintain forever, and what you leak, you can't unleak. Four rules:
+
+**Serialize an allowlist, never the entity.** The single worst API habit is `res.json(user)` — whatever the ORM row happens to contain goes over the wire: password hashes, reset tokens, internal flags, soft-delete markers, columns added next year by someone who never saw this endpoint. Responses are built from an explicit allowlist (a DTO, a serializer, a projection) naming exactly the fields the client needs. This is the response-side twin of section 9's input validation: allowlist in, allowlist out. The same applies to *related* data — embedding `order.customer` can drag another entity's private fields along.
+
+```js
+// Avoid: returns whatever the table contains, today and forever
+app.get('/api/users/:id', async (req, res) => {
+  const user = await User.findByPk(req.params.id);
+  res.json(user); // password_hash, mfa_secret, internal_notes — all shipped
+});
+
+// Prefer: the response shape is explicit, minimal, and stable
+app.get('/api/users/:id', async (req, res) => {
+  const user = await User.findByPk(req.params.id, {
+    attributes: ['id', 'first_name', 'last_name', 'created_date'], // §5: select what you need
+  });
+  if (!user) return res.status(404).json({ error: 'Not found' });
+  res.json({
+    id: user.id,
+    first_name: user.first_name,
+    last_name: user.last_name,
+    created_date: user.created_date,
+  });
+});
+```
+
+**Status codes tell the truth.** Never `200` with `{ "error": ... }` in the body — machines branch on the status code, and a lying 200 breaks retries, caching, monitoring, and every client that trusted it. Use the boring standards: `201` created, `400` invalid input, `401` unauthenticated, `403` forbidden, `404` not found, `409` conflict, `422` semantically invalid, `5xx` our fault. Remember section 10: keep `403` vs `404` indistinguishable where existence itself is sensitive.
+
+**One error shape, everywhere.** Every error response uses the same envelope (a stable machine-readable code, a human message, a correlation id) — and section 10 governs what goes *in* it: generic message out, detail logged internally. Ten endpoints with ten error formats means every client writes ten parsers.
+
+**Breaking a response is a migration.** Removing or renaming a field, changing a type, tightening semantics — clients break exactly like the database clients in [[safe-migrations]], and the fix is the same staged path: add the new field alongside the old, migrate consumers, retire the old one deliberately (deprecation header/date, then removal) — never in one step. Additive changes are free; that asymmetry is why the allowlist starts *minimal*. And any list endpoint paginates from day one (section 5) — retrofitting pagination onto a shipped unbounded endpoint is itself a breaking change.
+
 ## Self-check before you call it done
 
 Run this against your own diff. If any answer is "no," fix it before finishing:
 
 - Did you surface assumptions and ambiguity up front rather than silently guessing, and is this the minimum that solves the problem (nothing speculative)?
-- Does every changed line trace directly to the request — no unrequested refactors, reformatting, or "improvements" to adjacent code?
+- Does every changed line trace directly to the request — no unrequested refactors, reformatting, or "improvements" to adjacent code, and no fossils of abandoned attempts layered under the final fix?
+- Zero new bare suppressions — no `as any` / `@ts-ignore` / `eslint-disable` / `# type: ignore` / `--force` without a narrowest-scope placement and a comment justifying the false positive?
+- No debugging debris left behind — `console.log` / `print` / `debugger` statements, temp scripts, or commented-out experiments from this session?
+- Is every claim in your report something you actually observed (command run, output seen this session) — nothing asserted on faith?
 - Could a new teammate guess what every name means without reading its definition? No generic `data`/`temp`/`Manager` survivors?
 - Do schema and API names follow the conventions — `snake_case` fields, UUID ids, `created_date`/`last_modified_date` (or `*_at`) timestamps in UTC, and first/last name stored as separate fields?
 - Does every query select only the columns it uses and bound its result set (pagination), instead of `SELECT *` or loading everything into memory? Is filtering/counting done in the database, with no N+1 loops?
 - Is every external input validated against a schema at the boundary (allow-list, server-side) before use, with client-side checks treated as UX only?
 - Are all SQL queries parameterized — never built by concatenating input — and is shell/`eval`/file-path/HTML use sanitized or encoded with a safe primitive?
-- Does each function do one thing, at one level of abstraction, short enough to read at a glance?
+- Before writing any helper or algorithm, did you search the codebase, the standard library, and the project's dependencies for an existing implementation — no re-implemented utilities in the diff?
+- Does each function do one thing, at one level of abstraction — and is every function that crossed the ~30–40-line tripwire either split or explicitly justified?
 - Is the happy path flat (guard clauses), not buried in nested `if`s?
 - Are presentation, logic, and data access in separate places? Zero inline styles, zero magic numbers/strings?
 - Do comments explain *why*, with no commented-out code and no comments that just restate the code?
 - Are errors handled where there's context, never silently swallowed?
 - Does all logging go through the shared logger (not raw `console.log`/`print`), with a level, a scannable message, structured context, a correlation id, and zero secrets or PII dumps?
 - Do API failures return a generic message (real detail logged internally), and do auth/lookup responses avoid revealing whether an account or record exists ("email or password is incorrect")?
+- Is every API response built from an explicit field allowlist (never a serialized entity), with honest status codes, one consistent error shape, and pagination on every list endpoint?
 - If you edited existing code, does your change match the file's existing conventions?
 
 These aren't bureaucracy — each one is a thing that bites the next person to open the file. Leave the code so the next reader thanks you.

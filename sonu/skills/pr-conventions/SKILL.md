@@ -22,17 +22,25 @@ Before reaching for a built-in template, scan for the repo's own PR template. Th
 ```bash
 # Single-file locations take precedence over multi-template directories.
 # Check files first; only look for a directory if no file is found.
+# GitHub supports the template in .github/, the repo root, or docs/, in either case spelling —
+# on a case-sensitive filesystem (Linux, dev containers) both spellings must be checked explicitly.
 TEMPLATE_FOUND=""
 for f in \
-  ".github/PULL_REQUEST_TEMPLATE.md" ".github/PULL_REQUEST_TEMPLATE.txt" \
-  ".github/pull_request_template.md" ".github/pull_request_template.txt" \
-  "PULL_REQUEST_TEMPLATE.md" "PULL_REQUEST_TEMPLATE.txt" \
-  "docs/PULL_REQUEST_TEMPLATE.md" "docs/PULL_REQUEST_TEMPLATE.txt"; do
-  [ -f "$f" ] && { TEMPLATE_FOUND="SINGLE:$f"; break; }
+  ".github/PULL_REQUEST_TEMPLATE.md" ".github/pull_request_template.md" \
+  ".github/PULL_REQUEST_TEMPLATE.txt" ".github/pull_request_template.txt" \
+  ".github/PULL_REQUEST_TEMPLATE" ".github/pull_request_template" \
+  "PULL_REQUEST_TEMPLATE.md" "pull_request_template.md" \
+  "PULL_REQUEST_TEMPLATE.txt" "pull_request_template.txt" \
+  "PULL_REQUEST_TEMPLATE" "pull_request_template" \
+  "docs/PULL_REQUEST_TEMPLATE.md" "docs/pull_request_template.md" \
+  "docs/PULL_REQUEST_TEMPLATE.txt" "docs/pull_request_template.txt" \
+  "docs/PULL_REQUEST_TEMPLATE" "docs/pull_request_template"; do
+  [ -f "$f" ] && { TEMPLATE_FOUND="SINGLE:$f"; break; }   # -f: extension-less names (GitHub allows them) only match files, so the dir scan below is unaffected
 done
 if [ -z "$TEMPLATE_FOUND" ]; then
   for d in ".github/PULL_REQUEST_TEMPLATE" ".github/pull_request_template" \
-            "PULL_REQUEST_TEMPLATE" "docs/PULL_REQUEST_TEMPLATE"; do
+            "PULL_REQUEST_TEMPLATE" "pull_request_template" \
+            "docs/PULL_REQUEST_TEMPLATE" "docs/pull_request_template"; do
     [ -d "$d" ] && { TEMPLATE_FOUND="MULTI:$d"; break; }
   done
 fi
@@ -69,25 +77,38 @@ BASE=${BASE:-$(git symbolic-ref refs/remotes/origin/HEAD 2>/dev/null | sed 's|.*
 BASE=${BASE:-main}
 LOG=$(git log "origin/$BASE..HEAD" --oneline 2>/dev/null)
 
-# Pattern 1 — GitHub issue number: #123 in branch or commits
-GH_ISSUE=$(echo "$BRANCH $LOG" | grep -oE '#[0-9]+' | head -1)
+# Strip "(#N)" suffixes first — in commit subjects those are PR references added by
+# squash/merge (e.g. "add feature (#42)"), NOT issue numbers. Treating one as an issue
+# and writing "Closes #42" would auto-close the wrong thing on merge.
+LOG_CLEAN=$(echo "$LOG" | sed -E 's/\(#[0-9]+\)//g')
 
-# Pattern 2 — tracker key (JIRA, Linear, etc.): ABC-123 in branch or commits
-# Note: grep -E does not support \b word boundaries (treats \b as backspace).
-# The uppercase-only pattern is distinctive enough without them in this context.
-TRACKER_KEY=$(echo "$BRANCH $LOG" | grep -oE '[A-Z]{2,10}-[0-9]+' | head -1)
+# Pattern 1 — GitHub issue, high confidence: a closing keyword before the number
+# ("fixes #123", "closes #123", "resolves #123") in the commits, or issue-N in the branch name.
+GH_ISSUE=$(echo "$LOG_CLEAN" | grep -oiE '(fix(e[sd])?|close[sd]?|resolve[sd]?) #[0-9]+' | grep -oE '#[0-9]+' | head -1)
+[ -z "$GH_ISSUE" ] && GH_ISSUE=$(echo "$BRANCH" | grep -oE 'issue[-/]?[0-9]+' | grep -oE '[0-9]+' | sed 's/^/#/' | head -1)
+# Low confidence fallback: a bare #N with no closing keyword — record it, but format as
+# "Related to #N" (never "Closes") so a wrong guess can't auto-close anything.
+GH_ISSUE_WEAK=$(echo "$BRANCH $LOG_CLEAN" | grep -oE '#[0-9]+' | head -1)
 
-# Pattern 3 — Shortcut: sc-123 or ch123 in branch or commits
-SC_KEY=$(echo "$BRANCH $LOG" | grep -oiE '(sc-[0-9]+|ch[0-9]+)' | head -1)
+# Pattern 2 — Shortcut: sc-123 or ch123 in branch or commits. Checked BEFORE the generic
+# tracker pattern because an uppercase SC-123 would otherwise be misrouted to JIRA formatting.
+# \b prevents matching "ch2024" inside words like "march2024" (works in BSD and GNU grep -E).
+SC_KEY=$(echo "$BRANCH $LOG_CLEAN" | grep -oiE '\b(sc-[0-9]+|ch[0-9]+)\b' | head -1)
+
+# Pattern 3 — tracker key (JIRA, Linear, etc.): ABC-123 in branch or commits.
+# Exclude common technical tokens that share the shape (UTF-8, ISO-8601, SHA-256, …).
+TRACKER_KEY=$(echo "$BRANCH $LOG_CLEAN" | grep -oE '\b[A-Z]{2,10}-[0-9]+\b' \
+  | grep -viE '^(utf|iso|sha|rfc|md|aes|rsa|ecdsa|http|tls|ipv)-' | head -1)
 ```
 
 **Format the link based on what you found (check in order; first hit wins):**
 
 | Found | Formatted link |
 |-------|----------------|
-| GitHub issue `#123` (`$GH_ISSUE`) | `Closes #123` — GitHub closes the issue automatically on merge |
-| JIRA/Linear key `ABC-123` (`$TRACKER_KEY`) | JIRA: `[ABC-123](https://<org>.atlassian.net/browse/ABC-123)` — fill org from `JIRA_URL` env var or git remote domain if it contains `atlassian.net`; Linear: `[LIN-123](https://linear.app/<workspace>/issue/LIN-123)` — fill workspace from `LINEAR_WORKSPACE` env var |
-| Shortcut `sc-123` / `ch123` (`$SC_KEY`) | `[sc-123](https://app.shortcut.com/<workspace>/story/123)` |
+| High-confidence GitHub issue (`$GH_ISSUE`) | `Closes #123` — GitHub closes the issue automatically on merge |
+| Weak GitHub reference only (`$GH_ISSUE_WEAK`, no closing keyword) | `Related to #123` — never `Closes` on a guess; a bare `#N` may be a PR reference, and auto-closing the wrong item is worse than a soft link |
+| Shortcut `sc-123` / `ch123` (`$SC_KEY`) | `[sc-123](https://app.shortcut.com/<workspace>/story/123)` — fill workspace from `SHORTCUT_WORKSPACE` env var if set |
+| JIRA/Linear key `ABC-123` (`$TRACKER_KEY`) | JIRA: `[ABC-123](https://<org>.atlassian.net/browse/ABC-123)` — fill org from `JIRA_URL` env var if set; Linear: `[LIN-123](https://linear.app/<workspace>/issue/LIN-123)` — fill workspace from `LINEAR_WORKSPACE` env var if set |
 | Key found, org/workspace unknown | Use `Fixes ABC-123` as plain text — better than a broken link |
 | Nothing found | Omit the issue line entirely — don't invent a reference |
 
@@ -292,6 +313,18 @@ No AI attribution in any reply. Bot replies: one or two lines. Human replies: sl
 
 ### Post the reply
 
+When invoked standalone (outside `/sonu:ship`, which already knows these values), derive the context and enumerate the open threads first:
+
+```bash
+REPO=$(gh repo view --json nameWithOwner -q .nameWithOwner)
+PR=$(gh pr view --json number -q .number)   # the PR for the current branch
+# List inline review comments with their ids — $COMMENT_ID below comes from here:
+gh api "/repos/$REPO/pulls/$PR/comments" --paginate \
+  --jq '[.[] | {id: .id, login: .user.login, path: .path, line: .line, body: .body}]'
+```
+
+Then reply to a specific comment:
+
 ```bash
 gh api -X POST "/repos/$REPO/pulls/$PR/comments/$COMMENT_ID/replies" \
   -f body="<reply text from table above>"
@@ -299,7 +332,7 @@ gh api -X POST "/repos/$REPO/pulls/$PR/comments/$COMMENT_ID/replies" \
 
 ### Tone + resolution policy
 
-**Bot threads** (any login matching the ship registry — `copilot`, `coderabbit`, `aikido`, `qodo`, `greptile`, `ellipsis`, `sourcery`, `cubic`, `korbit`):
+**Bot threads** (any login matching the AI-reviewer registry — the **canonical registry lives in `/sonu:ship` Phase 2**; consult it there rather than relying on a copy here, so a registry update never strands this skill):
 - Terse. Reply, then **resolve the thread** via the GraphQL `resolveReviewThread` mutation (the exact call is in `/sonu:ship` Phase 5).
 
 **Human threads** (all other logins):
@@ -312,3 +345,13 @@ gh api -X POST "/repos/$REPO/pulls/$PR/comments/$COMMENT_ID/replies" \
 - Did every human thread get a reply but remain unresolved?
 - Is any reply dismissive ("no issue here")? Rewrite it with an actual reason.
 - No AI attribution anywhere?
+
+---
+
+## Provenance and maintenance
+
+Volatile facts in this file, last verified 2026-07:
+
+- **PR template locations** (Section A) — re-verify against GitHub's "Creating a pull request template" docs if template discovery ever misses a team's template.
+- **Tracker URL formats** (Section B: `atlassian.net/browse/`, `linear.app/<workspace>/issue/`, `app.shortcut.com/<workspace>/story/`) — re-verify by opening a known ticket in each tracker.
+- **AI-reviewer registry** — not stored here; the canonical home is `/sonu:ship` Phase 2.
