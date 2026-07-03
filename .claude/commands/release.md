@@ -62,9 +62,13 @@ This command never commits or merges (house rule 5 — everything goes through a
 ## Phase 5 — Tag (run after the user's PR has merged)
 
 ```bash
-# Tag the release so versions are traceable without archaeology:
-git checkout main && git pull
-NEW=$(python3 -c "import json; print(json.load(open('sonu/.claude-plugin/plugin.json'))['version'])")
+# Tag the release so versions are traceable without archaeology. BASE is derived,
+# not hardcoded (matches ship.md/validate.md's convention) — and every step is
+# chained with && so a failed checkout/pull can't fall through into tagging the
+# wrong commit.
+BASE=$(gh repo view --json defaultBranchRef -q .defaultBranchRef.name)
+git checkout "$BASE" && git pull && \
+NEW=$(python3 -c "import json; print(json.load(open('sonu/.claude-plugin/plugin.json'))['version'])") && \
 git tag "v$NEW" && git push origin "v$NEW"
 ```
 
