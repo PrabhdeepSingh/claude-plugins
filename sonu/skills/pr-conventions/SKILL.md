@@ -116,7 +116,7 @@ TRACKER_KEY=$(echo "$BRANCH $LOG_CLEAN" | grep -oE '\b[A-Z]{2,10}-[0-9]+\b' \
 
 ---
 
-Fill the matching template below. Drop any section that genuinely doesn't apply. Never leave a `<placeholder>` unfilled.
+Fill the matching template from `references/templates.md`. Drop any section that genuinely doesn't apply. Never leave a `<placeholder>` unfilled.
 
 → `references/templates.md` — the 8 per-change-type templates (feature, bugfix, hotfix, chore, refactor, docs, perf, release), read once the change type is classified and you're actually filling a body.
 
