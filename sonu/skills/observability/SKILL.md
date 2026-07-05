@@ -86,4 +86,4 @@ The definition of done for a new endpoint, job, or service includes: the four si
 
 ## Provenance and maintenance
 
-The principles (four signals, cardinality, liveness/readiness split, symptom-based alerting) are durable. The SDK specifics — auto-instrumentation coverage in App Insights/Datadog/OpenTelemetry, release-tagging config per platform — drift with vendor releases; last sanity-checked 2026-07. Verify SDK wiring against the platform's current docs; the platform *detection* table lives in [[debugging]] section 2 (one home).
+The principles (four signals, cardinality, liveness/readiness split, symptom-based alerting) are durable. The SDK specifics — auto-instrumentation coverage in App Insights/Datadog/OpenTelemetry, release-tagging config per platform — drift with vendor releases; last sanity-checked 2026-07. Verify SDK wiring against the platform's current docs; the platform *detection* table lives in [[debugging]] section 2's reference file (one home).

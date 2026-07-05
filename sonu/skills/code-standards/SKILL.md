@@ -195,25 +195,17 @@ An endpoint's response gets baked into clients you don't control, so what you re
 Run this against your own diff. If any answer is "no," fix it before finishing:
 
 - Assumptions surfaced up front (not silently guessed), and is this the minimum that solves the problem?
-- Every changed line traces to the request — no unrequested refactors, no fossils of abandoned attempts?
-- Zero new bare suppressions — narrowest scope, comment justifying any that remain?
-- No debugging debris (`console.log`, `debugger`, temp scripts) left behind?
-- Every claim in your report something you actually observed this session?
-- Could a new teammate guess every name's meaning — no generic `data`/`temp`/`Manager` survivors?
-- Schema/API names follow convention — `snake_case`, UUID ids, UTC `created_date`/`*_at`, first/last name split?
+- Every changed line traces to the request — no unrequested refactors, no fossils of abandoned attempts, no debugging debris (`console.log`, `debugger`, temp scripts)?
+- Zero new bare suppressions (narrowest scope + justifying comment on any that remain), and every claim in your report something you actually observed this session?
+- Searched the codebase, stdlib, and existing dependencies before writing any new helper or algorithm?
+- Could a new teammate guess every name's meaning — no generic `data`/`temp`/`Manager` survivors — and do schema/API names follow convention (`snake_case`, UUID ids, UTC `created_date`/`*_at`, first/last name split)?
+- Every function does one thing at one abstraction level (past the ~30–40-line tripwire → split or justified), with the happy path flat via guard clauses, not nested `if`s?
 - Every query selects only needed columns and bounds its result set — filtering/counting in the DB, no N+1?
-- Every external input validated against a schema at the boundary before use, server-side?
-- All SQL parameterized (never concatenated); shell/`eval`/path/HTML use sanitized or encoded?
-- Searched the codebase, stdlib, and dependencies before writing any new helper or algorithm?
-- Every function does one thing at one abstraction level; anything past the ~30–40-line tripwire split or justified?
-- Happy path flat via guard clauses, not nested `if`s?
-- Presentation, logic, and data access separated — zero inline styles, zero magic numbers/strings?
-- Comments explain *why* only — no commented-out code, no restating the line below?
-- Errors handled with context, never silently swallowed?
-- Logging through the shared logger — level, message, structured context, correlation id, zero secrets/PII?
-- API failures return a generic message (detail logged internally); auth/lookup responses avoid revealing existence?
+- Every external input validated against a schema at the boundary, server-side; all SQL parameterized (never concatenated); shell/`eval`/path/HTML sanitized or encoded?
+- Errors handled with context, never silently swallowed or defaulted; API failures return a generic message (detail logged internally); auth/lookup responses avoid revealing existence?
 - Every API response built from an explicit allowlist, with honest status codes, one error shape, and pagination on lists?
-- If editing existing code: does the change match the file's existing conventions?
+- Logging through the shared logger — level, structured context, correlation id, zero secrets/PII?
+- Presentation, logic, and data access separated (zero inline styles, zero magic numbers/strings); comments explain *why* only (no commented-out code, no restating the line below); and the change matches the file's existing conventions?
 
 These aren't bureaucracy — each one is a thing that bites the next person to open the file. Leave the code so the next reader thanks you.
 
