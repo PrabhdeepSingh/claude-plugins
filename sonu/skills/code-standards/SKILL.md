@@ -100,7 +100,7 @@ function getDiscount(user) {
 }
 ```
 
-Comments explain **why**, not **what** — the code already says what, and a comment restating the line below it is noise that drifts out of date. Delete dead code instead of commenting it out; that's what version control is for.
+Comments explain **why**, not **what** — the code already says what, and a comment restating the line below it is noise that drifts out of date. Keep `TODO`s actionable and attributed, with enough context that someone could actually act on them. Delete dead code instead of commenting it out; that's what version control is for.
 
 ## 4. Small, single-purpose, modular pieces
 
@@ -143,7 +143,7 @@ Don't swallow errors — an empty `catch {}` turns a bug into a silent mystery. 
 
 ## 8. Logging: through one helper, never raw `console.log`
 
-Logs are how you understand a system you can't step through — in production there's no debugger, only the trail you left. Route everything through a single shared logger (or a thin wrapper) — never scattered `console.log`/`print` calls — for one place to set levels, format, redact secrets, and route output.
+Logs are how you understand a system you can't step through — in production there's no debugger, only the trail you left. Route everything through a single shared logger (or a thin wrapper) — never scattered `console.log`/`print` calls — for one place to set levels, format, redact secrets, and route output. Every line carries a **stable, scannable message** plus structured key/value context — never values mashed into the message string, which makes logs ungreppable.
 
 - **Use the right level so noise stays filterable** — `debug` for local detail, `info` for milestones, `warn` for recoverable oddities, `error` for failures needing a human.
 - **Attach a correlation/request id** to every line so one request's dozens of log lines can be traced across a concurrent stream.
@@ -195,16 +195,16 @@ An endpoint's response gets baked into clients you don't control, so what you re
 Run this against your own diff. If any answer is "no," fix it before finishing:
 
 - Assumptions surfaced up front (not silently guessed), and is this the minimum that solves the problem?
-- Every changed line traces to the request — no unrequested refactors, no fossils of abandoned attempts, no debugging debris (`console.log`, `debugger`, temp scripts)?
+- Every changed line traces to the request — no unrequested refactors, no fossils of abandoned attempts, no debugging debris (`console.log`/`print`, `debugger`, temp scripts, commented-out experiments)?
 - Zero new bare suppressions (narrowest scope + justifying comment on any that remain), and every claim in your report something you actually observed this session?
 - Searched the codebase, stdlib, and existing dependencies before writing any new helper or algorithm?
 - Could a new teammate guess every name's meaning — no generic `data`/`temp`/`Manager` survivors — and do schema/API names follow convention (`snake_case`, UUID ids, UTC `created_date`/`*_at`, first/last name split)?
 - Every function does one thing at one abstraction level (past the ~30–40-line tripwire → split or justified), with the happy path flat via guard clauses, not nested `if`s?
 - Every query selects only needed columns and bounds its result set — filtering/counting in the DB, no N+1?
-- Every external input validated against a schema at the boundary, server-side; all SQL parameterized (never concatenated); shell/`eval`/path/HTML sanitized or encoded?
+- Every external input validated against a schema at the boundary — server-side, allow-lists over deny-lists, client checks treated as UX only; all SQL parameterized (never concatenated); shell/`eval`/path/HTML sanitized or encoded?
 - Errors handled with context, never silently swallowed or defaulted; API failures return a generic message (detail logged internally); auth/lookup responses avoid revealing existence?
 - Every API response built from an explicit allowlist, with honest status codes, one error shape, and pagination on lists?
-- Logging through the shared logger — level, structured context, correlation id, zero secrets/PII?
+- Logging through the shared logger — right level, stable scannable message, structured context, correlation id, zero secrets/PII?
 - Presentation, logic, and data access separated (zero inline styles, zero magic numbers/strings); comments explain *why* only (no commented-out code, no restating the line below); and the change matches the file's existing conventions?
 
 These aren't bureaucracy — each one is a thing that bites the next person to open the file. Leave the code so the next reader thanks you.

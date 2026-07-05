@@ -17,7 +17,7 @@ New platforms appear and SDK package names change; extend the table when you mee
 
 ## Command shapes
 
-Starting points, not gospel — verify flags against the platform's current API docs before leaning on an exact invocation (last verified 2026-07):
+Starting points, not gospel — verify flags against the platform's current API docs before leaning on an exact invocation (verification date: the skill's Provenance section, one home):
 
 ```bash
 # Sentry: recent unresolved issues, then the latest event for one of them

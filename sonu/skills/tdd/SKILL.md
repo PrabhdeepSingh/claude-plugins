@@ -1,6 +1,6 @@
 ---
 name: tdd
-description: Test-driven development — the red-green-refactor discipline for writing code that's correct by design, not by accident. INVOKE PROACTIVELY — even when the user never says "TDD" or "tests" — whenever writing or changing code, implementing a feature, fixing a bug, or adding/running/naming tests. (Pairs with [[code-standards]] — tests are code held to the same bar.)
+description: Test-driven development — the red-green-refactor discipline for writing code that's correct by design, not by accident. INVOKE PROACTIVELY — even when the user never says "TDD" or "tests" — whenever writing or changing code, implementing a feature, fixing a bug, adding/running/naming tests, structuring a test suite, or choosing what to mock. (Pairs with [[code-standards]] — tests are code held to the same bar.)
 ---
 
 # TDD — test-first, every time
@@ -76,7 +76,7 @@ Non-negotiable — a test suite without these isn't a safety net, it's noise you
 
 ## 7. Test doubles — mock only at the seams
 
-**Mock only at architectural seams** — things that cross a process boundary: a real database, a payment gateway, the network, the clock. These are slow, unreliable, or have real-world consequences you don't want tests to trigger. **Don't mock your own domain objects** — a test that mocks the unit under test or its value objects tests nothing. The rule of thumb: the more you mock, the less you're testing.
+A test double is a stand-in for a real collaborator: **stubs** return canned data, **mocks** assert call behavior, **fakes** are working lightweight implementations, **spies** record what was called. **Mock only at architectural seams** — things that cross a process boundary: a real database, a payment gateway, the network, the clock. These are slow, unreliable, or have real-world consequences you don't want tests to trigger. **Don't mock your own domain objects** — a test that mocks the unit under test or its value objects tests nothing. The rule of thumb: the more you mock, the less you're testing.
 
 → `references/examples.md` §7 — over-mocked vs. seam-only example.
 

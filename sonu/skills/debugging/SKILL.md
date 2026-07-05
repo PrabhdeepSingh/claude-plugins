@@ -1,6 +1,6 @@
 ---
 name: debugging
-description: The scientific debugging loop — reproduce first, pull the real production event from the observability stack (Sentry, Datadog, App Insights, CloudWatch, or whatever the repo uses), read the actual error, one hypothesis → one change → one observation, revert failed attempts, escalate instead of thrash. INVOKE PROACTIVELY whenever diagnosing a bug, error message, stack trace, failing or flaky test, crash, regression, or production incident — even when the user just pastes an error with no instructions. Not for writing new features ([[tdd]] + [[code-standards]]) — this governs finding WHY something is broken; the fix then follows the normal rules.
+description: The scientific debugging loop — reproduce first, pull the real production event from the observability stack (Sentry, Datadog, App Insights, CloudWatch, or whatever the repo uses), read the actual error, one hypothesis → one change → one observation, revert failed attempts, escalate instead of thrash. INVOKE PROACTIVELY whenever diagnosing a bug, error message, stack trace, failing or flaky test, crash, unexpected output or behavior, regression, or production incident/error report — even when the user just pastes an error with no instructions. Not for writing new features ([[tdd]] + [[code-standards]]) — this governs finding WHY something is broken; the fix then follows the normal rules.
 ---
 
 # Debugging — hypothesis testing, not patch roulette

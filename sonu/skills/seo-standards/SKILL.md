@@ -37,7 +37,7 @@ Every URL must carry `rel="canonical"`, using an **absolute `https://` URL** —
 
 - **Keep the canonical URL clean — no parameters baked in.** Point `rel=canonical` at the parameter-free URL so tracked variants aren't indexed as duplicates.
 - **Force lowercase** via `301`; **pick one trailing-slash convention and enforce it site-wide** (`301` the other variant) — Google treats `/page` and `/page/` as different URLs, so what matters is exactly one canonical, consistently-used form.
-- **No extraneous folders** (`/cms/`, `/app/`) in public URLs; **hyphens as delimiters**, never underscores or spaces; **flat category structure preferred**; **no exposed dates** unless meaningful to the content.
+- **No extraneous folders** (`/cms/`, `/app/`) in public URLs; **hyphens as delimiters**, never underscores or spaces — strip or hyphenate all other punctuation too (slashes and periods in product names become hyphens, doubled spaces collapse to one hyphen); **flat category structure preferred**; **no exposed dates** unless meaningful to the content.
 
 ## 5. Domain and HTTPS
 
@@ -45,7 +45,7 @@ All pages on a single canonical hostname — no sub-domains/ccTLDs/microsites sp
 
 ## 6. Redirects
 
-- **`301` for every permanent move** (URL changes, canonicalization, `http`→`https`, lowercase/slash enforcement) — a `301` is the unambiguous "move ranking here" signal; `302`/`307` says "temporary," the wrong signal for a permanent move. Reserve `302`/`307` for genuinely temporary redirects.
+- **`301` for every permanent move** (URL changes, canonicalization, `http`→`https`, lowercase/slash enforcement) — a `301` is the unambiguous "move ranking here" signal; `302`/`307` says "temporary," the wrong signal for a permanent move. Reserve `302`/`307` for genuinely temporary redirects. Never use JavaScript or meta-refresh redirects for either — always a server-side status code.
 - **No redirect chains** — every redirect points directly to the final URL.
 - **Legacy URLs with no relevant match** `301` to the most relevant page.
 - **Deprecated URLs with no replacement**: prefer `410 Gone` (a correct `404` is also fine); never a `301` to an irrelevant page or a `200` rendering an error page.
