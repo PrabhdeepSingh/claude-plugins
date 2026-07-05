@@ -1,6 +1,6 @@
 ---
 name: infra-standards
-description: Infrastructure, container, and CI/CD discipline — infrastructure-as-code (Terraform, Bicep/ARM, CloudFormation, Pulumi), Dockerfiles and compose files, CI pipeline definitions (GitHub Actions, Azure Pipelines, GitLab CI), Vercel/platform deploy config, and environment/secrets handling. INVOKE THIS PROACTIVELY whenever creating or editing any of those file types — *.tf, *.bicep, Dockerfile, docker-compose*, .github/workflows/*, vercel.json, deployment env config — even when the user never says "infra" or "devops." Not for application code (that's [[code-standards]]), producing telemetry (that's [[observability]]), or schema changes (that's [[safe-migrations]]).
+description: Infrastructure, container, and CI/CD discipline — IaC (Terraform, Bicep/ARM, CloudFormation, Pulumi), Dockerfiles and compose files, CI pipelines (GitHub Actions, Azure Pipelines, GitLab CI), Vercel/platform deploy config, and environment/secrets handling. INVOKE PROACTIVELY when creating or editing those file types — *.tf, *.bicep, Dockerfile, docker-compose*, .github/workflows/*, vercel.json — even when the user never says "infra" or "devops." Not for application code ([[code-standards]]), telemetry ([[observability]]), or schema changes ([[safe-migrations]]).
 ---
 
 # Infra standards — the outage-shaped mistakes are all preventable at review time

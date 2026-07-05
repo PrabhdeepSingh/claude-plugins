@@ -1,6 +1,6 @@
 ---
 name: safe-migrations
-description: Zero-downtime database schema and data migration discipline — expand → migrate → contract, never destructive in the release that ships the code change, backfills as jobs, every step reversible. INVOKE THIS PROACTIVELY whenever creating or editing a migration file (migrations/, alembic, Prisma, EF Core, Flyway, Liquibase, Rails, Django, knex), writing ALTER TABLE / CREATE INDEX / column or table adds, renames, drops, or type changes, changing enums or constraints, planning a data backfill, or shipping any change where code and schema move together. Not for designing a greenfield schema (that's [[code-standards]] section 2) or diagnosing a broken migration (that's [[debugging]]).
+description: Zero-downtime database schema and data migration discipline — expand → migrate → contract, never destructive in the release that ships the code change, backfills as jobs, every step reversible. INVOKE PROACTIVELY whenever creating or editing a migration file (migrations/, alembic, Prisma, EF Core, Flyway, Liquibase, Rails, Django, knex), writing `ALTER TABLE`/`CREATE INDEX`/column-or-table adds/renames/drops/type changes, changing enums or constraints, or planning a data backfill. Not for a greenfield schema ([[code-standards]] section 2) or diagnosing a broken migration ([[debugging]]).
 ---
 
 # Safe migrations — the schema change and the safe path to it are different artifacts

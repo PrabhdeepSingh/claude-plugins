@@ -1,6 +1,6 @@
 ---
 name: design-tree
-description: Make design decisions as an explicit branching tree with recorded alternatives and rationale, instead of one linear narrative. INVOKE THIS PROACTIVELY whenever planning or designing an implementation approach, weighing how to build a feature, choosing between architectures / libraries / data models / APIs, or working in plan mode — even when the user never says "design tree." Skip it for trivial or forced changes where no genuine alternatives exist.
+description: Make design decisions as an explicit branching tree with recorded alternatives and rationale, instead of one linear narrative. INVOKE PROACTIVELY whenever planning or designing an implementation approach, weighing how to build a feature, choosing between architectures/libraries/data models/APIs, or working in plan mode — even when the user never says "design tree." Skip it for trivial or forced changes with no genuine alternatives.
 ---
 
 # Design Tree — decide by branching, not by marching

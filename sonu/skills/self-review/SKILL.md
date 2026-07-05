@@ -1,6 +1,6 @@
 ---
 name: self-review
-description: Surface the 3–5 riskiest parts of the current diff in plain language so a human reviewer knows exactly where to look hardest. INVOKE THIS PROACTIVELY whenever a change is finished and about to be handed off, reviewed, or shipped — even when the user never says "self-review." Not a substitute for an actual code review — it points attention; it does not find or fix bugs.
+description: Surface the 3–5 riskiest parts of the current diff so a human reviewer knows exactly where to look hardest. INVOKE PROACTIVELY whenever a change is finished and about to be handed off, reviewed, or shipped — even when the user never says "self-review." Not a substitute for an actual code review — it points attention; it does not find or fix bugs.
 ---
 
 # Self-review — point attention, don't bless the change
