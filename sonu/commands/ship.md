@@ -1,8 +1,7 @@
 ---
-description: Branch, commit, open PR, gather Claude + every enabled AI reviewer (Copilot, CodeRabbit, etc.), fix/justify/resolve every finding, loop until clean, then merge. Run only when implementation is finished — to design and build the change first, use /sonu:build.
+description: Branch, commit, open PR, gather Claude + every enabled AI reviewer (Copilot, CodeRabbit, etc.), fix/justify/resolve every finding, loop until clean, then merge. Run only when implementation is finished AND the owner has said to ship (e.g. "ship it") — never self-invoke just because the work looks done. To design and build the change first, use /sonu:build.
 argument-hint: "[light|full]"
 allowed-tools: Bash, Read, Edit, Write, Skill
-disable-model-invocation: true
 ---
 
 # /ship — PR Babysitter

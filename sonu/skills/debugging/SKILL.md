@@ -1,6 +1,6 @@
 ---
 name: debugging
-description: The scientific debugging loop — reproduce first, pull the real production event from the observability stack (Sentry, Datadog, Azure Application Insights, CloudWatch, or whatever the repo uses), read the actual error, one hypothesis → one change → one observation, revert failed attempts, escalate instead of thrash. INVOKE THIS PROACTIVELY whenever diagnosing a bug, an error message, a stack trace, a failing or flaky test, a crash, unexpected output or behavior, a regression, or a production incident/error report — even when the user just pastes an error with no instructions. Not for writing new features (that's [[tdd]] + [[code-standards]]) — this governs finding out WHY something is broken; the fix itself then follows the normal rules.
+description: The scientific debugging loop — reproduce first, pull the real production event from the observability stack (Sentry, Datadog, App Insights, CloudWatch, or whatever the repo uses), read the actual error, one hypothesis → one change → one observation, revert failed attempts, escalate instead of thrash. INVOKE PROACTIVELY whenever diagnosing a bug, error message, stack trace, failing or flaky test, crash, unexpected output or behavior, regression, or production incident/error report — even when the user just pastes an error with no instructions. Not for writing new features ([[tdd]] + [[code-standards]]) — this governs finding WHY something is broken; the fix then follows the normal rules.
 ---
 
 # Debugging — hypothesis testing, not patch roulette
@@ -23,36 +23,7 @@ If you *can't* reproduce it, that's not a dead end; **reproducing it is now the 
 
 A bug report that arrives as words — "checkout is broken for some users" — is a lossy copy of an error that exists somewhere in full fidelity. If the project has an observability stack, the actual event carries what the reporter can't tell you: the exact exception and stack with the release it happened on, the request/breadcrumb context (that's section 1's reproduction input, handed to you), how often it fires, when it first appeared, and who it hits. Get the event before theorizing.
 
-**Discover what the project uses** — read the repo, not your assumptions:
-
-| Signals in the repo | Platform |
-|---|---|
-| `@sentry/*` / `sentry-sdk` deps, `SENTRY_DSN` env, `sentry.properties` | Sentry |
-| `dd-trace` / `datadog-*` deps, `DD_API_KEY` / `DD_SITE` env | Datadog |
-| `applicationinsights` dep, `APPLICATIONINSIGHTS_CONNECTION_STRING` | Azure Application Insights |
-| `newrelic` / `rollbar` / `bugsnag` / `honeybadger` deps | those respective services |
-| AWS deploy configs with no APM dep | CloudWatch Logs |
-| None of the above | plain server/container logs are the source — ask where they land |
-
-**Pull the event.** Prefer a connected MCP server for the platform if the session has one (check the available tools); otherwise use the API/CLI with credentials already in the environment. Command shapes (starting points — verify flags against the platform's current docs, see Provenance):
-
-```bash
-# Sentry: recent unresolved issues, then the latest event for one of them
-curl -sH "Authorization: Bearer $SENTRY_AUTH_TOKEN" \
-  "https://sentry.io/api/0/projects/<org>/<project>/issues/?query=is:unresolved&sort=freq"
-curl -sH "Authorization: Bearer $SENTRY_AUTH_TOKEN" \
-  "https://sentry.io/api/0/organizations/<org>/issues/<issue-id>/events/latest/"
-
-# Datadog: search recent error logs
-curl -s -X POST "https://api.${DD_SITE:-datadoghq.com}/api/v2/logs/events/search" \
-  -H "DD-API-KEY: $DD_API_KEY" -H "DD-APPLICATION-KEY: $DD_APP_KEY" \
-  -H "Content-Type: application/json" \
-  -d '{"filter":{"query":"status:error","from":"now-1h"},"page":{"limit":20}}'
-
-# Azure Application Insights: recent exceptions via KQL
-az monitor app-insights query --app <app-id> \
-  --analytics-query 'exceptions | order by timestamp desc | take 20'
-```
+**Discover what the project uses** — read the repo (deps, env vars, deploy config), never your assumptions. **Then pull the event**: prefer a connected MCP server for the platform if the session has one (check the available tools); otherwise use the API/CLI with credentials already in the environment. → `references/pull-the-event.md` — the platform-detection signals table and per-platform command shapes, read when you're actually about to pull one.
 
 **No access? Ask — never improvise.** No credentials, no MCP server, no dashboard reachable → ask the user to grant access or paste the full event JSON, and say why: debugging from a paraphrase when the real event exists is choosing to work blind. Do not fabricate an error shape from the description and proceed as if you'd read it.
 
@@ -118,7 +89,10 @@ Three consecutive dead hypotheses means the problem is misframed — stop genera
 
 ## Provenance and maintenance
 
-The methodology (sections 1, 3–9) is durable. Section 2's observability specifics are not — last verified **2026-07**:
+The methodology (sections 1, 3–9) is durable. Section 2's observability specifics — the platform-detection signals and API/CLI command shapes, both in `references/pull-the-event.md` — are not: last verified **2026-07**; re-verify against each platform's current docs before leaning on an exact invocation. The *principle* — discover the stack from the repo, pull the real event, ask for access instead of improvising — survives any command drift.
 
-- **Platform detection signals** (the deps/env-vars table) — new platforms appear and SDK package names change; extend the table when you meet one it doesn't cover.
-- **API/CLI command shapes** (Sentry issues/events endpoints, Datadog `v2/logs/events/search`, `az monitor app-insights query`) — re-verify flags against each platform's current API docs before leaning on an exact invocation. The *principle* — discover the stack from the repo, pull the real event, ask for access instead of improvising — survives any command drift.
+## Reference files
+
+| File | What it answers |
+|------|-----------------|
+| `references/pull-the-event.md` | Which observability platform the repo uses (the detection-signals table) and the per-platform API/CLI command shapes for pulling the event (§2) |

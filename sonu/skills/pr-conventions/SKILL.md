@@ -1,6 +1,6 @@
 ---
 name: pr-conventions
-description: Author PR descriptions from the right per-change-type template (using the repo's own PULL_REQUEST_TEMPLATE when present), detect and embed links to the issue tracker (GitHub Issues, JIRA, Linear, Shortcut, etc.), keep the description current as fixes land, and reply to reviewer threads from humans and AI bots. INVOKE when opening or updating a PR, choosing a PR description format, linking a ticket to a PR, or responding to reviewer comments — including outside of /sonu:ship. Called by /sonu:ship Phase 1 (body authoring), after Phase 4 (description refresh), and Phase 5 (thread replies). (Pairs with the [[self-review]] skill, which seeds the risk section.)
+description: Author PR descriptions from the right per-change-type template (using the repo's own PULL_REQUEST_TEMPLATE when present), detect and embed issue-tracker links, keep the description current as fixes land, and reply to reviewer threads from humans and bots. INVOKE when opening or updating a PR, choosing a PR description format, linking a ticket, or responding to reviewer comments — including outside of /sonu:ship, which calls this at Phases 1, 4, and 5. (Pairs with [[self-review]], which seeds the risk section.)
 ---
 
 # PR conventions — right template, living description, honest replies
@@ -116,169 +116,9 @@ TRACKER_KEY=$(echo "$BRANCH $LOG_CLEAN" | grep -oE '\b[A-Z]{2,10}-[0-9]+\b' \
 
 ---
 
-Fill the matching template below. Drop any section that genuinely doesn't apply. Never leave a `<placeholder>` unfilled.
+Fill the matching template from `references/templates.md`. Drop any section that genuinely doesn't apply. Never leave a `<placeholder>` unfilled.
 
-### Feature / feat
-
-```
-## Summary
-- <what this adds and why>
-
-## Motivation
-- <the problem or user need this solves>
-
-## Changes
-- <key implementation decision or component added>
-
-## Risk / reviewer attention
-<RISKS list from self-review — 3–5 items>
-
-## Test plan
-- <happy-path verification>
-- <edge case to verify>
-
-## Screenshots
-<!-- Remove this section if no UI changed -->
-```
-
-### Bugfix / fix
-
-```
-## Summary
-- <what broke and what this fixes>
-
-## Root cause
-<one or two sentences on why it broke>
-
-## Fix
-- <what changed to address the root cause>
-
-## Risk / reviewer attention
-<RISKS list from self-review>
-
-## Regression test / test plan
-- <failing test added (or why there isn't one)>
-- <manual steps to verify the fix>
-```
-
-### Hotfix
-
-```
-## Summary (URGENT)
-- <what is broken in production and what this fixes>
-
-## Impact
-- Affected: <scope — users, feature, service>
-- Severity: <P0 / P1 / …>
-
-## Root cause
-<brief — expand in the incident doc>
-
-## Fix
-- <surgical change made>
-
-## Rollback plan
-- <how to revert if this makes things worse>
-
-## Verification
-- <minimal steps to confirm before merging>
-
-## Risk / reviewer attention
-<RISKS list from self-review>
-```
-
-### Chore
-
-```
-## Summary
-- <what maintenance task this performs>
-
-## Changes
-- <package / tool / config updated — version if relevant>
-
-## Risk / reviewer attention
-<RISKS list — often low; say so explicitly: "Low risk — no logic changed">
-
-## Test plan
-N/A — no logic changed  <!-- or: suite ran, all green -->
-```
-
-### Refactor
-
-```
-## Summary
-- <what was restructured; behavior is preserved>
-
-## Changes
-- <module / file restructured and how>
-
-## Behavior preserved
-- <how verified: existing suite green / added tests for X>
-
-## Risk / reviewer attention
-<RISKS list — call out blast radius if a shared utility changed>
-
-## Test plan
-- <existing suite green; new tests if coverage expanded>
-```
-
-### Docs
-
-```
-## Summary
-- <what docs were added, updated, or removed>
-
-## What changed
-- <file or section and what is different>
-
-No test plan — docs only.
-```
-
-### Perf
-
-```
-## Summary
-- <what was optimized and why it matters>
-
-## Benchmark
-| Metric | Before | After |
-|--------|--------|-------|
-| <metric> | <value> | <value> |
-
-## Changes
-- <algorithm / query / cache strategy changed>
-
-## Risk / reviewer attention
-<RISKS list>
-
-## Test plan
-- <how correctness is verified after the optimization>
-```
-
-### Release
-
-```
-## Summary
-- Releasing v<version>
-
-## Highlights
-- <key feature or change>
-
-## Breaking changes
-<!-- Remove if none -->
-- <change and migration path>
-
-## Migration notes
-<!-- Remove if none -->
-<steps for callers>
-
-## Verification / rollback
-- <smoke test or deploy check>
-- Rollback: <revert tag / feature flag / step>
-
-## Risk / reviewer attention
-<RISKS list>
-```
+→ `references/templates.md` — the 8 per-change-type templates (feature, bugfix, hotfix, chore, refactor, docs, perf, release), read once the change type is classified and you're actually filling a body.
 
 ---
 
@@ -355,3 +195,9 @@ Volatile facts in this file, last verified 2026-07:
 - **PR template locations** (Section A) — re-verify against GitHub's "Creating a pull request template" docs if template discovery ever misses a team's template.
 - **Tracker URL formats** (Section B: `atlassian.net/browse/`, `linear.app/<workspace>/issue/`, `app.shortcut.com/<workspace>/story/`) — re-verify by opening a known ticket in each tracker.
 - **AI-reviewer registry** — not stored here; the canonical home is `/sonu:ship` Phase 2.
+
+## Reference files
+
+| File | What it answers |
+|------|-----------------|
+| `references/templates.md` | The 8 per-change-type PR body templates (feature, bugfix, hotfix, chore, refactor, docs, perf, release) |

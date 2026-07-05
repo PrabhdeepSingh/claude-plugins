@@ -55,7 +55,7 @@ Run `/validate` (the full battery: manifest sync, frontmatter, shell fences, hou
 
 ## Phase 4 — Hand back for shipping
 
-This command never commits or merges (house rule 5 — everything goes through a PR), and `/sonu:ship` is deliberately user-only (`disable-model-invocation` — a model must never trigger a merge on its own). So **stop the turn here** with:
+This command never commits or merges (house rule 5 — everything goes through a PR). Even though `/sonu:ship` can now be model-invoked (saying "ship it" triggers it), `/release` still hands off rather than chaining straight into it — the owner gets an explicit checkpoint to review the five-home diff before a merge-capable flow starts. So **stop the turn here** with:
 
 > **Release prepared and validated.** Review the five-home diff, then run `/sonu:ship` to open and merge the PR. Come back with `/release tag` once it's merged.
 

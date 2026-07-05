@@ -104,7 +104,7 @@ EOF
 
 ## 5. No named sources in skills (house rule 1)
 
-Heuristic scan — a hit is not automatically a violation; judge each one. **Expected hits: exactly one** — the rule statement in plugin-dev §2 (house rule 1's own text mentions "studies"). Any *other* hit needs judging against house rule 1. Do not reword plugin-dev's rule to dodge the regex:
+Recursive (`-r`), so this already covers any skill's `references/*.md` — no separate reference-file scan needed. Heuristic scan — a hit is not automatically a violation; judge each one. **Expected hits: exactly one** — the rule statement in plugin-dev §2 (house rule 1's own text mentions "studies"). Any *other* hit needs judging against house rule 1. Do not reword plugin-dev's rule to dodge the regex:
 ```bash
 grep -rniE '\b(study|studies|paper|professor|university|according to [A-Z][a-z]+ [A-Z])\b' sonu/skills/ .claude/skills/ \
   && echo "REVIEW: expected = 1 hit (plugin-dev house rule 1); judge anything beyond that" \
@@ -113,7 +113,7 @@ grep -rniE '\b(study|studies|paper|professor|university|according to [A-Z][a-z]+
 
 ## 6. No AI attribution (house rule 3)
 
-The only legitimate mentions in the tree are the *rules forbidding it* (ship.md's contract, plugin-dev) and this check's own grep lines — the scan excludes itself. Anything else is a violation:
+Recursive over `sonu/`, so this already covers any skill's `references/*.md` too. The only legitimate mentions in the tree are the *rules forbidding it* (ship.md's contract, plugin-dev) and this check's own grep lines — the scan excludes itself. Anything else is a violation:
 ```bash
 grep -rn 'Co-Authored-By\|Generated with Claude' sonu/ .claude/skills/ .claude/commands/ README.md \
   | grep -v 'commands/validate.md' \
@@ -141,7 +141,32 @@ done
 echo "(cross-reference scan done — silence above means OK)"
 ```
 
-## 8. README inventory completeness
+## 8. Reference-file pointers resolve, and no orphans
+
+For any skill that has split heavy content into `references/*.md` (plugin-dev §4): every backtick-wrapped `references/…` path mentioned in its `SKILL.md` must resolve to a real file, and every file actually present under `references/` must be pointed at from somewhere in `SKILL.md` (the per-rule pointer or the index table) — an orphan file is dead weight nobody will ever read:
+```bash
+python3 - <<'EOF'
+import glob, os, re, sys
+fails = 0
+for skill_md in sorted(glob.glob('sonu/skills/*/SKILL.md') + glob.glob('.claude/skills/*/SKILL.md')):
+    skill_dir = os.path.dirname(skill_md)
+    text = open(skill_md).read()
+    mentioned = set(re.findall(r'`(references/[\w.-]+\.md)`', text))
+    actual = set(
+        os.path.relpath(p, skill_dir)
+        for p in glob.glob(f'{skill_dir}/references/*.md')
+    )
+    for ref in sorted(mentioned - actual):
+        print(f"FAIL: {skill_md} points at {ref}, which doesn't exist"); fails += 1
+    for ref in sorted(actual - mentioned):
+        print(f"FAIL: {skill_dir}/{ref} exists but {os.path.basename(skill_md)} never mentions it (orphan)"); fails += 1
+    if actual and not (mentioned - actual) and not (actual - mentioned):
+        print(f"OK: {skill_md} — {len(actual)} reference file(s), all pointers resolve, no orphans")
+sys.exit(1 if fails else 0)
+EOF
+```
+
+## 9. README inventory completeness
 
 ```bash
 for c in sonu/commands/*.md; do
