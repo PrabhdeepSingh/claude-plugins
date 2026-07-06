@@ -24,7 +24,7 @@ Classify the change on three axes and surface the result in **one line**:
 
 - **Size** — trivial (≤~10 lines, no logic, e.g. comment, config, copy change) vs. substantial.
 - **Kind** — bug fix, feature, refactor, docs, or mixed.
-- **Surface** — touches web pages or public-facing content? → SEO bars apply in Phase 2.
+- **Surface** — which quality bars this change activates, beyond code-standards (always on): public web pages or content → seo-standards (templates, routes, metadata) and/or content-seo (prose meant to rank) — both when the change has both; schema or data movement → safe-migrations; IaC, containers, or CI files → infra-standards; a new service, endpoint, or background job → observability. Within this command, this list is the mapping home — Phases 1 and 2 refer back to it rather than restating it (design-tree §2 carries its own copy for standalone use). The flagged bars apply as design constraints in Phase 1 and as build bars in Phase 2; on the trivial path (Phase 1 skipped) they load in Phase 2.
 
 **If trivial:** skip Phase 1 (no design needed). Jump straight to Phase 2.
 
@@ -37,8 +37,9 @@ Classify the change on three axes and surface the result in **one line**:
 Enter plan mode to run the design phase. This is the only pause in the flow — your approval of the design is the gate.
 
 1. `EnterPlanMode` — switches to read-only; the design tree will be written into the plan file.
-2. `Skill(sonu:design-tree)` — interview first (2–4 questions to establish shared understanding, intent, constraints, done-when); then tree the real decision points. The tree lands in the plan file's `## Design Tree` section per design-tree's existing plan-mode behavior.
-3. `ExitPlanMode` — **this is the gate.** Your approval of the plan = approval of the design. Do not proceed to Phase 2 until ExitPlanMode is called and approved.
+2. **Load the quality bars as design constraints** — `Skill(sonu:code-standards)` always, plus **only** the bars the Phase 0 surface flagged, as `Skill(sonu:<name>)`; a bar whose surface wasn't flagged is not loaded. These are the same bars Phase 2 builds under; loading them before the tree is drawn keeps the approved design from conflicting with them. (Loading a skill is read-only — legal in plan mode.)
+3. `Skill(sonu:design-tree)` — interview first (2–4 questions to establish shared understanding, intent, constraints, done-when); then tree the real decision points. The tree lands in the plan file's `## Design Tree` section per design-tree's existing plan-mode behavior.
+4. `ExitPlanMode` — **this is the gate.** Before calling it, verify the plan meets design-tree's executor-ready bar (its Section 8): every judgment call is either resolved or visibly marked `[?]` for the owner to rule on at approval — what must not reach the gate is a decision *hidden* inside an implementation step. Your approval of the plan = approval of the design (including any `[?]` nodes you resolve or accept). Do not proceed to Phase 2 until ExitPlanMode is called and approved.
    - **If the plan is rejected:** stay in plan mode, revise the design tree or re-interview the user to address the concern, and call `ExitPlanMode` again. Repeat until approved. Do not proceed to Phase 2 on a rejected plan.
    - **If plan-mode tools are unavailable in this environment** (e.g. Cursor, or any harness without `EnterPlanMode`/`ExitPlanMode`): run the design-tree interview and print the tree in-chat instead, then ask the user for explicit approval of the design and treat their approval message as the gate. The gate itself is non-negotiable; only its mechanism adapts.
 
@@ -51,7 +52,7 @@ After the gate, you are back in execution mode (writes are legal again).
 Build the change test-first under the active quality bars:
 
 1. `Skill(sonu:tdd)` — drive the implementation with the red-green-refactor loop. Write the failing test first; write the minimum code to pass; refactor under green. Apply `Skill(sonu:code-standards)` as you go.
-2. If the surface is web / public-facing, apply `Skill(sonu:seo-standards)` and/or `Skill(sonu:content-seo)` as appropriate.
+2. Apply every bar the Phase 0 surface flagged (the same set Phase 1 loaded as design constraints), as `Skill(sonu:<name>)`. On the trivial path — where Phase 1 was skipped — this is where the flagged bars load for the first time.
 3. **Run the suite via `Bash`.** Don't take green on faith:
    ```bash
    # derive the right command from the repo's package.json / Makefile / README

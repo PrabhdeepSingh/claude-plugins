@@ -13,7 +13,7 @@ This skill makes you design that way: interview first to confirm you're solving 
 
 Before mapping any decision, **interview the user.** Before branching, before enumerating anything — ask. A few sharp, targeted questions about intent, constraints, success criteria, and non-goals are the highest-leverage work in any design task. Designing the right problem is worth more than any number of well-reasoned branches on the wrong one.
 
-When planning or designing an approach, run through this in sequence: interview → find decision points → enumerate alternatives → record choices and rationale → emit the tree. When called as `/sonu:design-tree`, apply it to `$ARGUMENTS` or the current active discussion. When in plan mode, write the tree into the plan file's `## Design Tree` section; otherwise print it in-chat.
+When planning or designing an approach, run through this in sequence: interview → load applicable standards → find decision points → enumerate alternatives → record choices and rationale → emit the tree. When called as `/sonu:design-tree`, apply it to `$ARGUMENTS` or the current active discussion. When in plan mode, write the tree into the plan file's `## Design Tree` section; otherwise print it in-chat.
 
 ---
 
@@ -46,6 +46,8 @@ A real decision point changes something downstream — the architecture, the use
 - One option is forced by constraints already agreed on (skip it, state the constraint once instead).
 - The choice is a detail that can be changed later without ripple effects.
 - Treeing it would add overhead that buries the real decisions.
+
+**House standards are pre-decided constraints.** Before hunting for decision points, load the standards skills that will govern the build — [[code-standards]] always; [[safe-migrations]] when the design moves schema or data; [[seo-standards]] (templates, routes, metadata) and/or [[content-seo]] (prose meant to rank — both when the change has both) when the surface is public web; [[infra-standards]] when it touches IaC, containers, or CI; [[observability]] when it adds a service, endpoint, or background job. Skip any of these already loaded this session (under `/sonu:build`, Phase 1 loads them before this skill runs), and skip the load entirely when the tree isn't about code — a product or process decision has no build to govern. A fork that one of them already settles (id type, field casing, error envelope, migration staging) is not a genuine decision point — state the constraint and cite the skill instead of treeing it. This resolves the plan-vs-standards conflict at design time, where the strong model and the approval gate are, instead of leaving it for the executor to discover mid-build.
 
 ## 3. Enumerate genuine alternatives
 
@@ -130,7 +132,14 @@ Use a compact nested-bullet format. Scannable at a glance, not prose.
 
 ## 8. Output — where the tree goes
 
-**In plan mode:** write the tree as a `## Design Tree` section in the plan file — placed after the Context section and before the implementation steps, so the decision genealogy is part of the plan record.
+**In plan mode:** write the tree as a `## Design Tree` section in the plan file — placed after the Context section and before the implementation steps, so the decision genealogy is part of the plan record. Directly under the heading, add a one-line `Constraints:` note naming the standards skills the design was drawn under (e.g. `Constraints: code-standards, safe-migrations`), and one sentence addressed to the executor who picks the plan up later: if implementation reality invalidates a chosen branch, return to the recorded fork in the Design Tree above and take a recorded alternative — do not improvise a new path or deviate from the standards to save the plan. (Write that sentence self-contained: the executor has this plan file, not this skill, so it must not cite sections of this document.)
+
+**Executor-ready plans.** A plan file outlives this session. Assume its executor is a smaller model in a fresh session with zero conversation context, following the text word-for-word — every judgment call the plan leaves open is a decision silently delegated to the model least equipped to make it. Before the plan goes for approval:
+
+- **Name exact paths** — every file to create or modify, and every existing function or utility to reuse (with its path), so the executor never has to search, guess, or re-implement.
+- **Settle every convention in place** — where a loaded standard decides something (field casing, id type, error envelope, migration staging), state the settled choice at the point of use. "Follow code-standards" alone defers the decision to the executor.
+- **Give each step a verification check** — the command to run and what success looks like, so a step that landed wrong is caught immediately, not three steps later.
+- **Hide no judgment calls** — if writing a step requires a decision, that's an unfinished fork: resolve it in the tree, or mark it `[?]` so the owner rules on it at the approval gate. A visible `[?]` is honest and allowed; what's forbidden is a decision buried inside an implementation step for the executor to make silently.
 
 **Manual call (`/sonu:design-tree`):** print the tree in-chat. If a plan file is active, offer to write it into the plan file.
 
@@ -141,6 +150,7 @@ Use a compact nested-bullet format. Scannable at a glance, not prose.
 ## Self-check before you call it done
 
 - Did you interview the user before treeing anything (or, if the request was already fully specified or no user could answer, did you state your assumptions explicitly)? Did you confirm intent, constraints, success criteria, and at least one non-goal?
+- Did you load the applicable standards skills before branching, and does no node relitigate a choice a standard already settles?
 - Does every node represent a genuinely consequential fork — not a trivial or forced choice?
 - Does every node have ≥2 honest alternatives, with no strawmen invented to be knocked down?
 - Is the chosen branch's rationale a decisive reason (constraint, concrete trade-off, irreversibility), not a vague preference?
@@ -149,3 +159,4 @@ Use a compact nested-bullet format. Scannable at a glance, not prose.
 - Is the tree traceable end-to-end — can you follow the chosen branches from root to leaf without gaps?
 - If you backtracked, did you return to a recorded fork rather than patching forward?
 - Is the tree written into the plan file (plan mode) or printed in-chat (manual call)?
+- If a plan file was written: could a smaller model in a fresh session execute it without making a single *unmarked* design decision — exact paths, conventions settled in place, a verification check per step, every genuinely open fork visibly `[?]`, a `Constraints:` line naming the standards applied?
