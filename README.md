@@ -35,8 +35,8 @@ The spine of the plugin — a thin conductor that sequences the whole implementa
 
 What it does:
 
-1. **Triage** the working tree — size (trivial vs. substantial), kind (bug vs. feature), surface (web → SEO bars). One line.
-2. **Design**, in real plan mode — runs `design-tree` so you interview first and tree the real decision points. **`ExitPlanMode` is the approval gate.** Trivial changes skip this entirely.
+1. **Triage** the working tree — size (trivial vs. substantial), kind (bug vs. feature), surface (web → SEO bars; schema/data → safe-migrations; IaC/CI → infra-standards). One line.
+2. **Design**, in real plan mode — loads `code-standards` (plus the surface-matched bars) as design constraints first, then runs `design-tree` so you interview first and tree the real decision points. The plan must meet design-tree's executor-ready bar — exact paths, conventions settled in place, a verification check per step — before it goes to the gate. **`ExitPlanMode` is the approval gate.** Trivial changes skip this entirely.
 3. **Build test-first** — runs `tdd` under `code-standards` (and SEO bars when relevant); **runs the suite via Bash** to confirm green. Never takes green on faith.
 4. **Self-review + hand back** — lists the 3–5 riskiest things in the diff, then stops: *"Green and ready. Review the diff, then run `/sonu:ship`."* Never commits or merges.
 
@@ -91,7 +91,7 @@ Maps any design problem as an explicit branching tree instead of one linear narr
 What it does:
 
 1. **Interviews you** to reach shared understanding — intent, constraints, success criteria, non-goals — before mapping a single decision point. This is the highest-leverage step, and it's always first.
-2. **Finds the real forks** — only decision points where the design could genuinely go in ≥2 consequential ways.
+2. **Finds the real forks** — only decision points where the design could genuinely go in ≥2 consequential ways. House standards load first as pre-decided constraints, so a fork they already settle is stated and cited, not treed.
 3. **Records every branch**: chosen option with the decisive reason, rejected options with the reason each lost.
 4. **Preserves the rejected branches** so decisions don't get silently relitigated and you have a real fork to backtrack to if a downstream choice invalidates an earlier one.
 5. **Folds into the plan file** when in plan mode (as a `## Design Tree` section), or prints in-chat when called standalone.
@@ -220,13 +220,14 @@ A skill, not a command — there's nothing to invoke in plan mode, it fires auto
 It encodes a design methodology built around one core idea: design is traversing a branching tree, not marching a line. What that looks like in practice:
 
 - **Interview first.** Before branching anything, ask 2–4 targeted questions to confirm intent, constraints, success criteria, and non-goals. Designing the right problem saves more context and tokens than anything else.
+- **Load the standards as constraints.** `code-standards` always, plus `safe-migrations`/`seo-standards`/`content-seo`/`infra-standards` when the surface matches — a fork a standard already settles is stated and cited, never treed. The plan-vs-standards conflict gets resolved at design time, not discovered by the executor mid-build.
 - **Find the real forks.** Only decision points where the design could genuinely go in ≥2 consequential ways — not trivia, not forced choices.
 - **Enumerate genuine alternatives** at every fork. No strawmen invented to be knocked down.
 - **Record the chosen branch** with a decisive reason (a real constraint, trade-off, or irreversibility) — not a vague preference.
 - **Keep the rejected branches** with the reason each lost. Stops silent relitigation; preserves real forks to return to.
 - **Backtrack deliberately** to a recorded fork when a downstream decision invalidates an earlier choice, rather than patching forward.
 
-The tree is written as a compact nested-bullet notation (`✓ chosen — reason`, `✗ rejected — why`) that's scannable in seconds. In plan mode it becomes a `## Design Tree` section in the plan file.
+The tree is written as a compact nested-bullet notation (`✓ chosen — reason`, `✗ rejected — why`) that's scannable in seconds. In plan mode it becomes a `## Design Tree` section in the plan file, with a `Constraints:` line naming the standards the design was drawn under — and the plan itself must be **executor-ready**: exact file paths, conventions settled in place, a verification check per step, no judgment call left for a smaller model in a fresh session to guess at.
 
 Edit `sonu/skills/design-tree/SKILL.md` to make it yours — it's plain Markdown.
 

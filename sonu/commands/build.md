@@ -24,7 +24,7 @@ Classify the change on three axes and surface the result in **one line**:
 
 - **Size** — trivial (≤~10 lines, no logic, e.g. comment, config, copy change) vs. substantial.
 - **Kind** — bug fix, feature, refactor, docs, or mixed.
-- **Surface** — touches web pages or public-facing content? → SEO bars apply in Phase 2.
+- **Surface** — which quality bars this change activates, beyond code-standards (always on): public web pages or content → the SEO bars; schema or data movement → safe-migrations; IaC, containers, or CI files → infra-standards. The flagged bars load twice: as design constraints in Phase 1, and as build bars in Phase 2.
 
 **If trivial:** skip Phase 1 (no design needed). Jump straight to Phase 2.
 
@@ -37,8 +37,9 @@ Classify the change on three axes and surface the result in **one line**:
 Enter plan mode to run the design phase. This is the only pause in the flow — your approval of the design is the gate.
 
 1. `EnterPlanMode` — switches to read-only; the design tree will be written into the plan file.
-2. `Skill(sonu:design-tree)` — interview first (2–4 questions to establish shared understanding, intent, constraints, done-when); then tree the real decision points. The tree lands in the plan file's `## Design Tree` section per design-tree's existing plan-mode behavior.
-3. `ExitPlanMode` — **this is the gate.** Your approval of the plan = approval of the design. Do not proceed to Phase 2 until ExitPlanMode is called and approved.
+2. **Load the quality bars as design constraints** — `Skill(sonu:code-standards)` always, plus the siblings the Phase 0 surface flagged: `Skill(sonu:safe-migrations)`, `Skill(sonu:seo-standards)` / `Skill(sonu:content-seo)`, `Skill(sonu:infra-standards)`. These are the same bars Phase 2 builds under; loading them before the tree is drawn keeps the approved design from conflicting with them. (Loading a skill is read-only — legal in plan mode.)
+3. `Skill(sonu:design-tree)` — interview first (2–4 questions to establish shared understanding, intent, constraints, done-when); then tree the real decision points. The tree lands in the plan file's `## Design Tree` section per design-tree's existing plan-mode behavior.
+4. `ExitPlanMode` — **this is the gate.** Before calling it, verify the plan meets design-tree's executor-ready bar (its Section 8): a plan with open judgment calls doesn't go to the gate. Your approval of the plan = approval of the design. Do not proceed to Phase 2 until ExitPlanMode is called and approved.
    - **If the plan is rejected:** stay in plan mode, revise the design tree or re-interview the user to address the concern, and call `ExitPlanMode` again. Repeat until approved. Do not proceed to Phase 2 on a rejected plan.
    - **If plan-mode tools are unavailable in this environment** (e.g. Cursor, or any harness without `EnterPlanMode`/`ExitPlanMode`): run the design-tree interview and print the tree in-chat instead, then ask the user for explicit approval of the design and treat their approval message as the gate. The gate itself is non-negotiable; only its mechanism adapts.
 
