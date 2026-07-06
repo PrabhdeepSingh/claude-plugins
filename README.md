@@ -35,9 +35,9 @@ The spine of the plugin — a thin conductor that sequences the whole implementa
 
 What it does:
 
-1. **Triage** the working tree — size (trivial vs. substantial), kind (bug vs. feature), surface (web → SEO bars; schema/data → safe-migrations; IaC/CI → infra-standards). One line.
+1. **Triage** the working tree — size (trivial vs. substantial), kind (bug vs. feature), surface (web → SEO bars; schema/data → safe-migrations; IaC/containers/CI → infra-standards; new service/endpoint/job → observability). One line.
 2. **Design**, in real plan mode — loads `code-standards` (plus the surface-matched bars) as design constraints first, then runs `design-tree` so you interview first and tree the real decision points. The plan must meet design-tree's executor-ready bar — exact paths, conventions settled in place, a verification check per step — before it goes to the gate. **`ExitPlanMode` is the approval gate.** Trivial changes skip this entirely.
-3. **Build test-first** — runs `tdd` under `code-standards` (and SEO bars when relevant); **runs the suite via Bash** to confirm green. Never takes green on faith.
+3. **Build test-first** — runs `tdd` under `code-standards` and every bar the triage flagged; **runs the suite via Bash** to confirm green. Never takes green on faith.
 4. **Self-review + hand back** — lists the 3–5 riskiest things in the diff, then stops: *"Green and ready. Review the diff, then run `/sonu:ship`."* Never commits or merges.
 
 Two human checkpoints: approve the design (ExitPlanMode), then review the diff and choose to run ship. Everything in between is autonomous.
@@ -220,7 +220,7 @@ A skill, not a command — there's nothing to invoke in plan mode, it fires auto
 It encodes a design methodology built around one core idea: design is traversing a branching tree, not marching a line. What that looks like in practice:
 
 - **Interview first.** Before branching anything, ask 2–4 targeted questions to confirm intent, constraints, success criteria, and non-goals. Designing the right problem saves more context and tokens than anything else.
-- **Load the standards as constraints.** `code-standards` always, plus `safe-migrations`/`seo-standards`/`content-seo`/`infra-standards` when the surface matches — a fork a standard already settles is stated and cited, never treed. The plan-vs-standards conflict gets resolved at design time, not discovered by the executor mid-build.
+- **Load the standards as constraints.** `code-standards` always, plus `safe-migrations`/`seo-standards`/`content-seo`/`infra-standards`/`observability` when the surface matches — a fork a standard already settles is stated and cited, never treed. The plan-vs-standards conflict gets resolved at design time, not discovered by the executor mid-build.
 - **Find the real forks.** Only decision points where the design could genuinely go in ≥2 consequential ways — not trivia, not forced choices.
 - **Enumerate genuine alternatives** at every fork. No strawmen invented to be knocked down.
 - **Record the chosen branch** with a decisive reason (a real constraint, trade-off, or irreversibility) — not a vague preference.
