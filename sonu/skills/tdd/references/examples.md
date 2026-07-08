@@ -187,19 +187,19 @@ Thresholds that actually trip — both sides of the boundary asserted:
 ```js
 // Avoid: production-scale limit — the enforcement branch never executes in any test
 test('rate limiter allows requests', () => {
-  const limiter = new RateLimiter({ maxRequestsPerMinute: 10000 });
+  const limiter = new RateLimiter({ maxRequests: 10000 });
   expect(limiter.allow('client-a')).toBe(true); // never gets near 10000 — the limiting code is untested
 });
 
 // Prefer: a limit the test can reach — assert both sides of the boundary
 test('allows requests within the limit', () => {
-  const limiter = new RateLimiter({ maxRequestsPerMinute: 2 });
+  const limiter = new RateLimiter({ maxRequests: 2 });
   expect(limiter.allow('client-a')).toBe(true);  // 1st of max 2
   expect(limiter.allow('client-a')).toBe(true);  // 2nd of max 2 — still within the limit
 });
 
 test('refuses the first request beyond the limit', () => {
-  const limiter = new RateLimiter({ maxRequestsPerMinute: 2 });
+  const limiter = new RateLimiter({ maxRequests: 2 });
   limiter.allow('client-a');
   limiter.allow('client-a');
   expect(limiter.allow('client-a')).toBe(false); // 3rd of max 2 — the enforcement branch actually runs
