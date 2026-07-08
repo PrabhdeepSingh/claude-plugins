@@ -139,7 +139,7 @@ Don't swallow errors — an empty `catch {}` turns a bug into a silent mystery. 
 
 **The silent fallback is the polished version of the empty catch — and it's worse.** `catch { return [] }` or `?? defaultValue` on a failure path *looks* like robustness, but it converts a crash (loud, findable, fixed today) into wrong data (silent, trusted, discovered months later). A fallback is legitimate only when the degraded behavior is a deliberate *product decision*, and even then it logs the failure and is visibly a fallback.
 
-**At a data boundary, a parse failure must produce a signal.** A parser, deserializer, or extractor that catches its own failure and returns `null`/empty converts breakage into silently missing data — everything downstream keeps running, the dashboards it feeds go quietly wrong, and nothing pages. When parsing external or cross-component data fails, emit a signal: log at error level with the raw input (truncated and redacted per §8), increment an error metric, or rethrow. A default return is acceptable only *alongside* that signal, never instead of it. And the mirror duty when you're the one changing what flows into someone else's parser: enumerate the consumers first — that's [[blast-radius]].
+**At a data boundary, a parse failure must produce a signal.** A parser, deserializer, or extractor that catches its own failure and returns `null`/empty converts breakage into silently missing data — everything downstream keeps running, the dashboards it feeds go quietly wrong, and nothing pages. When parsing external or cross-component data fails, emit a signal: log at error level with the raw input (truncated to a few hundred characters — enough to diagnose, not a payload dump — and redacted per §8), increment an error metric, or rethrow. A default return is acceptable only *alongside* that signal, never instead of it. And the mirror duty when you're the one changing what flows into someone else's parser: enumerate the consumers first — that's [[blast-radius]].
 
 → `references/security.md` — the empty-dashboard example, read when this change adds an error-handling or fallback path.
 
@@ -203,6 +203,8 @@ const rateLimitEnabled = process.env.RATE_LIMIT_ENABLED === 'true';
 ```
 
 Two corollaries: config that is *required* for correct operation fails fast at startup rather than defaulting at all; and the resolved values of behavior-gating flags are logged once at startup (through the §8 logger) so what's actually running is observable, not assumed.
+
+The criterion for which corollary applies: **would running with this thing off be unsafe?** A *feature* gate (a new UI, an experiment, an optimization) defaults off — absence is safe. A *protective control* (auth enforcement, rate limiting, TLS verification) is required config: in production it fails fast at startup when unset, because "off" isn't a safe state for a protection — it's the outage waiting to be discovered. The one thing absence must never do, in either case, is silently choose "on."
 
 ---
 

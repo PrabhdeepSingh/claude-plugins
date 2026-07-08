@@ -165,7 +165,9 @@ test('reduces balance by the withdrawal amount', () => {
 });
 ```
 
-## §10 — the bug-fix reflex, worked
+## §10 — the bug-fix reflex and trippable thresholds, worked
+
+The bug-fix reflex — reproduce before fixing:
 
 ```js
 // Avoid: patch the bug and ship — no proof it's fixed, no protection against regression
@@ -180,7 +182,7 @@ test('rejects negative withdrawal amount', () => {
 // Watch it fail → add the guard in withdraw() → watch it pass → done
 ```
 
-## §10 — thresholds that actually trip
+Thresholds that actually trip — both sides of the boundary asserted:
 
 ```js
 // Avoid: production-scale limit — the enforcement branch never executes in any test
@@ -190,17 +192,17 @@ test('rate limiter allows requests', () => {
 });
 
 // Prefer: a limit the test can reach — assert both sides of the boundary
-test('allows requests under the limit', () => {
+test('allows requests within the limit', () => {
   const limiter = new RateLimiter({ maxRequestsPerMinute: 2 });
-  expect(limiter.allow('client-a')).toBe(true);
-  expect(limiter.allow('client-a')).toBe(true);
+  expect(limiter.allow('client-a')).toBe(true);  // 1st of max 2
+  expect(limiter.allow('client-a')).toBe(true);  // 2nd of max 2 — still within the limit
 });
 
-test('blocks the request that exceeds the limit', () => {
+test('refuses the first request beyond the limit', () => {
   const limiter = new RateLimiter({ maxRequestsPerMinute: 2 });
   limiter.allow('client-a');
   limiter.allow('client-a');
-  expect(limiter.allow('client-a')).toBe(false); // the enforcement branch actually runs
+  expect(limiter.allow('client-a')).toBe(false); // 3rd of max 2 — the enforcement branch actually runs
 });
 ```
 

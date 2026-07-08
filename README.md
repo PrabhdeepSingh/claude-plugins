@@ -163,10 +163,6 @@ A skill, not a command — it fires automatically whenever Claude is diagnosing 
 
 Edit `sonu/skills/debugging/SKILL.md` to make it yours — it's plain Markdown.
 
-### `safe-migrations` — the schema change and the safe path to it are different artifacts
-
-A skill, not a command — it fires automatically whenever Claude writes or edits a database migration, an `ALTER TABLE`, a backfill, or any change where code and schema move together. It encodes zero-downtime discipline: every migration stays compatible one release in each direction (rolling deploys mean old code meets new schema), breaking changes decompose into **expand → migrate → contract** across separate releases, destructive operations ship alone one release late, backfills run as batched/resumable/idempotent jobs (never inside the deploy), every step has a tested down path or an explicit `IRREVERSIBLE` marker, lock-aware DDL forms, and rehearsal against production-shaped data.
-
 ### `blast-radius` — who reads the thing you're changing?
 
 A skill, not a command — it fires automatically whenever a change alters the shape, format, or semantics of anything other code consumes: a function's return value, an API/tool response body, a serialized payload, a DB column read elsewhere, a log or telemetry field, an event message, a config value, or parsed CLI output. Wrapping counts; renaming counts; "the data is still there, just enveloped" counts.
@@ -176,6 +172,10 @@ It encodes consumer-impact discipline in six steps: **name the seam** (an unname
 The motivating failure mode: a locally-correct, fully-tested change to a producer's output format that silently nulls out a downstream parser's data for weeks, because the parser's fallback made breakage look like missing data. This skill makes "who reads this?" a mandatory step instead of an instinct.
 
 Edit `sonu/skills/blast-radius/SKILL.md` to make it yours — it's plain Markdown.
+
+### `safe-migrations` — the schema change and the safe path to it are different artifacts
+
+A skill, not a command — it fires automatically whenever Claude writes or edits a database migration, an `ALTER TABLE`, a backfill, or any change where code and schema move together. It encodes zero-downtime discipline: every migration stays compatible one release in each direction (rolling deploys mean old code meets new schema), breaking changes decompose into **expand → migrate → contract** across separate releases, destructive operations ship alone one release late, backfills run as batched/resumable/idempotent jobs (never inside the deploy), every step has a tested down path or an explicit `IRREVERSIBLE` marker, lock-aware DDL forms, and rehearsal against production-shaped data.
 
 ### `infra-standards` — infrastructure is code: reviewed, planned, least-privileged, boring
 
