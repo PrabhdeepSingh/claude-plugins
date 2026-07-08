@@ -1,6 +1,6 @@
 ---
 name: blast-radius
-description: Consumer-impact discipline for contract changes — before changing the shape, format, or semantics of anything other code consumes, mechanically enumerate every consumer, classify which ones degrade silently, and verify one downstream path end-to-end. INVOKE PROACTIVELY whenever a change alters a function's return value or type, an API/tool response body, a serialized payload (JSON/XML/protobuf), a DB column read elsewhere, a log or telemetry field, an event/queue message, a config value, an env var, or CLI/stdout output that anything parses — even when the change "just wraps," "just renames," or "just adds an envelope around" existing data. Skip it for purely internal changes with no consumers outside the edited function and for strictly additive fields nothing is required to read. (Prevention pairs with [[code-standards]]'s loud-failure rule at data boundaries; verifying the downstream path is [[tdd]] territory; DB schema seams follow [[safe-migrations]].)
+description: Consumer-impact discipline for contract changes — before changing the shape, format, or semantics of anything other code consumes, mechanically enumerate every consumer, classify which ones degrade silently, and verify one downstream path end-to-end. INVOKE PROACTIVELY whenever a change alters a function's return value or type, an API/tool response body, a serialized payload (JSON/XML/protobuf), a DB column read elsewhere, a log or telemetry field, an event/queue message, a config value, an env var, or CLI/stdout output that anything parses — even when the change "just wraps," "just renames," or "just adds an envelope around" existing data. Skip it for purely internal changes with no consumers outside the edited function and for strictly additive optional fields that no consumer is required to read. (Prevention pairs with [[code-standards]]'s loud-failure rule at data boundaries; verifying the downstream path is [[tdd]] territory; DB schema seams follow [[safe-migrations]].)
 ---
 
 # Blast Radius — who reads the thing you're changing?
@@ -11,7 +11,7 @@ A change can be locally correct, fully tested, and still break production — be
 
 Apply it the moment a change alters the **shape, format, or semantics of anything consumed outside the edited code**: a function's return value or type, an API or tool response body, a serialized payload, a database column other code reads, a log or telemetry field, an event or queue message, a config value or env var, or CLI/stdout output that anything parses. Wrapping counts. Renaming counts. Adding an envelope around existing data counts — the bytes a consumer parses are different even though "the data is still there."
 
-Skip it for changes with genuinely no consumers outside the edited function, and for strictly additive optional fields nothing is required to read.
+Skip it for changes with genuinely no consumers outside the edited function, and for strictly additive optional fields that no consumer is required to read.
 
 The test is not "did I change an interface file" — it's **"does anything outside this diff read the bytes, fields, or values I'm changing?"** If you haven't checked, the answer is unknown, and unknown means yes.
 

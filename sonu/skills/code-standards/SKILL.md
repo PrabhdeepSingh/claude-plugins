@@ -190,9 +190,9 @@ An endpoint's response gets baked into clients you don't control, so what you re
 
 → `references/data-and-api.md` — the allowlist example, full status-code list, and migration detail, read when this change touches an endpoint's request or response shape.
 
-## 14. Configuration and feature flags: absent means off
+## 14. Configuration and feature flags: absence must be safe
 
-When a config value, env var, or feature flag that gates behavior is missing or unparseable, it resolves to **off — the safe state — never enabled.** Absent config means the operator never chose; silently activating a feature (or silently running *without* a protection) makes the system behave differently from what its operator believes, with no signal — which is exactly how critical systems break with nobody noticing. A default of `true` must be an explicit, written decision at the definition site, with a comment saying it's deliberate — never the accident of a fallback expression.
+When a config value, env var, or feature flag that gates behavior is missing or unparseable, it resolves to the **safe state — never silently to enabled.** For a feature gate the safe state is off; for a protective control no accidentally-reached state is safe, so it fails fast instead (criterion below). Absent config means the operator never chose; silently activating a feature (or silently running *without* a protection) makes the system behave differently from what its operator believes, with no signal — which is exactly how critical systems break with nobody noticing. A default of `true` must be an explicit, written decision at the definition site, with a comment saying it's deliberate — never the accident of a fallback expression.
 
 ```js
 // Avoid: a missing or misspelled env var silently turns the feature ON
@@ -221,7 +221,7 @@ Run this against your own diff. If any answer is "no," fix it before finishing:
 - Every query selects only needed columns and bounds its result set — filtering/counting in the DB, no N+1?
 - Every external input validated against a schema at the boundary — server-side, allow-lists over deny-lists, client checks treated as UX only; all SQL parameterized (never concatenated); shell/`eval`/path/HTML sanitized or encoded?
 - Errors handled with context, never silently swallowed or defaulted — every parse failure at a data boundary produces a signal (error log, metric, or rethrow), never a bare default; API failures return a generic message (detail logged internally); auth/lookup responses avoid revealing existence?
-- Every behavior-gating config/env/flag resolves to off when missing or malformed (any `true` default an explicit, commented decision), required config fails fast at startup, and resolved flags are logged once at startup?
+- Every behavior-gating config/env/flag resolves to the safe state when missing or malformed — feature gates off, protective controls failing fast, any `true` default an explicit commented decision — and resolved flags are logged once at startup?
 - Every API response built from an explicit allowlist, with honest status codes, one error shape, and pagination on lists?
 - Logging through the shared logger — right level, stable scannable message, structured context, correlation id, zero secrets/PII?
 - Presentation, logic, and data access separated (zero inline styles, zero magic numbers/strings); comments explain *why* only (no commented-out code, no restating the line below); and the change matches the file's existing conventions?

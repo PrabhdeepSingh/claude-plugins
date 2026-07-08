@@ -128,7 +128,7 @@ It opens with **working discipline** — how to approach the task, not just the 
 - **State** — immutability by default, tight scope.
 - **Tooling diagnostics** — fix the cause, never bare-suppress (`as any`, `@ts-ignore`, `eslint-disable` need a narrow scope and a stated reason).
 - **API design** — responses built from explicit field allowlists (never a serialized entity — no leaked hashes/tokens/internal flags), honest status codes, one error shape, pagination from day one, staged deprecation for breaking changes.
-- **Configuration & flags** — absent means off: a missing or malformed env var/flag never silently enables behavior; `true` defaults are explicit commented decisions; required config fails fast; resolved flags logged at startup.
+- **Configuration & flags** — absence must be safe: a missing or malformed env var/flag never silently enables behavior; feature gates default off, protective controls fail fast; `true` defaults are explicit commented decisions; resolved flags logged at startup.
 
 Every rule explains *why* it's there, ships with good/bad examples so it actually sticks, and ends with a self-check the model runs against its own diff. When it's editing an existing codebase, matching that codebase's conventions wins over the guide.
 
