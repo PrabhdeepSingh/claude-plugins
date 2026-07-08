@@ -11,7 +11,7 @@ Prabhdeep (Sonu) Singh's personal [Claude Code](https://claude.com/claude-code) 
 /plugin install sonu@prabhdeep-tools
 ```
 
-Run those once per device. After that, `/sonu:build`, `/sonu:ship`, `/sonu:tdd`, `/sonu:design-tree`, and `/sonu:self-review` are available in every repo on that machine, and the **code-standards**, **tdd**, **debugging**, **safe-migrations**, **infra-standards**, **observability**, **seo-standards**, **content-seo**, **design-tree**, **self-review**, and **pr-conventions** skills ride along automatically — no command to run, they just shape how code and content get written. To pull updates later:
+Run those once per device. After that, `/sonu:build`, `/sonu:ship`, `/sonu:tdd`, `/sonu:design-tree`, and `/sonu:self-review` are available in every repo on that machine, and the **code-standards**, **tdd**, **debugging**, **blast-radius**, **safe-migrations**, **infra-standards**, **observability**, **seo-standards**, **content-seo**, **design-tree**, **self-review**, and **pr-conventions** skills ride along automatically — no command to run, they just shape how code and content get written. To pull updates later:
 
 ```
 /plugin marketplace update prabhdeep-tools
@@ -113,7 +113,7 @@ Runs the `self-review` skill on demand: the 3–5 riskiest spots in the current 
 
 A skill, not a command — there's nothing to invoke. Once the plugin is installed, Claude consults it automatically before writing, generating, or refactoring code in any repo, so AI-written code lands in my style instead of generic boilerplate.
 
-It opens with **working discipline** — how to approach the task, not just the output: think before coding and surface assumptions, build the minimum that solves the problem, look for an existing implementation (codebase, stdlib, dependencies) before writing a fresh one, make surgical changes that trace to the request (reverting dead ends completely), and turn vague asks into verifiable goals — claiming only outcomes you actually observed. Then it encodes the foundation across thirteen areas:
+It opens with **working discipline** — how to approach the task, not just the output: think before coding and surface assumptions, build the minimum that solves the problem, look for an existing implementation (codebase, stdlib, dependencies) before writing a fresh one, make surgical changes that trace to the request (reverting dead ends completely), and turn vague asks into verifiable goals — claiming only outcomes you actually observed. Then it encodes the foundation across fourteen areas:
 
 - **Naming** — intention-revealing names, no `data`/`temp`/`Manager` junk-drawer names.
 - **Schema & API conventions** — `snake_case` fields, UUID ids, `created_date`/`last_modified_date` timestamps in UTC, first/last name stored separately.
@@ -128,6 +128,7 @@ It opens with **working discipline** — how to approach the task, not just the 
 - **State** — immutability by default, tight scope.
 - **Tooling diagnostics** — fix the cause, never bare-suppress (`as any`, `@ts-ignore`, `eslint-disable` need a narrow scope and a stated reason).
 - **API design** — responses built from explicit field allowlists (never a serialized entity — no leaked hashes/tokens/internal flags), honest status codes, one error shape, pagination from day one, staged deprecation for breaking changes.
+- **Configuration & flags** — absent means off: a missing or malformed env var/flag never silently enables behavior; `true` defaults are explicit commented decisions; required config fails fast; resolved flags logged at startup.
 
 Every rule explains *why* it's there, ships with good/bad examples so it actually sticks, and ends with a self-check the model runs against its own diff. When it's editing an existing codebase, matching that codebase's conventions wins over the guide.
 
@@ -148,7 +149,7 @@ It encodes a strict test-first methodology with honest carve-outs (spikes are th
 - **Test doubles** — mock only at architectural seams (database, network, clock); real domain objects throughout the core; no mock returning a mock.
 - **The testing pyramid** — many unit tests, fewer integration, fewest end-to-end; push behavior down to the unit level.
 - **Coverage as byproduct** — use it to find gaps, not to hit a number; a test with no meaningful assertion is negative value.
-- **What to test** — behavior, boundaries, edge cases, error paths; skip trivial pass-throughs and generated code.
+- **What to test** — behavior, boundaries, edge cases, error paths; thresholds (limits, timeouts, caps) at values a test can actually trip, asserting both sides; skip trivial pass-throughs and generated code.
 - **The bug-fix reflex** — reproduce the bug with a failing test before fixing it, every time.
 - **The test is innocent** — a failing test means the code is wrong, not the test; no updating expectations to match broken output, no skips, no broadened assertions, no sleeps.
 
@@ -165,6 +166,16 @@ Edit `sonu/skills/debugging/SKILL.md` to make it yours — it's plain Markdown.
 ### `safe-migrations` — the schema change and the safe path to it are different artifacts
 
 A skill, not a command — it fires automatically whenever Claude writes or edits a database migration, an `ALTER TABLE`, a backfill, or any change where code and schema move together. It encodes zero-downtime discipline: every migration stays compatible one release in each direction (rolling deploys mean old code meets new schema), breaking changes decompose into **expand → migrate → contract** across separate releases, destructive operations ship alone one release late, backfills run as batched/resumable/idempotent jobs (never inside the deploy), every step has a tested down path or an explicit `IRREVERSIBLE` marker, lock-aware DDL forms, and rehearsal against production-shaped data.
+
+### `blast-radius` — who reads the thing you're changing?
+
+A skill, not a command — it fires automatically whenever a change alters the shape, format, or semantics of anything other code consumes: a function's return value, an API/tool response body, a serialized payload, a DB column read elsewhere, a log or telemetry field, an event message, a config value, or parsed CLI output. Wrapping counts; renaming counts; "the data is still there, just enveloped" counts.
+
+It encodes consumer-impact discipline in six steps: **name the seam** (an unnamed contract can't be searched for), **enumerate consumers mechanically** — by grepping for symbols, field names, and parse sites, never from memory, and always including the out-of-band readers (loggers, telemetry, ETL, dashboards) that call-graph intuition structurally misses — **classify each consumer by how it fails** (unaffected / breaks loudly / *degrades silently* — the killer class, hunted via `catch → default`, `|| []`, `?? null` downstream of the seam), **disposition every affected consumer explicitly** (update it, version the contract expand-→-migrate-→-contract style, or accept the break in writing), **verify one downstream path end-to-end** by observing real output — a logged row, an emitted event — not just the producer's green tests, and **record the downstream impact** where the reviewer will see it.
+
+The motivating failure mode: a locally-correct, fully-tested change to a producer's output format that silently nulls out a downstream parser's data for weeks, because the parser's fallback made breakage look like missing data. This skill makes "who reads this?" a mandatory step instead of an instinct.
+
+Edit `sonu/skills/blast-radius/SKILL.md` to make it yours — it's plain Markdown.
 
 ### `infra-standards` — infrastructure is code: reviewed, planned, least-privileged, boring
 
@@ -284,6 +295,8 @@ claude-plugins/
         │   └── SKILL.md     # test-driven development — red-green-refactor
         ├── debugging/
         │   └── SKILL.md     # scientific debugging — reproduce, one hypothesis, revert dead ends
+        ├── blast-radius/
+        │   └── SKILL.md     # consumer impact before changing any consumed contract
         ├── safe-migrations/
         │   └── SKILL.md     # zero-downtime schema changes — expand → migrate → contract
         ├── infra-standards/

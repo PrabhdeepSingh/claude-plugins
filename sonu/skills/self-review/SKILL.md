@@ -32,9 +32,9 @@ Focus on the things that, if wrong, would be hardest to catch in a review and mo
 - **Subtle logic** — branches, edge cases, off-by-ones, conditions that are almost-but-not-quite right.
 - **Security-relevant surfaces** — auth, permissions, input sanitization, data exposure, token/secret handling.
 - **Data integrity / migration risk** — schema changes, destructive writes, non-reversible transformations.
-- **Broad blast radius** — a change to a shared utility, a base class, a widely-imported module, or a config that silently affects many call sites.
+- **Broad blast radius** — a change to a shared utility, a base class, a widely-imported module, or a config that silently affects many call sites. If the diff changes a data shape other components consume and [[blast-radius]] was not run, that is automatically a top-listed risk.
 - **Untested edges** — behavior that the new tests don't cover and that could break in production.
-- **Silent behavior change** — the code "works" but now does something subtly different from before, in a way callers may depend on.
+- **Silent behavior change** — the code "works" but now does something subtly different from before, in a way callers may depend on — especially a consumer that catches failures and returns a default, where the break produces no error at all.
 
 Aim for 3–5 items. If the diff is genuinely low-risk (small, isolated, well-covered by tests), say so plainly — "This diff is low-risk: X, Y, Z" — rather than inventing risks to fill the list.
 

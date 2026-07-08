@@ -180,6 +180,30 @@ test('rejects negative withdrawal amount', () => {
 // Watch it fail → add the guard in withdraw() → watch it pass → done
 ```
 
+## §10 — thresholds that actually trip
+
+```js
+// Avoid: production-scale limit — the enforcement branch never executes in any test
+test('rate limiter allows requests', () => {
+  const limiter = new RateLimiter({ maxRequestsPerMinute: 10000 });
+  expect(limiter.allow('client-a')).toBe(true); // never gets near 10000 — the limiting code is untested
+});
+
+// Prefer: a limit the test can reach — assert both sides of the boundary
+test('allows requests under the limit', () => {
+  const limiter = new RateLimiter({ maxRequestsPerMinute: 2 });
+  expect(limiter.allow('client-a')).toBe(true);
+  expect(limiter.allow('client-a')).toBe(true);
+});
+
+test('blocks the request that exceeds the limit', () => {
+  const limiter = new RateLimiter({ maxRequestsPerMinute: 2 });
+  limiter.allow('client-a');
+  limiter.allow('client-a');
+  expect(limiter.allow('client-a')).toBe(false); // the enforcement branch actually runs
+});
+```
+
 ## §11 — when a test fails, the test is innocent
 
 ```js
