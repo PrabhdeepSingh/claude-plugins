@@ -96,7 +96,9 @@ Test **behavior** (what happens when things go right), **boundaries** (empty, ma
 
 **The bug-fix reflex.** Before fixing any bug, write a test that reproduces it. Confirm it fails. Then fix the bug. Confirm it passes. This is non-negotiable — it proves the fix works, prevents the regression's return, and often reveals the bug was more general than it first appeared. (Finding the root cause is [[debugging]]'s territory; this reflex is how the found fix gets pinned.)
 
-→ `references/examples.md` §10 — reproduce-before-fix example.
+**Thresholds must trip in the test.** When code enforces a limit — a rate limit, quota, timeout, retry cap, buffer size, pagination bound — configure the test with a value small enough to actually reach (a limit of 2–3, a timeout of milliseconds) and assert **both sides of the boundary**: within the threshold passes, the first case beyond it fails. Why: testing with production-scale thresholds means the enforcement branch never executes — the feature reads as covered while the code path that actually limits has never run once. A limit that has never tripped in a test is untested, whatever the coverage report says. This forces the threshold to be injectable rather than hardcoded — which is exactly the design pressure the test is supposed to apply.
+
+→ `references/examples.md` §10 — reproduce-before-fix and trip-the-threshold examples.
 
 ## 11. When a test fails, the test is innocent
 
@@ -133,6 +135,7 @@ Run this against your own diff. Fix any "no" before finishing:
 - Are tests fast, isolated (no shared mutable state or order dependency), and deterministic (no real clock/network/random)?
 - Are test doubles used only at architectural seams — real domain objects throughout the core?
 - If this was a bug fix, did you write a failing test that reproduced the bug *before* fixing it?
+- If the change enforces a threshold (limit, quota, timeout, cap): does a test configure a value small enough to trip, and assert both sides of the boundary — within the threshold passes, beyond it fails?
 - Does each new test actually fail before the implementation and pass after?
 - If any existing test changed: can you name which legitimate case applies (spec change or implementation-detail cleanup), with zero weakening (no updated-to-actual expectations, no skips, no broadened assertions, no sleeps, no try/catch around the failure)?
 - Is the test code held to the same naming, clarity, and structure bar as [[code-standards]]?
@@ -143,4 +146,4 @@ A passing test suite is only as trustworthy as the discipline behind it. If you'
 
 | File | What it answers |
 |------|-----------------|
-| `references/examples.md` | Full worked code for every rule above — the red-green-refactor build, behavior-vs-implementation, AAA, clock injection, mock-only-at-seams, coverage theater, bug-fix reflex, and the test-is-innocent anti-pattern |
+| `references/examples.md` | Full worked code for every rule above — the red-green-refactor build, behavior-vs-implementation, AAA, clock injection, mock-only-at-seams, coverage theater, bug-fix reflex, trip-the-threshold, and the test-is-innocent anti-pattern |

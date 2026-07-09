@@ -139,6 +139,8 @@ Don't swallow errors — an empty `catch {}` turns a bug into a silent mystery. 
 
 **The silent fallback is the polished version of the empty catch — and it's worse.** `catch { return [] }` or `?? defaultValue` on a failure path *looks* like robustness, but it converts a crash (loud, findable, fixed today) into wrong data (silent, trusted, discovered months later). A fallback is legitimate only when the degraded behavior is a deliberate *product decision*, and even then it logs the failure and is visibly a fallback.
 
+**At a data boundary, a parse failure must produce a signal.** A parser, deserializer, or extractor that catches its own failure and returns `null`/empty converts breakage into silently missing data — everything downstream keeps running, the dashboards it feeds go quietly wrong, and nothing pages. When parsing external or cross-component data fails, emit a signal: log at error level with the raw input (truncated to a few hundred characters — enough to diagnose, not a payload dump — and redacted per §8), increment an error metric, or rethrow. A default return is acceptable only *alongside* that signal, never instead of it. And the mirror duty when you're the one changing what flows into someone else's parser: enumerate the consumers first — that's [[blast-radius]].
+
 → `references/security.md` — the empty-dashboard example, read when this change adds an error-handling or fallback path.
 
 ## 8. Logging: through one helper, never raw `console.log`
@@ -188,6 +190,22 @@ An endpoint's response gets baked into clients you don't control, so what you re
 
 → `references/data-and-api.md` — the allowlist example, full status-code list, and migration detail, read when this change touches an endpoint's request or response shape.
 
+## 14. Configuration and feature flags: absence must be safe
+
+When a config value, env var, or feature flag that gates behavior is missing or unparseable, it resolves to the **safe state — never silently to enabled.** For a feature gate the safe state is off; for a protective control no accidentally-reached state is safe, so it fails fast instead (criterion below). Absent config means the operator never chose; silently activating a feature (or silently running *without* a protection) makes the system behave differently from what its operator believes, with no signal — which is exactly how critical systems break with nobody noticing. A default of `true` must be an explicit, written decision at the definition site, with a comment saying it's deliberate — never the accident of a fallback expression.
+
+```js
+// Avoid: a missing or misspelled env var silently turns the feature ON
+const newDashboardEnabled = process.env.NEW_DASHBOARD_ENABLED !== 'false';
+
+// Prefer: absent or malformed resolves to off; only the explicit value enables
+const newDashboardEnabled = process.env.NEW_DASHBOARD_ENABLED === 'true';
+```
+
+Two corollaries: config that is *required* for correct operation fails fast at startup rather than defaulting at all; and the resolved values of behavior-gating flags are logged once at startup (through the §8 logger) so what's actually running is observable, not assumed.
+
+The criterion for which corollary applies: **would running with this thing off be unsafe?** A *feature* gate (a new UI, an experiment, an optimization) defaults off — absence is safe. A *protective control* (auth enforcement, rate limiting, TLS verification) is required config: in production it fails fast at startup when unset, because "off" isn't a safe state for a protection — it's the outage waiting to be discovered. The one thing absence must never do, in either case, is silently choose "on."
+
 ---
 
 ## Self-check before you call it done
@@ -202,7 +220,8 @@ Run this against your own diff. If any answer is "no," fix it before finishing:
 - Every function does one thing at one abstraction level (past the ~30–40-line tripwire → split or justified), with the happy path flat via guard clauses, not nested `if`s?
 - Every query selects only needed columns and bounds its result set — filtering/counting in the DB, no N+1?
 - Every external input validated against a schema at the boundary — server-side, allow-lists over deny-lists, client checks treated as UX only; all SQL parameterized (never concatenated); shell/`eval`/path/HTML sanitized or encoded?
-- Errors handled with context, never silently swallowed or defaulted; API failures return a generic message (detail logged internally); auth/lookup responses avoid revealing existence?
+- Errors handled with context, never silently swallowed or defaulted — every parse failure at a data boundary produces a signal (error log, metric, or rethrow), never a bare default; API failures return a generic message (detail logged internally); auth/lookup responses avoid revealing existence?
+- Every behavior-gating config/env/flag resolves to the safe state when missing or malformed — feature gates off, protective controls failing fast, any `true` default an explicit commented decision — and resolved flags are logged once at startup?
 - Every API response built from an explicit allowlist, with honest status codes, one error shape, and pagination on lists?
 - Logging through the shared logger — right level, stable scannable message, structured context, correlation id, zero secrets/PII?
 - Presentation, logic, and data access separated (zero inline styles, zero magic numbers/strings); comments explain *why* only (no commented-out code, no restating the line below); and the change matches the file's existing conventions?
