@@ -196,10 +196,10 @@ When a config value, env var, or feature flag that gates behavior is missing or 
 
 ```js
 // Avoid: a missing or misspelled env var silently turns the feature ON
-const rateLimitEnabled = process.env.RATE_LIMIT_ENABLED !== 'false';
+const newDashboardEnabled = process.env.NEW_DASHBOARD_ENABLED !== 'false';
 
 // Prefer: absent or malformed resolves to off; only the explicit value enables
-const rateLimitEnabled = process.env.RATE_LIMIT_ENABLED === 'true';
+const newDashboardEnabled = process.env.NEW_DASHBOARD_ENABLED === 'true';
 ```
 
 Two corollaries: config that is *required* for correct operation fails fast at startup rather than defaulting at all; and the resolved values of behavior-gating flags are logged once at startup (through the §8 logger) so what's actually running is observable, not assumed.

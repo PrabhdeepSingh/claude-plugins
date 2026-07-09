@@ -35,7 +35,7 @@ The spine of the plugin — a thin conductor that sequences the whole implementa
 
 What it does:
 
-1. **Triage** the working tree — size (trivial vs. substantial), kind (bug vs. feature), surface (web → SEO bars; schema/data → safe-migrations; IaC/containers/CI → infra-standards; new service/endpoint/job → observability). One line.
+1. **Triage** the working tree — size (trivial vs. substantial), kind (bug vs. feature), surface (web → SEO bars; schema/data → safe-migrations; IaC/containers/CI → infra-standards; new service/endpoint/job → observability; changed data shape another component consumes → blast-radius). One line.
 2. **Design**, in real plan mode — loads `code-standards` (plus the surface-matched bars) as design constraints first, then runs `design-tree` so you interview first and tree the real decision points. The plan must meet design-tree's executor-ready bar — exact paths, conventions settled in place, a verification check per step — before it goes to the gate. **`ExitPlanMode` is the approval gate.** Trivial changes skip this entirely.
 3. **Build test-first** — runs `tdd` under `code-standards` and every bar the triage flagged; **runs the suite via Bash** to confirm green. Never takes green on faith.
 4. **Self-review + hand back** — lists the 3–5 riskiest things in the diff, then stops: *"Green and ready. Review the diff, then run `/sonu:ship`."* Never commits or merges.
