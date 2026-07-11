@@ -21,7 +21,7 @@ Run sections 1–6 in order. They're cheap — a few searches and one real obser
 
 ## 1. Name the seam
 
-Before editing, state in one sentence what contract is changing: the producer, the data shape, and the transport (return value / response body / column / log field / event / stdout). Why: an unnamed seam can't be searched for. "I'm changing how search results come back" is a vibe; "the tool's text channel currently carries raw JSON that callers parse" is a searchable surface with findable consumers.
+Before editing, state in one sentence what contract is changing: the producer, and either the data shape and transport (return value / response body / column / log field / event / stdout) or the published identity (tool, route, command) a caller addresses by name. Why: an unnamed seam can't be searched for. "I'm changing how search results come back" is a vibe; "the tool's text channel currently carries raw JSON that callers parse" is a searchable surface with findable consumers.
 
 The seam includes the **address a consumer uses to reach the producer** — a tool name, an API route, a CLI command — not only the payload it parses. Renaming a tool renames the address clients call, not just the data they read; an invocation by the old name now resolves to nothing instead of returning altered data.
 
@@ -47,7 +47,7 @@ Every affected consumer gets exactly one of these three dispositions, chosen del
 
 1. **Update it in the same change** — the default, but only for consumers you can reach and deploy in lockstep with the change. An external client you don't control can't be "updated in the same change"; if you can't ship its update alongside yours, this disposition doesn't apply to it.
 2. **Version the contract** — publish the new shape alongside the old (a new field next to the old one), migrate consumers, then retire the old shape deliberately. This is [[safe-migrations]]'s expand → migrate → contract, and it generalizes from schemas to every data seam — including identities. When the seam is a published identity with external or caching consumers (a tool name, an API route, a CLI command), this is the *only* safe disposition: keep the old identity **resolving** — an alias or shim that forwards the old name to the new one — through a deprecation window, rather than hard-renaming it. Alias first; announce the deprecation; remove the old identity only after the window has passed and telemetry shows zero calls to it. Never remove the old identity in the same release that adds the new one, and never ship the removal right before you go offline for the weekend or a holiday — the removal is the risky step, and it needs someone watching when it lands.
-3. **Accept the break and write it down** — legitimate only when it's explicit in the change record, never by omission, and never the default for a consumer you couldn't actually reach.
+3. **Accept the break and write it down** — legitimate only when it's explicit in the change record, never by omission, never the default for a consumer you couldn't actually reach, and never available at all for an identity seam with external or caching consumers — §4.2's alias-through-a-window is the only option there.
 
 Why the ceremony: the only wrong option is the implicit one — a consumer that was never dispositioned is a decision made by accident.
 
