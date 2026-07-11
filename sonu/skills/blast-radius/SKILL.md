@@ -1,6 +1,6 @@
 ---
 name: blast-radius
-description: Consumer-impact discipline for contract changes — before changing the shape, format, or semantics of anything other code consumes, mechanically enumerate every consumer, classify which ones degrade silently, and verify one downstream path end-to-end. INVOKE PROACTIVELY whenever a change alters a function's return value or type, an API/tool response body, a serialized payload (JSON/XML/protobuf), a DB column read elsewhere, a log or telemetry field, an event/queue message, a config value, an env var, or CLI/stdout output that anything parses — even when the change "just wraps," "just renames," or "just adds an envelope around" existing data. Skip it for purely internal changes with no consumers outside the edited function and for strictly additive optional fields that no consumer is required to read. (Prevention pairs with [[code-standards]]'s loud-failure rule at data boundaries; verifying the downstream path is [[tdd]] territory; DB schema seams follow [[safe-migrations]].)
+description: Consumer-impact discipline for contract changes — before changing the shape, format, semantics, or published identity of anything other code consumes, mechanically enumerate every consumer, classify which ones degrade silently, and verify one downstream path end-to-end. INVOKE PROACTIVELY whenever a change alters a function's return value or type, an API/tool response body, a serialized payload (JSON/XML/protobuf), a DB column read elsewhere, a log or telemetry field, an event/queue message, a config value, an env var, or CLI/stdout output that anything parses — or whenever it renames or removes an identifier a caller addresses by name, such as an MCP or plugin tool name, an API route or URL, a CLI command or flag, an env var key, or an event type, especially when the callers are external clients you don't control and may have cached the old name. Even when the change "just wraps," "just renames," or "just adds an envelope around" existing data or identity, it counts. Skip it for purely internal changes with no consumers outside the edited function and for strictly additive optional fields that no consumer is required to read. (Prevention pairs with [[code-standards]]'s loud-failure rule at data boundaries; verifying the downstream path is [[tdd]] territory; DB schema seams follow [[safe-migrations]].)
 ---
 
 # Blast Radius — who reads the thing you're changing?
@@ -23,6 +23,8 @@ Run sections 1–6 in order. They're cheap — a few searches and one real obser
 
 Before editing, state in one sentence what contract is changing: the producer, the data shape, and the transport (return value / response body / column / log field / event / stdout). Why: an unnamed seam can't be searched for. "I'm changing how search results come back" is a vibe; "the tool's text channel currently carries raw JSON that callers parse" is a searchable surface with findable consumers.
 
+The seam includes the **address a consumer uses to reach the producer** — a tool name, an API route, a CLI command — not only the payload it parses. Renaming a tool renames the address clients call, not just the data they read; an invocation by the old name now resolves to nothing instead of returning altered data.
+
 ## 2. Enumerate consumers mechanically — never from memory
 
 Search for the seam; don't recall it. Grep for the symbol, the field names, the parse sites (`JSON.parse`, `json.loads`, `Unmarshal`, `deserialize`), the column name, the topic or queue name — in this repo, and in known sibling repos or clients when the seam crosses a service boundary. Memory produces the consumers you wrote; search produces the consumers that exist.
@@ -37,15 +39,21 @@ For every consumer found, put it in one of three buckets:
 - **Breaks loudly** — it throws, 500s, or fails CI. This is the good kind: it will be caught before or immediately after ship.
 - **Degrades silently** — the killer class. Hunt specifically for `try/catch → default`, `|| []`, `?? null`, optional chaining, and "return empty on error" downstream of the seam. Why this bucket gets its own hunt: silent degradation is invisible to tests, error dashboards, and users in the moment — it surfaces weeks later as corrupted analytics or quietly missing data, when the causing deploy is no longer under suspicion.
 
+Two more questions cut across all three buckets and change what "affected" means for a published identity. **Can you reach it?** — an owned, in-repo consumer you can update in the same change, versus an external or uncontrolled client whose runtime you don't touch when you ship. **Does it cache the identity or shape?** — a client that cached a tool name, route, or response shape keeps calling what it remembers; the moment the old identity stops resolving, it errors loudly for the client and invisibly on your own dashboards, because nothing in your system ever logged the failure. A consumer that is both unreachable and caching is the case that turns a rename into an outage — it's why disposition 1 below is off the table for it.
+
 ## 4. Decide per consumer, before shipping
 
 Every affected consumer gets one of exactly three dispositions, chosen deliberately:
 
-1. **Update it in the same change** — the default for consumers you own.
-2. **Version the contract** — publish the new shape alongside the old (a new field next to the old one), migrate consumers, then retire the old shape deliberately. This is [[safe-migrations]]'s expand → migrate → contract, and it generalizes from schemas to every data seam.
-3. **Accept the break and write it down** — legitimate only when it's explicit in the change record, never by omission.
+1. **Update it in the same change** — the default, but only for consumers you can reach and deploy in lockstep with the change. An external client you don't control can't be "updated in the same change"; if you can't ship its update alongside yours, this disposition doesn't apply to it.
+2. **Version the contract** — publish the new shape alongside the old (a new field next to the old one), migrate consumers, then retire the old shape deliberately. This is [[safe-migrations]]'s expand → migrate → contract, and it generalizes from schemas to every data seam — including identities. When the seam is a published identity with external or caching consumers (a tool name, an API route, a CLI command), this is the *only* safe disposition: keep the old identity **resolving** — an alias or shim that forwards the old name to the new one — through a deprecation window, rather than hard-renaming it. Alias first; announce the deprecation; remove the old identity only after the window has passed and telemetry shows zero calls to it. Never remove the old identity in the same release that adds the new one, and never ship the removal right before you go offline for the weekend or a holiday — the removal is the risky step, and it needs someone watching when it lands.
+3. **Accept the break and write it down** — legitimate only when it's explicit in the change record, never by omission, and never the default for a consumer you couldn't actually reach.
 
 Why the ceremony: the only wrong option is the implicit one — a consumer that was never dispositioned is a decision made by accident.
+
+**Avoid:** rename the MCP tool `search` to `searchDocuments`; the server's own tests are green; ship on a Friday afternoon. Every client that had cached the old tool list keeps calling `search`, gets "unknown tool," and errors out — with nobody watching until support tickets arrive Monday. The same shape breaks a hardcoded endpoint (`/v1/search` renamed to `/v1/documents/search`) or a CLI command (`mytool search` renamed to `mytool find`): a cached client, a bookmarked URL, or a pinned script keeps addressing a name that no longer resolves.
+
+**Prefer:** add `searchDocuments` alongside `search`; keep `search` as an alias that delegates to it; mark `search` deprecated in its own description so new clients see the signal; announce the deprecation window; remove `search` only in a later release, after telemetry confirms nothing is still calling it. Old cached clients keep working through the transition; new clients adopt the new name on their own schedule; the removal is a deliberate, watched step instead of an accident that lands over a weekend. The same pattern covers routes (serve both, or `301` the old one to the new — [[seo-standards]]'s redirect rule) and CLI commands (keep the old subcommand as a deprecated alias).
 
 ## 5. Verify one downstream path end-to-end
 
@@ -70,3 +78,4 @@ End the change with a one-paragraph **Downstream impact** statement: the seam, t
 - Does every affected consumer have an explicit disposition — updated, contract versioned, or break accepted in writing?
 - Did you verify at least one downstream consumer end-to-end and *observe* its real output (logged row, emitted event, dashboard value)?
 - Is the Downstream impact statement written where the reviewer will see it?
+- If the change renames or removes a published identifier with external or cached consumers, is the old identity still resolving (alias/shim) through a deprecation window — i.e. not removed in this release?
