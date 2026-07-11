@@ -9,11 +9,11 @@ A change can be locally correct, fully tested, and still break production — be
 
 ## When to apply this
 
-Apply it the moment a change alters the **shape, format, or semantics of anything consumed outside the edited code**: a function's return value or type, an API or tool response body, a serialized payload, a database column other code reads, a log or telemetry field, an event or queue message, a config value or env var, or CLI/stdout output that anything parses. Wrapping counts. Renaming counts. Adding an envelope around existing data counts — the bytes a consumer parses are different even though "the data is still there."
+Apply it the moment a change alters the **shape, format, semantics, or published identity of anything consumed outside the edited code**: a function's return value or type, an API or tool response body, a serialized payload, a database column other code reads, a log or telemetry field, an event or queue message, a config value or env var, CLI/stdout output that anything parses, or an identifier a caller addresses by name (a tool, route, or command). Wrapping counts. Renaming counts — a field or an identifier. Adding an envelope around existing data counts — the bytes a consumer parses are different even though "the data is still there."
 
 Skip it for changes with genuinely no consumers outside the edited function, and for strictly additive optional fields that no consumer is required to read.
 
-The test is not "did I change an interface file" — it's **"does anything outside this diff read the bytes, fields, or values I'm changing?"** If you haven't checked, the answer is unknown, and unknown means yes.
+The test is not "did I change an interface file" — it's **"does anything outside this diff read the bytes, fields, or values I'm changing, or address something by the name I'm changing?"** If you haven't checked, the answer is unknown, and unknown means yes.
 
 Run sections 1–6 in order. They're cheap — a few searches and one real observation — and each exists because skipping it has a specific failure mode.
 
