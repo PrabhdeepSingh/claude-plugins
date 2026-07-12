@@ -22,7 +22,7 @@ These decisions are deliberate. Don't reverse them casually; if one must change,
 | Decision | Why it holds |
 |---|---|
 | **One plugin (`sonu`), one marketplace (`prabhdeep-tools`)** | The repo IS the marketplace. `marketplace.json` at the root points at `./sonu`; everything installable lives under `sonu/`. |
-| **Commands are thin; skills carry the methodology** | A command is an entry point + sequencing; the how-to lives in exactly one skill. `/sonu:tdd` and `/sonu:design-tree` are page-length wrappers. If a command starts explaining methodology, it's duplicating a skill — stop and delegate. |
+| **Commands are thin; skills carry the methodology** | A command exists only where sequencing and gates add something beyond one skill (`/sonu:build`, `/sonu:ship`). A discipline that needs a direct entry point is invoked as `/sonu:<skill-name>` on the skill itself — skills are directly user-invocable and take `argument-hint`/`$ARGUMENTS`. **Never ship a command and a skill under the same name**: they collide on the one shared invocation surface (the docs say the skill shadows the command; observed live behavior has been inconsistent, including launch errors) — that collision shipped once as the `tdd`/`design-tree`/`self-review` wrapper commands and was removed in v2.0.0. |
 | **`/sonu:build` is a conductor, not an implementation** | It sequences design-tree → tdd → self-review and adds only triage and gates. It never re-implements what the skills already say (its own Pitfalls section enforces this). |
 | **`/sonu:ship` is the one deliberately fat command** | Its bulk is incident-hardened, copy-exact shell with the failure lore attached. It delegates what it can (PR bodies and replies → pr-conventions, risk lists → self-review). Do not split it; do not "clean up" a snippet whose comment says copy it exactly. |
 | **No hooks, no agents, no MCP servers, no scripts/** | Zero-dependency Markdown + JSON keeps the plugin installable anywhere with nothing to break. Adding executable machinery needs a strong reason and a PR discussion, not a drive-by. |
@@ -46,7 +46,7 @@ These are law for every contribution. They pre-date this file; this is their can
 
 Definitions a zero-context contributor needs (re-verify against the official Claude Code plugin docs if behavior seems off — see Provenance):
 
-- **Skill** = `sonu/skills/<name>/SKILL.md` with YAML frontmatter carrying `name` and `description`. Skills are **auto-triggered**: the harness matches the task against the description and loads the body when it fits. There is nothing to invoke; the description IS the trigger surface. Registered name is namespaced: `sonu:<name>`.
+- **Skill** = `sonu/skills/<name>/SKILL.md` with YAML frontmatter carrying `name` and `description` (plus optional `argument-hint` for skills meant to be typed directly). Skills are **auto-triggered** — the harness matches the task against the description and loads the body when it fits — and **directly user-invocable** as `/sonu:<name>`, receiving `$ARGUMENTS` in the body. Registered name is namespaced: `sonu:<name>`. Commands and skills share one invocation surface, so a name may exist on only one side (see the architecture contract).
 - **Command** = `sonu/commands/<name>.md`. Invoked explicitly as `/sonu:<name>`. Frontmatter fields used in this repo:
   - `description` — shown in the slash menu; also the model's routing signal.
   - `argument-hint` — placeholder text for the argument, e.g. `"[light|full]"`.
@@ -100,6 +100,7 @@ Each of these bit this repo once. The lesson is already encoded at the point of 
 | Code fences inside markdown list items are indented — an indented heredoc terminator is a zsh parse error | Compose heredocs at column 0; `/validate` dedents before syntax-checking | ship.md Phase 0/1 BODY snippets |
 | Plugin description drifts across its five homes | Version-sync rule 4; run `/release` | this file §2, release.md |
 | A behavior fix without a version bump reaches no installed copy | Every component change bumps the version | this file §1 (pinning) |
+| A command and a skill shipped under the same name collide on the shared invocation surface — `Skill(sonu:<name>)` resolution turns inconsistent (shadowing, launch errors) | One name, one component; direct entry points live on the skill itself (`argument-hint` + `$ARGUMENTS` in the skill) | this file §1 and §3 (incident: the tdd/design-tree/self-review wrappers, removed in v2.0.0) |
 
 ## 6. Validation and release
 
