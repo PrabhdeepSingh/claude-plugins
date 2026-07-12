@@ -18,6 +18,8 @@ Apply this to `$ARGUMENTS` — the text typed after the command. If that token a
 
 The disposition is a **tie-breaker, not an override**: `--orchestrate` never delegates model-tiering's Section 4 categories (design, integration, debugging, security, review-of-delegated-output) and cannot manufacture an executor tier — on a session with no trustworthy tier below it, it still no-ops and builds inline. `--solo` always wins: nothing is delegated regardless of tier.
 
+If both flags are given (or a flag token repeats), `--solo` wins — keeping work in-session is the safe direction. Ignore any other flag-like token in the task text; only these two are recognized.
+
 ---
 
 ## Phase 0 — Triage
@@ -62,7 +64,7 @@ Build the change test-first under the active quality bars:
 
 1. `Skill(sonu:tdd)` — drive the implementation with the red-green-refactor loop. Write the failing test first; write the minimum code to pass; refactor under green. Apply `Skill(sonu:code-standards)` as you go.
 2. Apply every bar the Phase 0 surface flagged (the same set Phase 1 loaded as design constraints), as `Skill(sonu:<name>)`. On the trivial path — where Phase 1 was skipped — this is where the flagged bars load for the first time.
-3. Honor the plan's `[delegate]`/`[delegate-heavy]` tags per `Skill(sonu:model-tiering)` — routing, retries, and verification mechanics all live in that skill. Two things are non-negotiable here: subagents spawn only in this step, and step 1's discipline still governs delegated work (see the failing test in-session before delegating the implementation step that makes it pass). A plan with no tags — or a harness without subagents — builds everything inline; nothing changes.
+3. Honor the plan's `[delegate]`/`[delegate-heavy]` tags per `Skill(sonu:model-tiering)` — routing, retries, and verification mechanics all live in that skill. Two things are non-negotiable here: subagents spawn only in this step, and step 1's discipline still governs delegated work (see the failing test in-session before delegating the implementation step that makes it pass). A plan with no tags — or a harness without subagents — builds everything inline; nothing changes. Under `--solo`, ignore any `[delegate]`/`[delegate-heavy]` tags that may be present and build every step inline regardless — the flag overrides the tags.
 4. **Run the suite via `Bash`.** Don't take green on faith:
    ```bash
    # derive the right command from the repo's package.json / Makefile / README
