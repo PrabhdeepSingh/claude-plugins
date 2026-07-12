@@ -11,7 +11,7 @@ Prabhdeep (Sonu) Singh's personal [Claude Code](https://claude.com/claude-code) 
 /plugin install sonu@prabhdeep-tools
 ```
 
-Run those once per device. After that, `/sonu:build`, `/sonu:ship`, `/sonu:tdd`, `/sonu:design-tree`, and `/sonu:self-review` are available in every repo on that machine, and the **code-standards**, **tdd**, **debugging**, **blast-radius**, **safe-migrations**, **infra-standards**, **observability**, **seo-standards**, **content-seo**, **design-tree**, **self-review**, and **pr-conventions** skills ride along automatically — no command to run, they just shape how code and content get written. To pull updates later:
+Run those once per device. After that, `/sonu:build`, `/sonu:ship`, `/sonu:tdd`, `/sonu:design-tree`, and `/sonu:self-review` are available in every repo on that machine, and the **code-standards**, **tdd**, **debugging**, **blast-radius**, **safe-migrations**, **infra-standards**, **observability**, **seo-standards**, **content-seo**, **design-tree**, **model-tiering**, **self-review**, and **pr-conventions** skills ride along automatically — no command to run, they just shape how code and content get written. To pull updates later:
 
 ```
 /plugin marketplace update prabhdeep-tools
@@ -242,6 +242,14 @@ The tree is written as a compact nested-bullet notation (`✓ chosen — reason`
 
 Edit `sonu/skills/design-tree/SKILL.md` to make it yours — it's plain Markdown.
 
+### `model-tiering` — route the work, keep the judgment
+
+A skill, not a command — it fires when a plan is being written or executed. On a strong session model (one with a trustworthy tier below it on the capability ladder), it turns planning model-aware: each plan step that clears the executor-ready bar gets graded `[delegate]` (mechanical, transcription-grade → the cheapest trustworthy tier) or `[delegate-heavy]` (substantive-but-contained → one tier below the session, or a same-tier subagent when nothing trustworthy sits between — a Fable session sends heavy steps to Opus, an Opus session uses Opus subagents laterally). At execution, tagged steps run as subagents whose output the session verifies itself; untagged steps and all review stay inline.
+
+The routing is deliberately conservative — the motivation is quality via focus, not cost. Anything ambiguous, architectural, integrative, security-sensitive, or downstream of an open `[?]` fork stays on the strong model, and doubt always resolves upward. On a session model with no trustworthy tier below it, the skill notes that in one line and no-ops — it never escalates upward or routes across model families. Tags are advisory by design: a harness without subagents (Cursor today) executes the same plan inline, unchanged.
+
+Edit `sonu/skills/model-tiering/SKILL.md` to make it yours — it's plain Markdown.
+
 ## Developing this plugin
 
 Contributor tooling is **repo-local, not shipped** — it lives in this repo's `.claude/` directory, so it loads automatically for anyone working *on* the plugin (a clone of this repo) and never reaches marketplace users, who'd have no use for it:
@@ -309,6 +317,8 @@ claude-plugins/
         │   └── SKILL.md     # editorial SEO for published prose
         ├── design-tree/
         │   └── SKILL.md     # design by branching tree, not linear narrative
+        ├── model-tiering/
+        │   └── SKILL.md     # grade plan steps for cheaper model tiers; verify their output up top
         ├── self-review/
         │   └── SKILL.md     # 3–5 riskiest things in the diff — pointer, not a score
         └── pr-conventions/

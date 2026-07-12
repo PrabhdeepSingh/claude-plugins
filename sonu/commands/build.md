@@ -1,7 +1,7 @@
 ---
 description: Sequence decide → build → hand back for any feature or fix. Triage the change, run design-tree in plan mode (with you as the approval gate), build test-first under code-standards, then surface the riskiest parts before handing back to /sonu:ship. Never commits or merges. Not for already-built changes (run /sonu:ship) or design-only exploration (run /sonu:design-tree).
 argument-hint: "[feature, fix, or task to build]"
-allowed-tools: Skill, Read, Write, Edit, Bash, EnterPlanMode, ExitPlanMode
+allowed-tools: Skill, Read, Write, Edit, Bash, EnterPlanMode, ExitPlanMode, Agent
 ---
 
 # /build — decide → build → hand back
@@ -39,7 +39,8 @@ Enter plan mode to run the design phase. This is the only pause in the flow — 
 1. `EnterPlanMode` — switches to read-only; the design tree will be written into the plan file.
 2. **Load the quality bars as design constraints** — `Skill(sonu:code-standards)` always, plus **only** the bars the Phase 0 surface flagged, as `Skill(sonu:<name>)`; a bar whose surface wasn't flagged is not loaded. These are the same bars Phase 2 builds under; loading them before the tree is drawn keeps the approved design from conflicting with them. (Loading a skill is read-only — legal in plan mode.)
 3. `Skill(sonu:design-tree)` — interview first (2–4 questions to establish shared understanding, intent, constraints, done-when); then tree the real decision points. The tree lands in the plan file's `## Design Tree` section per design-tree's existing plan-mode behavior.
-4. `ExitPlanMode` — **this is the gate.** Before calling it, verify the plan meets design-tree's executor-ready bar (its Section 8): every judgment call is either resolved or visibly marked `[?]` for the owner to rule on at approval — what must not reach the gate is a decision *hidden* inside an implementation step. Your approval of the plan = approval of the design (including any `[?]` nodes you resolve or accept). Do not proceed to Phase 2 until ExitPlanMode is called and approved.
+4. `Skill(sonu:model-tiering)` — when a trustworthy executor tier sits below the session model, grade delegable plan steps per that skill; otherwise it no-ops (the skill self-detects).
+5. `ExitPlanMode` — **this is the gate.** Before calling it, verify the plan meets design-tree's executor-ready bar (its Section 8): every judgment call is either resolved or visibly marked `[?]` for the owner to rule on at approval — what must not reach the gate is a decision *hidden* inside an implementation step. Your approval of the plan = approval of the design (including any `[?]` nodes you resolve or accept). Do not proceed to Phase 2 until ExitPlanMode is called and approved.
    - **If the plan is rejected:** stay in plan mode, revise the design tree or re-interview the user to address the concern, and call `ExitPlanMode` again. Repeat until approved. Do not proceed to Phase 2 on a rejected plan.
    - **If plan-mode tools are unavailable in this environment** (e.g. Cursor, or any harness without `EnterPlanMode`/`ExitPlanMode`): run the design-tree interview and print the tree in-chat instead, then ask the user for explicit approval of the design and treat their approval message as the gate. The gate itself is non-negotiable; only its mechanism adapts.
 
@@ -53,7 +54,8 @@ Build the change test-first under the active quality bars:
 
 1. `Skill(sonu:tdd)` — drive the implementation with the red-green-refactor loop. Write the failing test first; write the minimum code to pass; refactor under green. Apply `Skill(sonu:code-standards)` as you go.
 2. Apply every bar the Phase 0 surface flagged (the same set Phase 1 loaded as design constraints), as `Skill(sonu:<name>)`. On the trivial path — where Phase 1 was skipped — this is where the flagged bars load for the first time.
-3. **Run the suite via `Bash`.** Don't take green on faith:
+3. Honor the plan's `[delegate]`/`[delegate-heavy]` tags per `Skill(sonu:model-tiering)`: tagged steps run as lower-tier subagents whose output you verify against the step's check; untagged steps and all review stay inline. (A plan with no tags — or a harness without subagents — builds everything inline; nothing changes.)
+4. **Run the suite via `Bash`.** Don't take green on faith:
    ```bash
    # derive the right command from the repo's package.json / Makefile / README
    # e.g.: npm test / pytest / go test ./... / cargo test
