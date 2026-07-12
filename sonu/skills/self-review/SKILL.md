@@ -1,6 +1,8 @@
 ---
 name: self-review
 description: Surface the 3–5 riskiest parts of the current diff so a human reviewer knows exactly where to look hardest. INVOKE PROACTIVELY whenever a change is finished and about to be handed off, reviewed, or shipped — even when the user never says "self-review." Not a substitute for an actual code review — it points attention; it does not find or fix bugs.
+argument-hint: "[what to review — defaults to the current diff]"
+allowed-tools: Skill, Bash, Read
 ---
 
 # Self-review — point attention, don't bless the change
@@ -11,7 +13,7 @@ A self-review is not a score. It is not an approval. It is a pointer: *here are 
 
 - **Conductor hand-back** (`/sonu:build` Phase 3) — before handing back to the user.
 - **Ship PR creation** (`/sonu:ship` Phase 1) — before writing the PR body, so the riskiest items can seed the `## Risk / reviewer attention` section.
-- **Standalone** — any time the user says "self-review", "what should I look at", "what's risky here", or similar; or when a change is finished and about to be handed off.
+- **Standalone** — any time the user says "self-review", "what should I look at", "what's risky here", or similar; or when a change is finished and about to be handed off. When invoked directly as `/sonu:self-review`, review `$ARGUMENTS` — the text typed after the invocation; if that token appears literally or is empty, review the working tree / current branch per the diff-picker below.
 
 ## How to apply this
 

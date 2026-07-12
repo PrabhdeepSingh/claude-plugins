@@ -25,9 +25,11 @@ Run those once per device. After that, `/sonu:build`, `/sonu:ship`, `/sonu:tdd`,
 2. Add a custom marketplace pointing at this repo: `PrabhdeepSingh/claude-plugins`.
 3. Find the **sonu** plugin and click **Install**.
 
-After that, skills auto-apply in every session and the `/sonu:*` commands appear in Cursor's slash-command menu. Updates are pulled when you sync the marketplace in Cursor Settings. (One difference: Cursor has no Claude Code-style plan mode, so `/sonu:build`'s design gate runs in-chat there — the command adapts automatically.)
+After that, skills auto-apply in every session and `/sonu:build` and `/sonu:ship` appear in Cursor's slash-command menu (direct `/sonu:tdd`-style skill invocation depends on Cursor's skill support — the skills themselves ride along and auto-apply either way). Updates are pulled when you sync the marketplace in Cursor Settings. (One difference: Cursor has no Claude Code-style plan mode, so `/sonu:build`'s design gate runs in-chat there — the command adapts automatically.)
 
 ## Commands
+
+`/sonu:build` and `/sonu:ship` are commands proper — they sequence phases and hold gates. `/sonu:tdd`, `/sonu:design-tree`, and `/sonu:self-review` are the skills themselves invoked directly by name: same syntax, same behavior, but no separate command component (a command and a skill can't share a name — they collide on the harness's one invocation surface).
 
 ### `/sonu:build` — decide → build → hand back
 
@@ -74,7 +76,7 @@ Mode words are parsed forgivingly — `quick`/`fast`/`lite` → `light`, and `th
 
 ### `/sonu:tdd` — drive a change test-first
 
-Runs the red-green-refactor loop on a named feature, bug, or behavior. Invokes the `tdd` skill directly.
+Runs the red-green-refactor loop on a named feature, bug, or behavior. This is the `tdd` skill (below) invoked directly — it writes test and implementation files to the working tree, not a printed plan.
 
 ```
 /sonu:tdd                          # apply test-first methodology to the current change
@@ -86,7 +88,7 @@ The `tdd` skill (below) auto-applies the same methodology whenever code is writt
 
 ### `/sonu:design-tree` — design tree mapper
 
-Maps any design problem as an explicit branching tree instead of one linear narrative. Pair it with `/sonu:ship` for complete PR lifecycle coverage: tree the design first, then ship the implementation.
+Maps any design problem as an explicit branching tree instead of one linear narrative. This is the `design-tree` skill (below) invoked directly. Pair it with `/sonu:ship` for complete PR lifecycle coverage: tree the design first, then ship the implementation.
 
 What it does:
 
@@ -101,11 +103,11 @@ What it does:
 /sonu:design-tree auth system      # tree a specific topic
 ```
 
-The `design-tree` skill (below) auto-applies the same methodology in plan mode without needing an explicit invocation.
+The same skill auto-applies in plan mode without an explicit invocation — see its entry under Skills below.
 
 ### `/sonu:self-review` — where should a reviewer look?
 
-Runs the `self-review` skill on demand: the 3–5 riskiest spots in the current diff (untracked files and multi-commit branches included), in plain language, ending with an explicit "this is a pointer, not an approval." `/sonu:build` and `/sonu:ship` already run it automatically at the right moments — this command is for everywhere else.
+The `self-review` skill invoked directly: the 3–5 riskiest spots in the current diff (untracked files and multi-commit branches included), in plain language, ending with an explicit "this is a pointer, not an approval." `/sonu:build` and `/sonu:ship` already run it automatically at the right moments — this invocation is for everywhere else.
 
 ## Skills
 
@@ -136,7 +138,7 @@ Edit `sonu/skills/code-standards/SKILL.md` to make it yours — it's plain Markd
 
 ### `tdd` — test-driven development, baked in
 
-A skill, not a command — there's nothing to invoke. Once the plugin is installed, Claude follows the red-green-refactor discipline automatically whenever it writes, changes, or tests code in any repo — even when "TDD" or "tests" aren't mentioned. It also fires on the explicit `/sonu:tdd` command.
+Auto-applied — once the plugin is installed, Claude follows the red-green-refactor discipline whenever it writes, changes, or tests code in any repo, even when "TDD" or "tests" aren't mentioned. `/sonu:tdd` (above) is this same skill invoked directly by name; there is no separate command component.
 
 It encodes a strict test-first methodology with honest carve-outs (spikes are thrown away and rebuilt test-first; code never lands without tests) across twelve areas:
 
@@ -216,7 +218,7 @@ Edit `sonu/skills/pr-conventions/SKILL.md` to tune the templates or add new chan
 
 ### `self-review` — point attention at the riskiest parts
 
-A skill, not a command — there's nothing to invoke. Once the plugin is installed, Claude runs it automatically at two moments: before handing back from `/sonu:build` (so you know where to look before you run `/sonu:ship`), and before creating the PR in `/sonu:ship` (so the riskiest items are embedded in the PR body for traceability and surfaced in the final report).
+Auto-applied — once the plugin is installed, Claude runs it at two moments without being asked: before handing back from `/sonu:build` (so you know where to look before you run `/sonu:ship`), and before creating the PR in `/sonu:ship` (so the riskiest items are embedded in the PR body for traceability and surfaced in the final report). `/sonu:self-review` (above) is this same skill invoked directly by name.
 
 What it produces: a plain-language list of the **3–5 spots in the diff** that a reviewer should look hardest at — subtle logic, security-relevant surfaces, data integrity risk, broad blast radius, untested edges, silent behavior changes. One line per item with `file:line` where helpful.
 
@@ -226,7 +228,7 @@ The same reasoning applies when you ask for a self-review manually — "what sho
 
 ### `design-tree` — decide by branching, not by marching
 
-A skill, not a command — there's nothing to invoke in plan mode, it fires automatically when you're designing or planning an implementation approach. The explicit counterpart is `/sonu:design-tree` (above), which you can call manually at any time.
+Auto-applied — it fires automatically whenever you're designing or planning an implementation approach, especially in plan mode. `/sonu:design-tree` (above) is this same skill invoked directly by name at any time; there is no separate command component.
 
 It encodes a design methodology built around one core idea: design is traversing a branching tree, not marching a line. What that looks like in practice:
 
@@ -292,11 +294,8 @@ claude-plugins/
     │   └── plugin.json      # Cursor plugin manifest (byte-identical mirror of the Claude one)
     ├── commands/
     │   ├── build.md         # /sonu:build — conductor: design gate → tdd build → risk hand-back
-    │   ├── ship.md          # /sonu:ship — PR babysitter
-    │   ├── design-tree.md   # /sonu:design-tree
-    │   ├── tdd.md           # /sonu:tdd
-    │   └── self-review.md   # /sonu:self-review
-    └── skills/              # auto-applied skills (nothing to invoke)
+    │   └── ship.md          # /sonu:ship — PR babysitter
+    └── skills/              # auto-applied; tdd, design-tree, self-review also invoke directly as /sonu:<name>
         ├── code-standards/
         │   └── SKILL.md     # how code gets written
         ├── tdd/
