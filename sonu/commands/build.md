@@ -12,13 +12,13 @@ Apply this to `$ARGUMENTS` — the text typed after the command. If that token a
 
 **Delegation disposition (optional flag).** `$ARGUMENTS` may carry one flag that sets model-tiering's disposition for this run up front, so the fan-out decision is yours rather than a mid-build judgment call. Strip the flag token from the task text before deriving the task:
 
-- `--orchestrate` — pre-authorize fan-out. At Phase 1 step 4, tag **every** step that clears model-tiering's four criteria, and break genuine ties toward delegating.
+- `--orchestrate` — pre-authorize fan-out. At Phase 1 step 4, tag **every** step that clears model-tiering's four criteria — where the author would otherwise leave such a step in-session out of habit or a vague hunch, tag it instead. It does **not** relax the rule that doubt about any of the four criteria removes the tag: a step that doesn't clearly clear all four still stays in-session.
 - `--solo` — keep everything in-session. Skip model-tiering tagging entirely; Phase 2 builds inline.
 - *neither* — model-tiering's own balanced judgment (the default).
 
 The disposition is a **tie-breaker, not an override**: `--orchestrate` never delegates model-tiering's Section 4 categories (design, integration, debugging, security, review-of-delegated-output) and cannot manufacture an executor tier — on a session with no trustworthy tier below it, it still no-ops and builds inline. `--solo` always wins: nothing is delegated regardless of tier.
 
-If both flags are given (or a flag token repeats), `--solo` wins — keeping work in-session is the safe direction. Ignore any other flag-like token in the task text; only these two are recognized.
+If both `--orchestrate` and `--solo` are given, `--solo` wins — keeping work in-session is the safe direction. A repeated single flag (e.g. `--orchestrate --orchestrate`) is just that flag, deduped — not a conflict. Ignore any other flag-like token in the task text; only these two are recognized.
 
 ---
 
