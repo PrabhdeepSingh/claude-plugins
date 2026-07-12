@@ -48,7 +48,11 @@ Two human checkpoints: approve the design (ExitPlanMode), then review the diff a
 /sonu:build                                # build whatever's in context
 /sonu:build add cart checkout flow         # build a specific feature
 /sonu:build fix the off-by-one in totals   # drive a specific fix
+/sonu:build add the export endpoint --orchestrate   # pre-authorize fan-out
+/sonu:build tweak the auth refresh --solo           # keep it all in-session
 ```
+
+Optional `--orchestrate` / `--solo` flags set the [`model-tiering`](#model-tiering--route-the-work-keep-the-judgment) disposition for the run: `--orchestrate` pre-authorizes fan-out (tag every step that clears the delegation bar, break ties toward delegating), `--solo` keeps every step in-session. Neither = the skill's own balanced judgment. The flag is a tie-breaker, not an override — it never delegates design/integration/debugging/security/review work, and can't manufacture an executor tier that isn't there.
 
 ### `/sonu:ship` — PR babysitter
 
