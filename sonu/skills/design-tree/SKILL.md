@@ -2,6 +2,7 @@
 name: design-tree
 description: Make design decisions as an explicit branching tree with recorded alternatives and rationale, instead of one linear narrative. INVOKE PROACTIVELY whenever planning or designing an implementation approach, weighing how to build a feature, choosing between architectures/libraries/data models/APIs, or working in plan mode — even when the user never says "design tree." Skip it for trivial or forced changes with no genuine alternatives.
 argument-hint: "[topic or decision to tree]"
+allowed-tools: Skill, Read, Write, Edit
 ---
 
 # Design Tree — decide by branching, not by marching
@@ -14,7 +15,7 @@ This skill makes you design that way: interview first to confirm you're solving 
 
 Before mapping any decision, **interview the user.** Before branching, before enumerating anything — ask. A few sharp, targeted questions about intent, constraints, success criteria, and non-goals are the highest-leverage work in any design task. Designing the right problem is worth more than any number of well-reasoned branches on the wrong one.
 
-When planning or designing an approach, run through this in sequence: interview → load applicable standards → find decision points → enumerate alternatives → record choices and rationale → emit the tree. When invoked directly as `/sonu:design-tree`, apply it to `$ARGUMENTS` — the text typed after the invocation; if that token appears literally or is empty, apply it to the current design, plan, or discussion in context. When in plan mode, write the tree into the plan file's `## Design Tree` section; otherwise print it in-chat.
+When planning or designing an approach, run through this in sequence: interview → load applicable standards → find decision points → enumerate alternatives → record choices and rationale → emit the tree. When invoked directly as `/sonu:design-tree`, apply it to `$ARGUMENTS` — the text typed after the invocation; if that token appears literally or is empty, apply it to the current design, plan, or discussion in context; and if the intent is to design AND implement end-to-end, run `/sonu:build` instead — it runs this methodology as its design gate, then builds test-first and self-reviews. When in plan mode, write the tree into the plan file's `## Design Tree` section; otherwise print it in-chat.
 
 ---
 

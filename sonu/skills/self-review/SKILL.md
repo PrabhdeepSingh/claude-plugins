@@ -2,6 +2,7 @@
 name: self-review
 description: Surface the 3–5 riskiest parts of the current diff so a human reviewer knows exactly where to look hardest. INVOKE PROACTIVELY whenever a change is finished and about to be handed off, reviewed, or shipped — even when the user never says "self-review." Not a substitute for an actual code review — it points attention; it does not find or fix bugs.
 argument-hint: "[what to review — defaults to the current diff]"
+allowed-tools: Skill, Bash, Read
 ---
 
 # Self-review — point attention, don't bless the change

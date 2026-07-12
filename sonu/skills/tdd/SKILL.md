@@ -2,6 +2,7 @@
 name: tdd
 description: Test-driven development — the red-green-refactor discipline for writing code that's correct by design, not by accident. INVOKE PROACTIVELY — even when the user never says "TDD" or "tests" — whenever writing or changing code, implementing a feature, fixing a bug, adding/running/naming tests, structuring a test suite, or choosing what to mock. (Pairs with [[code-standards]] — tests are code held to the same bar.)
 argument-hint: "[feature, bug, or behavior to drive with tests]"
+allowed-tools: Skill, Read, Write, Edit
 ---
 
 # TDD — test-first, every time
@@ -14,7 +15,7 @@ Follow these rules the same way you follow [[code-standards]] — as the instinc
 
 Before writing a single line of production code, write the failing test. Let the test drive the design. Then write the minimum code to make it pass. Then refactor. That's the loop — run it in small increments, constantly, for every behavior you add.
 
-**Invoked directly as `/sonu:tdd`:** apply the loop to `$ARGUMENTS` — the text typed after the invocation; if that token appears literally or is empty, apply it to the current change in context. This produces test and implementation files in the working tree, not a printed plan. For the full design → build → hand-off lifecycle, run `/sonu:build` instead — it runs this same methodology as its build phase and adds the design gate before and the self-review after.
+**Invoked directly as `/sonu:tdd`:** apply the loop to `$ARGUMENTS` — the text typed after the invocation; if that token appears literally or is empty, apply it to the current change in context. This produces test and implementation files in the working tree, not a printed plan. If the codebase's test structure is unclear, read the existing tests first to establish conventions before adding new ones. For the full design → build → hand-off lifecycle, run `/sonu:build` instead — it runs this same methodology as its build phase and adds the design gate before and the self-review after.
 
 When you finish a change, run the self-check at the bottom against your own diff.
 
