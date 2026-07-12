@@ -22,7 +22,7 @@ Identify the session model however the harness exposes it — in Claude Code the
 
 **Never route across families** — a subagent always runs a model from the session's own family. A model whose family has no ladder under Provenance — including any non-Claude model a multi-model harness may be running — has no position and therefore no executor tiers: skip routing. (Provenance currently carries the Claude family ladder only; a new family is supported by adding its verified ladder there, with no change to this section.)
 
-Names and ladder order are volatile facts and live only in the Provenance table — cite it, don't restate it.
+Names and ladder order are volatile facts whose only authoritative home is the Provenance table. Worked examples elsewhere in this skill illustrate the current table; when the table changes, re-derive from it — never treat an example as a second source.
 
 **The uncertainty asymmetry:** if you cannot locate yourself on the ladder with confidence, assume no tier sits below you and skip routing. A strong session that mistakenly skips loses nothing but focus; a session that wrongly believes tiers sit below it delegates work it cannot be trusted to verify.
 
@@ -40,7 +40,7 @@ Only delegable steps carry a marker; **an untagged step stays in the session**. 
    Verify: `pytest tests/cache/` green.
 ```
 
-Worked mapping against the current Provenance ladder: on a Fable session, `[delegate]` → Sonnet and `[delegate-heavy]` → Opus; on an Opus session, `[delegate]` → Sonnet and `[delegate-heavy]` → an Opus subagent (lateral — Sonnet is the only trustworthy tier below, and it is already where the light grade goes; forcing heavy work down to it would trade quality for cost). Grades never map above the session tier.
+Worked mapping, illustrating the current Provenance ladder (the table is authoritative — re-derive these if it changes): on a Fable session, `[delegate]` → Sonnet and `[delegate-heavy]` → Opus; on an Opus session, `[delegate]` → Sonnet and `[delegate-heavy]` → an Opus subagent (lateral — Sonnet is the only trustworthy tier below, and it is already where the light grade goes; forcing heavy work down to it would trade quality for cost). Grades never map above the session tier.
 
 Grades — not model names — go in the plan. A tag naming a concrete model rots when the ladder moves and breaks when a different session executes the plan; a grade stays portable across sessions and model generations.
 
