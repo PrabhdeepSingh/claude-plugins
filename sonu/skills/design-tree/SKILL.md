@@ -141,7 +141,7 @@ Use a compact nested-bullet format. Scannable at a glance, not prose.
 - **Give each step a verification check** — the command to run and what success looks like, so a step that landed wrong is caught immediately, not three steps later.
 - **Hide no judgment calls** — if writing a step requires a decision, that's an unfinished fork: resolve it in the tree, or mark it `[?]` so the owner rules on it at the approval gate. A visible `[?]` is honest and allowed; what's forbidden is a decision buried inside an implementation step for the executor to make silently.
 
-On an orchestrator-class session model, this bar is also the delegation bar: [[model-tiering]] grades the steps that clear it for execution by a cheaper model tier — the routing methodology lives there.
+On an orchestrator-class session model, this bar is also the delegation bar: [[model-tiering]] grades the steps that clear it for delegated execution by subagents — the routing methodology, and which model tier each grade maps to, lives there.
 
 **Manual call (`/sonu:design-tree`):** print the tree in-chat. If a plan file is active, offer to write it into the plan file.
 

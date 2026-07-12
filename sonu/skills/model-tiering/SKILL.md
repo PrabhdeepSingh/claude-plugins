@@ -9,7 +9,7 @@ A strong model's scarcest resource mid-build is clean context. Every mechanical,
 
 ## How to apply this
 
-Locate your tier first, before writing any plan step. You may orchestrate only if at least one trustworthy executor tier sits strictly below your session model on the ladder (see Provenance). If none does, note it in one line — "Session model has no executor tier below it; executing inline without model routing" — and stop applying this skill: write and execute the plan exactly as you would without it, no tags, no subagents. **Never route upward.** A session must not spawn a subagent above its own tier to compensate — the judgment this skill protects has to sit in the session itself, where the user's context and the approval gate are, not inside a subagent that returns a summary. (Same-tier subagents are allowed only for `[delegate-heavy]` steps on a qualifying orchestrator session — see Section 2; a session that doesn't qualify skips routing entirely.)
+Locate your tier first — before any step is tagged. You may orchestrate only if at least one trustworthy executor tier sits strictly below your session model on the ladder (see Provenance). If none does, note it in one line — "Session model has no executor tier below it; executing inline without model routing" — and stop applying this skill: write and execute the plan exactly as you would without it, no tags, no subagents. **Never route upward.** A session must not spawn a subagent above its own tier to compensate — the judgment this skill protects has to sit in the session itself, where the user's context and the approval gate are, not inside a subagent that returns a summary. (Same-tier subagents are allowed only for `[delegate-heavy]` steps on a qualifying orchestrator session — see Section 2; a session that doesn't qualify skips routing entirely.)
 
 The skill then applies at two moments:
 
@@ -31,13 +31,13 @@ Names and ladder order are volatile facts and live only in the Provenance table 
 Only delegable steps carry a marker; **an untagged step stays in the session**. That direction is deliberate: absence is safe. A plan written without this skill, an old plan, or a harness that ignores tags all behave exactly as today — a missing tag can never accidentally delegate; only a deliberately placed one can. Markers go on the step's first line, echoing the `[?]` bracket vocabulary plans already use for open forks.
 
 - `[delegate]` — mechanical, transcription-grade work: tests from enumerated cases, renames, boilerplate, applying a stated pattern across listed files. Maps to the **cheapest trustworthy executor tier** on the ladder.
-- `[delegate-heavy]` — substantive-but-contained work: writing real logic to interfaces and constraints the plan has already settled (a module to given signatures, an algorithm to a stated contract). Maps to the **strongest trustworthy tier strictly below the session model; if none exists there, a same-tier (lateral) subagent**. The point is offloading the session's context, and capability must not drop on exactly the steps graded as needing the most. Lateral applies to this grade only — `[delegate]` work is transcription-grade by definition and never needs session-grade capability.
+- `[delegate-heavy]` — substantive-but-contained work: writing real logic to interfaces and constraints the plan has already settled (a module to given signatures, an algorithm to a stated contract). Maps to the **strongest trustworthy tier sitting strictly between the `[delegate]` tier and the session model; when no tier sits in that gap, a same-tier (lateral) subagent**. Heavy work never lands on the tier the light grade already uses — the point is offloading the session's context, and capability must not drop on exactly the steps graded as needing the most. Lateral applies to this grade only — `[delegate]` work is transcription-grade by definition and never needs session-grade capability.
 
 ```
 3. [delegate] Add the `parse_totals` unit tests in tests/test_totals.py covering the
    three boundary cases listed in step 2. Verify: `pytest tests/test_totals.py` green.
-5. [delegate-heavy] Implement src/cache/lru.py to the class signature in step 4,
-   tests per step 5. Verify: `pytest tests/cache/` green.
+5. [delegate-heavy] Implement src/cache/lru.py to the class signature in step 4.
+   Verify: `pytest tests/cache/` green.
 ```
 
 Worked mapping against the current Provenance ladder: on a Fable session, `[delegate]` → Sonnet and `[delegate-heavy]` → Opus; on an Opus session, `[delegate]` → Sonnet and `[delegate-heavy]` → an Opus subagent (lateral — Sonnet is the only trustworthy tier below, and it is already where the light grade goes; forcing heavy work down to it would trade quality for cost). Grades never map above the session tier.
@@ -87,6 +87,8 @@ Categorical — no tag on any of these, regardless of how well they score agains
 ## 5. Honoring tags at execution
 
 For each tagged step, spawn a subagent with the harness's subagent tool (the Agent tool in Claude Code), its model set per the grade mapping in Section 2 against the ladder in Provenance. The subagent's prompt is the step's text verbatim plus the exact paths and settled conventions the step names — nothing more. When it returns, **run the step's verification check yourself**; never accept the subagent's own report of success. Adjacent tagged steps with no dependency between them may run in parallel.
+
+Delegation changes who does the typing, not the bars the build is under. Any discipline in force for the build — a failing test observed before the implementation that makes it pass, a standards skill's constraint — still applies to delegated steps, and observing it stays in the session: when a delegated step's tests exist before its implementation, run them yourself and see them fail before you delegate the implementation step.
 
 If the check fails: fix the specification if the failure was a specification gap and re-delegate **once** (a failing `[delegate]` step may re-delegate at the heavier grade); otherwise take the step over inline. Never loop a subagent against a failing check.
 

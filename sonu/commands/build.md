@@ -54,7 +54,7 @@ Build the change test-first under the active quality bars:
 
 1. `Skill(sonu:tdd)` — drive the implementation with the red-green-refactor loop. Write the failing test first; write the minimum code to pass; refactor under green. Apply `Skill(sonu:code-standards)` as you go.
 2. Apply every bar the Phase 0 surface flagged (the same set Phase 1 loaded as design constraints), as `Skill(sonu:<name>)`. On the trivial path — where Phase 1 was skipped — this is where the flagged bars load for the first time.
-3. Honor the plan's `[delegate]`/`[delegate-heavy]` tags per `Skill(sonu:model-tiering)`: tagged steps run as lower-tier subagents whose output you verify against the step's check; untagged steps and all review stay inline. (A plan with no tags — or a harness without subagents — builds everything inline; nothing changes.)
+3. Honor the plan's `[delegate]`/`[delegate-heavy]` tags per `Skill(sonu:model-tiering)`: tagged steps run as subagents on the tier that skill maps for each grade, and you verify each one's output against the step's check yourself; untagged steps and all review stay inline. Step 1's discipline still governs delegated work — see the failing test in-session before delegating the implementation step that makes it pass. Subagents are spawned only here, and only as that skill directs. (A plan with no tags — or a harness without subagents — builds everything inline; nothing changes.)
 4. **Run the suite via `Bash`.** Don't take green on faith:
    ```bash
    # derive the right command from the repo's package.json / Makefile / README
