@@ -46,7 +46,7 @@ These are law for every contribution. They pre-date this file; this is their can
 
 Definitions a zero-context contributor needs (re-verify against the official Claude Code plugin docs if behavior seems off — see Provenance):
 
-- **Skill** = `sonu/skills/<name>/SKILL.md` with YAML frontmatter carrying `name` and `description` (plus optional `argument-hint` for skills meant to be typed directly). Skills are **auto-triggered** — the harness matches the task against the description and loads the body when it fits — and **directly user-invocable** as `/sonu:<name>`, receiving `$ARGUMENTS` in the body. Registered name is namespaced: `sonu:<name>`. Commands and skills share one invocation surface, so a name may exist on only one side (see the architecture contract).
+- **Skill** = `sonu/skills/<name>/SKILL.md` with YAML frontmatter carrying `name` and `description` (plus, for skills meant to be typed directly, optional `argument-hint` and `allowed-tools` — the same prompt-reduction field commands use, carried over so a direct invocation keeps its pre-approved tool set). Skills are **auto-triggered** — the harness matches the task against the description and loads the body when it fits — and **directly user-invocable** as `/sonu:<name>`, receiving `$ARGUMENTS` in the body. Registered name is namespaced: `sonu:<name>`. Commands and skills share one invocation surface, so a name may exist on only one side (see the architecture contract).
 - **Command** = `sonu/commands/<name>.md`. Invoked explicitly as `/sonu:<name>`. Frontmatter fields used in this repo:
   - `description` — shown in the slash menu; also the model's routing signal.
   - `argument-hint` — placeholder text for the argument, e.g. `"[light|full]"`.
