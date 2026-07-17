@@ -25,7 +25,7 @@ Handles everything from the current working-tree state through a clean, merged P
 LEDGER="$(git rev-parse --git-dir)/sonu-ship-ledger.md"
 ```
 
-- **Create it in Phase 0** and **rewrite it at the end of every phase** with the current facts, one per line: `repo:`, `base:`, `branch:`, `pr:`, `mode:`, `phase_done:`, `cycles_used:`, `last_fix_sha:`, `prev_at:`, `handled_comment_ids:` (comma-separated), `open_items:` (anything mid-flight).
+- **Create it in Phase 0** and **rewrite it at the end of every phase** with the current facts, one per line: `repo:`, `base:`, `branch:`, `pr:`, `mode:`, `phase_done:`, `prepr_passes:`, `prepr_reviewed_sha:`, `cycles_used:`, `last_fix_sha:`, `prev_at:`, `handled_comment_ids:` (comma-separated), `open_items:` (anything mid-flight).
 - **Whenever you are unsure of the current state** — after a context compaction, a long wait, or an interrupted turn — read the ledger *before* touching the PR, and resume from `phase_done`, not from memory. The ledger is the source of truth for literal values the snippets need (`PR`, `PREV_AT`, handled IDs).
 - **Delete it after the merge** (`rm -f "$LEDGER"`) as part of the final report — a stale ledger must never leak into the next run.
 
@@ -81,7 +81,7 @@ When `light` skips a review, say so in one line in the final report — don't le
 1. Stage relevant files **by name**. Never `git add -A` — exclude `.env*`, secrets, unrelated files.
 2. Commit in the repo style (imperative, ≤72-char subject). **No AI attribution / no `Co-Authored-By` trailer** (see the contract above).
 3. `git push -u origin "$(git branch --show-current)"`.
-4. **Run `Skill(sonu:self-review)` on the committed diff** (`git show HEAD` / `git diff HEAD^ HEAD` — the working tree is clean at this point, so `git diff HEAD` would return nothing). This surfaces the 3–5 riskiest spots in the change so they can be embedded in the PR body for traceability and shown to the owner. Capture the list — call it `RISKS`.
+4. **Run the Phase 1.5 pre-PR fix loop (below)** on the committed diff. It reviews, fixes, and re-reviews *before* any reviewer sees the change; its final pass's risk list is `RISKS` — the 3–5 riskiest spots, embedded in the PR body for traceability and shown to the owner.
 5. **Invoke `Skill(sonu:pr-conventions)`** to compose the PR body — the skill scans for a team `PULL_REQUEST_TEMPLATE` first (wins over built-ins if found), classifies the change type from the branch name / commit prefix / diff, fills the matching per-type template, and embeds the `RISKS` list from step 4 in the risk section. Do not put any AI-attribution line in the body. **Capture the composed text into `BODY` explicitly** (never pass `--body "$BODY"` with an unset variable — that opens the PR with a blank description):
    ```bash
    # Compose this at column 0 — a heredoc terminator (PREOF) must start the line, unindented.
@@ -96,6 +96,21 @@ When `light` skips a review, say so in one line in the final report — don't le
 > If automatic Copilot review is already enabled on the repo, `--reviewer "@copilot"` is harmless (idempotent). If the repo has no Copilot access, the request errors — note it and continue with whatever else reviews.
 
 > **Verifying the request landed:** do NOT trust `gh pr view --json reviewRequests` — it returns empty for *bot* reviewers even when Copilot is correctly requested. Confirm with the raw REST endpoint instead: `gh api /repos/$REPO/pulls/$PR --jq '.requested_reviewers[].login'` (shows `Copilot`), or the timeline `review_requested` event.
+
+---
+
+## Phase 1.5 — Pre-PR fix loop (review → fix → re-review, until dry)
+
+**Why here:** a finding caught before `gh pr create` costs one local edit; the same finding caught after costs a bot round — wait, reply, resolve, re-review — and the fix commits themselves become fresh material for the next bot pass. So the whole review → fix → re-review cycle runs *before* any reviewer sees the change. **This loop is mandatory whenever the run reaches it with commits to review; the pass cap limits how many passes, not whether the loop runs.** The one shortening is by effort mode: in **`light`**, run exactly one pass — review, fix what it finds, done, no re-review. `auto`/`full` run the full loop.
+
+1. **Pass 1 — review the whole branch.** `Skill(sonu:self-review)` on the committed branch diff (`git diff origin/<base>...HEAD` — the working tree is clean here, so `git diff HEAD` would return nothing; for a single-commit branch `git show HEAD` is equivalent). The skill self-gates: a small diff gets its inline pass, a substantial one gets its lens fan-out.
+2. **Partition the findings** exactly as Phase 3 does: valid → `FIX`; already-correct / intentional / nitpick → `JUSTIFY` (keep the justifications — they seed the PR body and any later bot rebuttals).
+3. **Apply every `FIX` in this session** (never delegated), then re-run the repo's test suite. **Green gates the loop** — do not proceed to the next pass, and do not open the PR, with a red suite. Commit the fixes in the repo style (imperative, ≤72-char subject, no AI attribution — the Phase 1 rules apply to these commits too).
+4. **Re-review the delta.** Run `Skill(sonu:self-review)` again scoped to what changed since the last reviewed state: `git diff <prepr_reviewed_sha>..HEAD` plus the full content of any file the fixes touched. New findings → back to step 2 with only those.
+5. **Terminate on a dry pass or the cap.** A pass yielding zero `FIX` items is **dry** — `git push` any fix commits (Phase 1 step 3 pushed before this loop ran, so the loop's own commits are not on the remote yet), record the final risk list as `RISKS`, and proceed to Phase 1 step 5. Hard cap: **3 passes**. If pass 3 still yields fixes, apply them, get the suite green, push, record the still-open concerns in `RISKS` (they become reviewer-attention items, not silent omissions), and proceed — never loop past the cap.
+6. **Ledger after every pass:** update `prepr_passes:` and `prepr_reviewed_sha:` (the HEAD SHA the last completed review actually covered). On resume after a compaction or interruption, those two fields say exactly which pass you're in and what the next delta diff is — re-derive from the ledger, not from memory.
+
+**Boundaries:** this loop runs only before the PR exists (on the Phase 0 existing-PR path, Phase 1 step 4 still runs it before pushing new commits — same mechanics, its findings just land as fix commits on the open PR). It never replaces Phases 2–6: the bots and the post-PR loop remain the backstop for whatever this loop missed.
 
 ---
 
