@@ -11,7 +11,7 @@ Prabhdeep (Sonu) Singh's personal [Claude Code](https://claude.com/claude-code) 
 /plugin install sonu@prabhdeep-tools
 ```
 
-Run those once per device. After that, `/sonu:build`, `/sonu:ship`, `/sonu:tdd`, `/sonu:design-tree`, and `/sonu:self-review` are available in every repo on that machine, and the **code-standards**, **tdd**, **debugging**, **blast-radius**, **safe-migrations**, **infra-standards**, **observability**, **seo-standards**, **content-seo**, **design-tree**, **model-tiering**, **self-review**, and **pr-conventions** skills ride along automatically — no command to run, they just shape how code and content get written. To pull updates later:
+Run those once per device. After that, `/sonu:build`, `/sonu:ship`, `/sonu:tdd`, `/sonu:design-tree`, `/sonu:self-review`, and `/sonu:memory` are available in every repo on that machine, and the **code-standards**, **tdd**, **debugging**, **blast-radius**, **safe-migrations**, **infra-standards**, **observability**, **seo-standards**, **content-seo**, **design-tree**, **model-tiering**, **self-review**, **memory**, and **pr-conventions** skills ride along automatically — no command to run, they just shape how code and content get written. To pull updates later:
 
 ```
 /plugin marketplace update prabhdeep-tools
@@ -29,7 +29,7 @@ After that, skills auto-apply in every session and `/sonu:build` and `/sonu:ship
 
 ## Commands
 
-`/sonu:build` and `/sonu:ship` are commands proper — they sequence phases and hold gates. `/sonu:tdd`, `/sonu:design-tree`, and `/sonu:self-review` are the skills themselves invoked directly by name: same syntax, same behavior, but no separate command component (a command and a skill can't share a name — they collide on the harness's one invocation surface).
+`/sonu:build` and `/sonu:ship` are commands proper — they sequence phases and hold gates. `/sonu:tdd`, `/sonu:design-tree`, `/sonu:self-review`, and `/sonu:memory` are the skills themselves invoked directly by name: same syntax, same behavior, but no separate command component (a command and a skill can't share a name — they collide on the harness's one invocation surface).
 
 ### `/sonu:build` — decide → build → hand back
 
@@ -60,7 +60,7 @@ Takes a finished change from working tree to a clean, merged PR — autonomously
 
 What it does:
 
-1. **Branch, commit, open a PR** with the right per-change-type description (feature / bugfix / hotfix / chore / refactor / docs / perf / release) — reusing the repo's own `PULL_REQUEST_TEMPLATE` if one exists. No AI-attribution trailers — commits and the PR body read as your own.
+1. **Branch, commit, run the pre-PR fix loop, open a PR** with the right per-change-type description (feature / bugfix / hotfix / chore / refactor / docs / perf / release) — reusing the repo's own `PULL_REQUEST_TEMPLATE` if one exists. The pre-PR loop (Phase 1.5) reviews the branch with `self-review`, fixes what it finds, re-reviews the fix delta, and repeats until a pass comes back dry (cap: 3 passes) — so external reviewers see pre-hardened code instead of generating rounds of findings against bugs you could have caught locally. No AI-attribution trailers — commits and the PR body read as your own.
 2. **Gathers every review source**: its own Claude `/code-review` + `/security-review`, plus **every AI reviewer bot enabled on the repo** — detected by who actually posts on the PR (Copilot, CodeRabbit, and the rest of the registry maintained in `ship.md` Phase 2). No config needed; it adapts per-repo. Copilot is requested automatically since it's the one that doesn't auto-fire.
 3. **Dedups, fixes, or justifies** every finding. Replies to **bot threads** (with resolve) and **human reviewer threads** (reply only — never auto-resolves a human's comment). Keeps the PR description current as fixes land.
 4. **Loops** through re-reviews until clean.
@@ -111,7 +111,11 @@ The same skill auto-applies in plan mode without an explicit invocation — see 
 
 ### `/sonu:self-review` — where should a reviewer look?
 
-The `self-review` skill invoked directly: the 3–5 riskiest spots in the current diff (untracked files and multi-commit branches included), in plain language, ending with an explicit "this is a pointer, not an approval." `/sonu:build` and `/sonu:ship` already run it automatically at the right moments — this invocation is for everywhere else.
+The `self-review` skill invoked directly: the 3–5 riskiest spots in the current diff (untracked files and multi-commit branches included), in plain language, ending with an explicit "this is a pointer, not an approval." Substantial diffs get the full treatment — independent parallel review lenses synthesized adversarially (see the skill entry below); small diffs get a single inline pass. `/sonu:build` and `/sonu:ship` already run it automatically at the right moments — this invocation is for everywhere else.
+
+### `/sonu:memory` — maintain the learned-rules store
+
+The `memory` skill invoked directly: `/sonu:memory` compacts the cross-repo learned-rules store (dedup, decay, evict-over-cap, and graduation candidates); `/sonu:memory show` just lists the active rules by scope. See the skill entry below for what the store is and why it can't bloat.
 
 ## Skills
 
@@ -222,13 +226,29 @@ Edit `sonu/skills/pr-conventions/SKILL.md` to tune the templates or add new chan
 
 ### `self-review` — point attention at the riskiest parts
 
-Auto-applied — once the plugin is installed, Claude runs it at two moments without being asked: before handing back from `/sonu:build` (so you know where to look before you run `/sonu:ship`), and before creating the PR in `/sonu:ship` (so the riskiest items are embedded in the PR body for traceability and surfaced in the final report). `/sonu:self-review` (above) is this same skill invoked directly by name.
+Auto-applied — once the plugin is installed, Claude runs it at two moments without being asked: before handing back from `/sonu:build` (so you know where to look before you run `/sonu:ship`), and in `/sonu:ship`'s pre-PR fix loop (each pass reviews, the loop fixes, and the final pass's list is embedded in the PR body for traceability and surfaced in the final report). `/sonu:self-review` (above) is this same skill invoked directly by name.
 
-What it produces: a plain-language list of the **3–5 spots in the diff** that a reviewer should look hardest at — subtle logic, security-relevant surfaces, data integrity risk, broad blast radius, untested edges, silent behavior changes. One line per item with `file:line` where helpful.
+How it reviews scales to the diff. A small diff (under ~100 changed code lines) gets one inline pass. A substantial one gets the fan-out: **six independent review lenses run in parallel as read-only subagents** — correctness, security surfaces, data integrity and migration, blast radius and consumer impact, test adequacy, silent behavior change — each reading the diff cold, with no access to the conversation that produced the code. The author reviewing its own work is the least reliable judge; fresh eyes that never saw the intent don't inherit the blind spots. The session then synthesizes adversarially: **findings are rejected by default** unless they cite a concrete `file:line` with an articulable failure mechanism, duplicates from independent lenses merge (and rank higher for being co-flagged), and pure style nits die. Lenses run on a cheaper model tier per `model-tiering`; every accept/reject decision stays on the session. On a harness without subagents, it degrades to the single inline pass — same output shape, nothing breaks.
+
+It also compounds: scope-matched rules from the `memory` store (below) ride into every review as extra checks, and confirmed findings that generalize beyond the repo flow back as candidate rules.
+
+What it produces: a plain-language list of the **3–5 spots in the diff** that a reviewer should look hardest at. One line per item with `file:line` where helpful.
 
 What it explicitly is **not**: a score, a grade, a gate, or an approval. Self-scoring rubber-stamps the model's own work; the value is directing *your* eyes to the corners that will otherwise get skimmed. The list ends with a plain statement to that effect.
 
 The same reasoning applies when you ask for a self-review manually — "what should I look at?", "what's risky here?", "self-review this." If the diff is genuinely low-risk, it says so rather than inventing items to fill the list.
+
+### `memory` — lessons that graduate or decay, never pile up
+
+Skills are the plugin's long-term memory — durable, reviewed, versioned. But a lesson learned mid-review ("this class of bug keeps happening") used to evaporate with the session. The `memory` skill owns the staging area between the two: one cross-repo file, `~/.sonu/memory/learned-rules.md`, where confirmed, generalizable rules accumulate evidence until they either **graduate** into a real skill through a normal PR or **decay** out.
+
+The design is built so the store cannot bloat into thousands of entries nobody reads:
+
+- **Bounded on write** — every write dedups first (a near-duplicate bumps the existing rule's `hits` count instead of adding an entry), and hard caps hold at **50 active rules total, 10 per scope**; over-cap entries are evicted lowest-value-first to an auditable archive.
+- **Bounded on read** — skills load only the **top 5 scope-matched** rules per review, never the whole file.
+- **Graduate or decay** — a rule confirmed 3+ times becomes a candidate to be promoted into the skill it belongs to (via a normal PR to this repo); a rule unused for 90 days gets archived. `/sonu:memory` runs that maintenance pass.
+
+If the store doesn't exist, everything skips it silently — nothing depends on it, it just makes reviews sharper over time when it's there.
 
 ### `design-tree` — decide by branching, not by marching
 
@@ -299,7 +319,7 @@ claude-plugins/
     ├── commands/
     │   ├── build.md         # /sonu:build — conductor: design gate → tdd build → risk hand-back
     │   └── ship.md          # /sonu:ship — PR babysitter
-    └── skills/              # auto-applied; tdd, design-tree, self-review also invoke directly as /sonu:<name>
+    └── skills/              # auto-applied; tdd, design-tree, self-review, memory also invoke directly as /sonu:<name>
         ├── code-standards/
         │   └── SKILL.md     # how code gets written
         ├── tdd/
@@ -323,7 +343,10 @@ claude-plugins/
         ├── model-tiering/
         │   └── SKILL.md     # grade plan steps for cheaper model tiers; verify their output up top
         ├── self-review/
-        │   └── SKILL.md     # 3–5 riskiest things in the diff — pointer, not a score
+        │   ├── SKILL.md     # riskiest things in the diff — parallel lenses + adversarial synthesis; pointer, not a score
+        │   └── references/  # lens dispatch templates, worked output examples
+        ├── memory/
+        │   └── SKILL.md     # cross-repo learned-rules store — capped, deduped; rules graduate into skills or decay
         └── pr-conventions/
             └── SKILL.md     # per-type PR templates, living description, reply wording
 ```
