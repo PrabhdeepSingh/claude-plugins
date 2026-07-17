@@ -1,6 +1,6 @@
 ---
 description: Sequence decide → build → hand back for any feature or fix. Triage the change, run design-tree in plan mode (with you as the approval gate), build test-first under code-standards, then surface the riskiest parts before handing back to /sonu:ship. Never commits or merges. Not for already-built changes (run /sonu:ship) or design-only exploration (run /sonu:design-tree).
-argument-hint: "[feature, fix, or task to build]"
+argument-hint: "[feature, fix, or task to build] [--orchestrate | --solo]"
 allowed-tools: Skill, Read, Write, Edit, Bash, EnterPlanMode, ExitPlanMode, Agent
 ---
 
@@ -9,6 +9,16 @@ allowed-tools: Skill, Read, Write, Edit, Bash, EnterPlanMode, ExitPlanMode, Agen
 **Contract:** this command sequences the implementation lifecycle — design, build, self-review — and then hands back. It pauses **once** (for you to approve the design) and stops **once** (at a green suite, before shipping). It never commits, never merges. It delegates to existing skills; it does not re-implement them. Run `/sonu:ship` when you're ready to push.
 
 Apply this to `$ARGUMENTS` — the text typed after the command. If that token appears literally or is empty, derive the task from the current discussion in context.
+
+**Delegation disposition (optional flag).** `$ARGUMENTS` may carry one flag that sets model-tiering's disposition for this run up front, so the fan-out decision is yours rather than a mid-build judgment call. Strip the flag token from the task text before deriving the task:
+
+- `--orchestrate` — pre-authorize fan-out. At Phase 1 step 4, tag **every** step that clears model-tiering's four criteria — where the author would otherwise leave such a step in-session out of habit or a vague hunch, tag it instead. It does **not** relax the rule that doubt about any of the four criteria removes the tag: a step that doesn't clearly clear all four still stays in-session.
+- `--solo` — keep everything in-session. Skip model-tiering tagging entirely; Phase 2 builds inline.
+- *neither* — model-tiering's own balanced judgment (the default).
+
+The disposition is a **tie-breaker, not an override**: `--orchestrate` never delegates model-tiering's Section 4 categories (design, integration, debugging, security, review-of-delegated-output) and cannot manufacture an executor tier — on a session with no trustworthy tier below it, it still no-ops and builds inline. `--solo` always wins: nothing is delegated regardless of tier.
+
+If both `--orchestrate` and `--solo` are given, `--solo` wins — keeping work in-session is the safe direction. A repeated single flag (e.g. `--orchestrate --orchestrate`) is just that flag, deduped — not a conflict. Ignore any other flag-like token in the task text; only these two are recognized.
 
 ---
 
@@ -39,7 +49,7 @@ Enter plan mode to run the design phase. This is the only pause in the flow — 
 1. `EnterPlanMode` — switches to read-only; the design tree will be written into the plan file.
 2. **Load the quality bars as design constraints** — `Skill(sonu:code-standards)` always, plus **only** the bars the Phase 0 surface flagged, as `Skill(sonu:<name>)`; a bar whose surface wasn't flagged is not loaded. These are the same bars Phase 2 builds under; loading them before the tree is drawn keeps the approved design from conflicting with them. (Loading a skill is read-only — legal in plan mode.)
 3. `Skill(sonu:design-tree)` — interview first (2–4 questions to establish shared understanding, intent, constraints, done-when); then tree the real decision points. The tree lands in the plan file's `## Design Tree` section per design-tree's existing plan-mode behavior.
-4. `Skill(sonu:model-tiering)` — after the plan file's implementation steps are written (they must meet the executor-ready bar before the step 5 gate), grade the delegable ones per that skill when a trustworthy executor tier sits below the session model; otherwise it no-ops (the skill self-detects). If the plan has no implementation steps yet, finish writing them first — there is nothing to grade.
+4. `Skill(sonu:model-tiering)` — after the plan file's implementation steps are written (they must meet the executor-ready bar before the step 5 gate), grade the delegable ones per that skill when a trustworthy executor tier sits below the session model; otherwise it no-ops (the skill self-detects). If the plan has no implementation steps yet, finish writing them first — there is nothing to grade. **Honor the run's delegation disposition** (the flags above): under `--orchestrate`, tag every step that clears the four criteria and break ties toward delegating; under `--solo`, skip tagging entirely and leave every step in-session.
 5. `ExitPlanMode` — **this is the gate.** Before calling it, verify the plan meets design-tree's executor-ready bar (its Section 8): every judgment call is either resolved or visibly marked `[?]` for the owner to rule on at approval — what must not reach the gate is a decision *hidden* inside an implementation step. Your approval of the plan = approval of the design (including any `[?]` nodes you resolve or accept). Do not proceed to Phase 2 until ExitPlanMode is called and approved.
    - **If the plan is rejected:** stay in plan mode, revise the design tree or re-interview the user to address the concern, and call `ExitPlanMode` again. Repeat until approved. Do not proceed to Phase 2 on a rejected plan.
    - **If plan-mode tools are unavailable in this environment** (e.g. Cursor, or any harness without `EnterPlanMode`/`ExitPlanMode`): run the design-tree interview and print the tree in-chat instead, then ask the user for explicit approval of the design and treat their approval message as the gate. The gate itself is non-negotiable; only its mechanism adapts.
@@ -54,7 +64,7 @@ Build the change test-first under the active quality bars:
 
 1. `Skill(sonu:tdd)` — drive the implementation with the red-green-refactor loop. Write the failing test first; write the minimum code to pass; refactor under green. Apply `Skill(sonu:code-standards)` as you go.
 2. Apply every bar the Phase 0 surface flagged (the same set Phase 1 loaded as design constraints), as `Skill(sonu:<name>)`. On the trivial path — where Phase 1 was skipped — this is where the flagged bars load for the first time.
-3. Honor the plan's `[delegate]`/`[delegate-heavy]` tags per `Skill(sonu:model-tiering)` — routing, retries, and verification mechanics all live in that skill. Two things are non-negotiable here: subagents spawn only in this step, and step 1's discipline still governs delegated work (see the failing test in-session before delegating the implementation step that makes it pass). A plan with no tags — or a harness without subagents — builds everything inline; nothing changes.
+3. Honor the plan's `[delegate]`/`[delegate-heavy]` tags per `Skill(sonu:model-tiering)` — routing, retries, and verification mechanics all live in that skill. Two things are non-negotiable here: subagents spawn only in this step, and step 1's discipline still governs delegated work (see the failing test in-session before delegating the implementation step that makes it pass). A plan with no tags — or a harness without subagents — builds everything inline; nothing changes. Under `--solo`, ignore any `[delegate]`/`[delegate-heavy]` tags that may be present and build every step inline regardless — the flag overrides the tags.
 4. **Run the suite via `Bash`.** Don't take green on faith:
    ```bash
    # derive the right command from the repo's package.json / Makefile / README
