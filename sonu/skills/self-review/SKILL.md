@@ -1,6 +1,7 @@
 ---
 name: self-review
-description: Surface the riskiest parts of the current diff so a human reviewer knows exactly where to look hardest — one inline pass on small diffs, independent parallel review lenses with adversarial synthesis on substantial ones. INVOKE PROACTIVELY whenever a change is finished and about to be handed off, reviewed, or shipped — even when the user never says "self-review." Not a substitute for an actual code review — it points attention; it does not find or fix bugs, and it never approves. For maintaining the learned-rules store this skill reads from, use [[memory]] instead.
+description: >-
+  Surface the riskiest parts of the current diff so a reviewer knows where to look hardest — one inline pass on small diffs, parallel review lenses with adversarial synthesis on substantial ones. INVOKE PROACTIVELY whenever a change is finished and about to be handed off, reviewed, or shipped. It points attention — never approves, never fixes. Maintaining the learned-rules store is [[memory]].
 argument-hint: "[what to review — defaults to the current diff]"
 allowed-tools: Skill, Bash, Read, Agent
 ---
@@ -60,14 +61,16 @@ Identify the 3–5 riskiest spots yourself. Focus on the things that, if wrong, 
 - **Broad blast radius** — a change to a shared utility, a base class, a widely-imported module, or a config that silently affects many call sites. If the diff changes a data shape other components consume and [[blast-radius]] was not run, that is automatically a top-listed risk.
 - **Untested edges** — behavior that the new tests don't cover and that could break in production.
 - **Silent behavior change** — the code "works" but now does something subtly different from before, in a way callers may depend on — especially a consumer that catches failures and returns a default, where the break produces no error at all.
+- **Interface regressions** — *only when the diff touches user-facing interface files* (components, screens, templates, stylesheets, or interface copy): a keyboard or screen-reader path that no longer completes, a layout that breaks at a supported viewport, or copy that now misstates a consequence. These are risks a reviewer cannot see by reading the diff text, which is exactly why they belong on the list. Apply [[interface-review]]'s domains for the judgment.
 
 Then go to step 6.
 
 **4b. Lens fan-out (substantial diffs).**
 
-Dispatch six independent read-only lenses **in parallel, in one turn**, using the harness's subagent tool — the prompt templates live in `references/lenses.md` (read it when dispatching; the six lenses are correctness, security surfaces, data-integrity & migration, blast-radius & consumer-impact, test-adequacy, and silent-behavior-change — one subagent each). Rules the templates encode, which hold even if you compose prompts yourself:
+Dispatch six independent read-only lenses **in parallel, in one turn**, using the harness's subagent tool — the prompt templates live in `references/lenses.md` (read it when dispatching; the six lenses are correctness, security surfaces, data-integrity & migration, blast-radius & consumer-impact, test-adequacy, and silent-behavior-change — one subagent each). A **seventh interface lens** joins the same batch **only when** the diff touches user-facing interface files (components, screens, templates, stylesheets, or interface copy — judge from the diff's file list); on a diff with no such files it is not dispatched at all. Rules the templates encode, which hold even if you compose prompts yourself:
 
 - **Each lens gets the diff command and the repo — never this conversation.** Independence is the entire value; a lens that knows the author's intent inherits the author's blind spots.
+- **Each lens prompt is self-contained.** Criteria live in the lens block. Never tell a subagent to `Skill(…)` load domain skills or to read files from the plugin install — the shared frame only gives the customer repo root, and many harnesses give subagents no Skill tool. The interface lens inlines its six-domain checklist for that reason; it does not orchestrate [[interface-review]].
 - **Each lens reports findings as `Risk: <what> — <why> [file:line]` lines with a confidence tag**, and must reply "Nothing in my lens." rather than invent a finding to seem useful.
 - **Lenses are read-only** — no edits, no writes, no state-changing commands.
 - **Lens model:** the cheapest trustworthy executor tier below this session on [[model-tiering]]'s ladder. Dispatching read-only lenses is not the delegation that skill's Section 4 forbids — the lenses gather evidence; every accept/reject decision stays in this session.
@@ -118,5 +121,5 @@ End the list with a single line:
 
 | File | What it answers |
 |---|---|
-| `references/lenses.md` | The six lens dispatch prompt templates — read when dispatching the step-4b fan-out. |
+| `references/lenses.md` | The six lens dispatch prompt templates, plus the conditional interface lens — read when dispatching the step-4b fan-out. |
 | `references/examples.md` | Worked output examples (inline pass, fan-out synthesis, low-risk case) — read when unsure of the output shape. |

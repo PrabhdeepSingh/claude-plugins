@@ -1,6 +1,7 @@
 ---
 name: pr-conventions
-description: Author PR descriptions from the right per-change-type template (using the repo's own PULL_REQUEST_TEMPLATE when present), detect and embed issue-tracker links, keep the description current as fixes land, and reply to reviewer threads from humans and bots. INVOKE when opening or updating a PR, choosing a PR description format, linking a ticket, or responding to reviewer comments — including outside of /sonu:ship, which calls this at Phases 1, 4, and 5. (Pairs with [[self-review]], which seeds the risk section.)
+description: >-
+  Author PR descriptions from the right per-change-type template (the repo's own PULL_REQUEST_TEMPLATE wins), embed issue-tracker links, keep the description current as fixes land, and reply to human and bot review threads. INVOKE when opening or updating a PR or responding to reviewer comments — inside /sonu:ship or standalone. ([[self-review]] seeds the risk section.)
 ---
 
 # PR conventions — right template, living description, honest replies

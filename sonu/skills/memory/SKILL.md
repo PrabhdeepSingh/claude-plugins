@@ -1,6 +1,7 @@
 ---
 name: memory
-description: Own the cross-repo learned-rules store at ~/.sonu/memory/learned-rules.md — the schema, the read protocol other skills use, the dedup-and-capped write protocol, and the /sonu:memory maintenance pass (dedup, decay, evict-over-cap, graduation of recurring rules into skills). INVOKE when the user runs /sonu:memory, asks to see/clean/prune learned rules or lessons, or when another skill needs the store's read or write protocol. Do NOT load this for performing a review — that is [[self-review]], which merely reads from and writes to this store.
+description: >-
+  Own the cross-repo learned-rules store at ~/.sonu/memory/learned-rules.md — the schema, the read protocol other skills use, the dedup-and-capped write protocol, and the /sonu:memory maintenance pass (dedup, decay, evict, graduate rules into skills). INVOKE on /sonu:memory, when asked to see or prune learned rules, or when another skill needs the store's protocols. Performing a review is [[self-review]].
 argument-hint: "[show | compact — defaults to compact]"
 allowed-tools: Bash, Read, Write, Edit
 ---

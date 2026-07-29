@@ -1,6 +1,7 @@
 ---
 name: ticket-lifecycle
-description: The ticket-as-control-plane rulebook — the single home for the tracker-agnostic ticket-operations contract, tracker resolution from config, the type/priority taxonomy, the human-only trigger authorizations, the derived-status model, and the trust boundaries that every queue workflow runs under. INVOKE whenever reading or writing tickets in a queue-driven flow, resolving which tracker a repo uses, deciding whether a trigger may be applied or removed, bootstrapping a tracker, or answering how a ticket travels from raw idea to merged PR. Do NOT load this to run a pass — [[ticket-triage]] specs one ticket, [[classify-tickets]] grooms the backlog, [[bug-finder]] files new defects, and /sonu:factory routes between them; this skill is the shared rulebook those three consult, never a workflow itself.
+description: >-
+  The ticket-as-control-plane rulebook — the single home for the tracker-operations contract, tracker resolution, the type/priority taxonomy, human-only trigger authorization, derived status, and trust boundaries. INVOKE when reading or writing tickets in a queue-driven flow, resolving a repo's tracker, or deciding whether a trigger may move. Never a workflow itself — [[ticket-triage]] specs, [[classify-tickets]] grooms, [[bug-finder]] files; they consult this rulebook.
 ---
 
 # Ticket lifecycle — the tracker is the control plane

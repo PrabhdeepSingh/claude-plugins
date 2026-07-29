@@ -1,6 +1,7 @@
 ---
 name: model-tiering
-description: Tag each implementation-plan step with the cheapest model tier that can execute it reliably, then honor those tags at execution by delegating tagged steps to subagents on a lower tier — keeping an orchestrator-class session's context clean for architecture, judgment, integration, and review. INVOKE whenever writing an implementation plan (plan mode, /sonu:build Phase 1) or executing a plan whose steps carry [delegate] or [delegate-heavy] tags. Load it on every session model — it begins by locating the session's own tier and skips all routing when no trustworthy tier sits below it (no upward escalation, ever). Do NOT load it for design-only exploration with no plan artifact (that is design-tree alone) or for trivial changes that skip planning.
+description: >-
+  Tag each plan step with the cheapest model tier that can execute it reliably, then delegate tagged steps to subagents at execution — keeping an orchestrator-class session clean for judgment, integration, and review. INVOKE when writing an implementation plan or executing one whose steps carry [delegate]/[delegate-heavy] tags — on every session model; it locates its own tier and no-ops when no trustworthy tier sits below (never escalates upward). Not for design-only exploration with no plan artifact.
 ---
 
 # Model Tiering — route the work, keep the judgment

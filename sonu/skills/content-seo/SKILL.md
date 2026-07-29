@@ -1,6 +1,7 @@
 ---
 name: content-seo
-description: On-page / editorial SEO for written content — so what you publish ranks AND gets cited by AI answer engines. INVOKE whenever writing or editing prose meant to be published on the web — blog posts, articles, guides, landing/marketing copy, press releases, changelog entries, FAQs, documentation, or Markdown content and its frontmatter — even when nobody says "SEO." (Pairs with the technical [[seo-standards]] sibling, which covers the HTML/template/redirect side, not the writing.)
+description: >-
+  Editorial SEO for published prose — so it ranks and gets cited by AI answer engines. INVOKE when writing or editing content meant for the web: posts, articles, guides, landing copy, press releases, changelogs, FAQs, docs, and Markdown content with its frontmatter — even when nobody says "SEO". The HTML/template/redirect side is [[seo-standards]].
 ---
 
 # Content SEO — write it so humans rank it and AI cites it
