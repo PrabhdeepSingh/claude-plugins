@@ -100,6 +100,8 @@ Test **behavior** (what happens when things go right), **boundaries** (empty, ma
 
 **The bug-fix reflex.** Before fixing any bug, write a test that reproduces it. Confirm it fails. Then fix the bug. Confirm it passes. This is non-negotiable — it proves the fix works, prevents the regression's return, and often reveals the bug was more general than it first appeared. (Finding the root cause is [[debugging]]'s territory; this reflex is how the found fix gets pinned.)
 
+**Visible behavior needs behavioral evidence.** A green unit suite does not prove that a screen renders, a button works, or a flow completes — it proves the units it covers behave as asserted. When a change alters visible or interactive behavior (UI, a CLI's output, an end-to-end flow), **exercise the real flow** and capture evidence the environment supports: a screenshot, a recording, the actual terminal output, or the observed response. Why: the most confident wrong claim in software is "tests pass, so it works" about a surface no test ever rendered — and the gap between a passing unit and a broken screen is invisible from the test report alone. When the environment genuinely cannot exercise the flow, say so explicitly and name what remains unverified rather than letting green stand in for proof.
+
 **Thresholds must trip in the test.** When code enforces a limit — a rate limit, quota, timeout, retry cap, buffer size, pagination bound — configure the test with a value small enough to actually reach (a limit of 2–3, a timeout of milliseconds) and assert **both sides of the boundary**: within the threshold passes, the first case beyond it fails. Why: testing with production-scale thresholds means the enforcement branch never executes — the feature reads as covered while the code path that actually limits has never run once. A limit that has never tripped in a test is untested, whatever the coverage report says. This forces the threshold to be injectable rather than hardcoded — which is exactly the design pressure the test is supposed to apply.
 
 → `references/examples.md` §10 — reproduce-before-fix and trip-the-threshold examples.
@@ -140,6 +142,7 @@ Run this against your own diff. Fix any "no" before finishing:
 - Are test doubles used only at architectural seams — real domain objects throughout the core?
 - If this was a bug fix, did you write a failing test that reproduced the bug *before* fixing it?
 - If the change enforces a threshold (limit, quota, timeout, cap): does a test configure a value small enough to trip, and assert both sides of the boundary — within the threshold passes, beyond it fails?
+- If the change alters visible or interactive behavior: did you exercise the real flow and capture evidence — or state plainly what the environment left unverified, instead of letting a green suite stand in for proof?
 - Does each new test actually fail before the implementation and pass after?
 - If any existing test changed: can you name which legitimate case applies (spec change or implementation-detail cleanup), with zero weakening (no updated-to-actual expectations, no skips, no broadened assertions, no sleeps, no try/catch around the failure)?
 - Is the test code held to the same naming, clarity, and structure bar as [[code-standards]]?

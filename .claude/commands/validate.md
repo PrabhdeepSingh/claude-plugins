@@ -27,12 +27,12 @@ diff <(python3 -m json.tool sonu/.claude-plugin/plugin.json) \
   >/dev/null && echo "SYNC OK: plugin.json pair identical" || echo "FAIL: the two plugin.json files differ"
 ```
 
-## 2. Marketplace descriptions mention every component
+## 2. Marketplace descriptions mention every component (and count them honestly)
 
-The plugin description in both marketplace manifests must name every command and skill (this is the drift that has actually happened — twice):
+The plugin description in both marketplace manifests must name every command and skill (this is the drift that has actually happened — twice). It must also not *lie about how many* there are: the description pitches "N skills", and a hardcoded number goes stale the moment a skill is added, so the count is checked against reality too:
 ```bash
 python3 - <<'EOF'
-import json, os, sys
+import json, os, re, sys
 commands = sorted(f[:-3] for f in os.listdir('sonu/commands') if f.endswith('.md'))
 skills   = sorted(d for d in os.listdir('sonu/skills') if os.path.isdir(f'sonu/skills/{d}'))
 fails = 0
@@ -44,6 +44,14 @@ for mf in ('.claude-plugin/marketplace.json', '.cursor-plugin/marketplace.json')
         print(f"FAIL: {mf} description omits: {', '.join(missing)}")
     else:
         print(f"OK: {mf} mentions all {len(commands)} commands + {len(skills)} skills")
+    claimed = re.search(r'(\d+) skills', desc)
+    if not claimed:
+        print(f"OK: {mf} claims no skill count (nothing to drift)")
+    elif int(claimed.group(1)) != len(skills):
+        fails += 1
+        print(f"FAIL: {mf} says '{claimed.group(1)} skills' but {len(skills)} exist")
+    else:
+        print(f"OK: {mf} skill count ({len(skills)}) matches reality")
 sys.exit(1 if fails else 0)
 EOF
 ```

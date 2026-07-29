@@ -36,6 +36,8 @@ Classify the change on three axes and surface the result in **one line**:
 - **Kind** — bug fix, feature, refactor, docs, or mixed.
 - **Surface** — which quality bars this change activates, beyond code-standards (always on): public web pages or content → seo-standards (templates, routes, metadata) and/or content-seo (prose meant to rank) — both when the change has both; schema or data movement → safe-migrations; IaC, containers, or CI files → infra-standards; a new service, endpoint, or background job → observability; a change to the shape, format, or semantics of data another component consumes (return values, response bodies, serialized payloads, DB columns read elsewhere, log/telemetry fields, events, config values/env vars, parsed CLI output) → blast-radius. Within this command, this list is the mapping home — Phases 1 and 2 refer back to it rather than restating it (design-tree §2 carries its own copy for standalone use). The flagged bars apply as design constraints in Phase 1 and as build bars in Phase 2; on the trivial path (Phase 1 skipped) they load in Phase 2.
 
+Ticket metadata under `.sonu/tickets/` does not count toward any of the three axes — it's tracker bookkeeping `/sonu:factory` already committed separately, and letting a claim edit inflate the classification would push a one-line fix onto the substantial path.
+
 **If trivial:** skip Phase 1 (no design needed). Jump straight to Phase 2.
 
 ---
@@ -43,6 +45,10 @@ Classify the change on three axes and surface the result in **one line**:
 ## Phase 1 — Design (plan mode) + GATE
 
 *Skip entirely for trivial changes.*
+
+**Ticket-driven invocation — the *pause* is already satisfied, the design work is not.** When the task arrives from `/sonu:factory` as a claimed ticket whose spec a human approved (by applying the implement trigger after reading it), that approval **is** the design approval. What that skips is exactly one thing: the plan-mode pause in step 5 below. Do not re-run it — a second approval of an already-approved spec is theater, and pausing mid-queue defeats the point of the queue.
+
+Everything else in this phase still runs, in-chat instead of in plan mode: load the quality bars as design constraints (step 2), and run `Skill(sonu:design-tree)` (step 3) for the implementation forks the spec leaves open, deciding each under the spec's acceptance criteria and constraints. When a fork needs a genuine product decision the spec does not answer, stop and put the precise blocker on the ticket rather than asking in chat or guessing — the ticket is where that decision belongs. Phases 0, 2, and 3 are identical in both doors.
 
 Enter plan mode to run the design phase. This is the only pause in the flow — your approval of the design is the gate.
 
