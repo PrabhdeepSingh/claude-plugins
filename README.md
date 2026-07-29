@@ -11,7 +11,7 @@ Prabhdeep (Sonu) Singh's personal [Claude Code](https://claude.com/claude-code) 
 /plugin install sonu@prabhdeep-tools
 ```
 
-Run those once per device. After that, `/sonu:build`, `/sonu:ship`, `/sonu:tdd`, `/sonu:design-tree`, `/sonu:self-review`, and `/sonu:memory` are available in every repo on that machine, and the **code-standards**, **tdd**, **debugging**, **blast-radius**, **safe-migrations**, **infra-standards**, **observability**, **seo-standards**, **content-seo**, **design-tree**, **model-tiering**, **self-review**, **memory**, and **pr-conventions** skills ride along automatically — no command to run, they just shape how code and content get written. To pull updates later:
+Run those once per device. After that, `/sonu:build`, `/sonu:ship`, `/sonu:factory`, `/sonu:tdd`, `/sonu:design-tree`, `/sonu:self-review`, `/sonu:memory`, `/sonu:ticket-triage`, `/sonu:classify-tickets`, and `/sonu:bug-finder` are available in every repo on that machine, and the **code-standards**, **tdd**, **debugging**, **blast-radius**, **safe-migrations**, **infra-standards**, **observability**, **seo-standards**, **content-seo**, **design-tree**, **model-tiering**, **self-review**, **memory**, **pr-conventions**, **ticket-lifecycle**, **ticket-triage**, **classify-tickets**, and **bug-finder** skills ride along automatically — no command to run, they just shape how code and content get written. To pull updates later:
 
 ```
 /plugin marketplace update prabhdeep-tools
@@ -25,11 +25,11 @@ Run those once per device. After that, `/sonu:build`, `/sonu:ship`, `/sonu:tdd`,
 2. Add a custom marketplace pointing at this repo: `PrabhdeepSingh/claude-plugins`.
 3. Find the **sonu** plugin and click **Install**.
 
-After that, skills auto-apply in every session and `/sonu:build` and `/sonu:ship` appear in Cursor's slash-command menu (direct `/sonu:tdd`-style skill invocation depends on Cursor's skill support — the skills themselves ride along and auto-apply either way). Updates are pulled when you sync the marketplace in Cursor Settings. (One difference: Cursor has no Claude Code-style plan mode, so `/sonu:build`'s design gate runs in-chat there — the command adapts automatically.)
+After that, skills auto-apply in every session and `/sonu:build`, `/sonu:ship`, and `/sonu:factory` appear in Cursor's slash-command menu (direct `/sonu:tdd`-style skill invocation depends on Cursor's skill support — the skills themselves ride along and auto-apply either way). Updates are pulled when you sync the marketplace in Cursor Settings. (One difference: Cursor has no Claude Code-style plan mode, so `/sonu:build`'s design gate runs in-chat there — the command adapts automatically.)
 
 ## Commands
 
-`/sonu:build` and `/sonu:ship` are commands proper — they sequence phases and hold gates. `/sonu:tdd`, `/sonu:design-tree`, `/sonu:self-review`, and `/sonu:memory` are the skills themselves invoked directly by name: same syntax, same behavior, but no separate command component (a command and a skill can't share a name — they collide on the harness's one invocation surface).
+`/sonu:build`, `/sonu:ship`, and `/sonu:factory` are commands proper — they sequence phases and hold gates. `/sonu:tdd`, `/sonu:design-tree`, `/sonu:self-review`, `/sonu:memory`, `/sonu:ticket-triage`, `/sonu:classify-tickets`, and `/sonu:bug-finder` are the skills themselves invoked directly by name: same syntax, same behavior, but no separate command component (a command and a skill can't share a name — they collide on the harness's one invocation surface).
 
 ### `/sonu:build` — decide → build → hand back
 
@@ -42,7 +42,7 @@ What it does:
 3. **Build test-first** — runs `tdd` under `code-standards` and every bar the triage flagged; **runs the suite via Bash** to confirm green. Never takes green on faith.
 4. **Self-review + hand back** — lists the 3–5 riskiest things in the diff, then stops: *"Green and ready. Review the diff, then run `/sonu:ship`."* Never commits or merges.
 
-Two human checkpoints: approve the design (ExitPlanMode), then review the diff and choose to run ship. Everything in between is autonomous.
+Two human checkpoints: approve the design (ExitPlanMode), then review the diff and choose to run ship. Everything in between is autonomous. (Invoked from `/sonu:factory` on a ticket, the first checkpoint has already happened — you approved the spec — so build skips the plan-mode pause and treats the spec's acceptance criteria as the design constraints. It still trees any fork the spec left open, just in-chat. Same two gates; one of them moved onto the ticket.)
 
 ```
 /sonu:build                                # build whatever's in context
@@ -77,6 +77,96 @@ The change's review depth scales to the diff. You can force it:
 | `/sonu:ship full` | Deep Claude code + security review, full re-review loop. |
 
 Mode words are parsed forgivingly — `quick`/`fast`/`lite` → `light`, and `thorough`/`deep`/`max` (typos included) → `full`. The mode only scales *Claude's own* reviews; the external bots auto-run on the repo regardless, so they cost the same whether the babysitter waits for them or not.
+
+### `/sonu:factory` — the ticket queue, without a daemon
+
+A software factory runs work through a consistent pipeline instead of ad-hoc terminal sessions: work enters a queue, gets the same checks every time, and keeps moving until it needs a human decision. `/sonu:factory` is that pipeline with **you as the trigger** — no daemon, no hosted service, no background process spending tokens while you sleep. You authorize work by labeling a ticket; the command picks it up on your next invocation.
+
+The tracker is the control plane. A ticket carries the problem, the scope, the acceptance criteria, and the evidence — and two labels record what a human has authorized:
+
+| Trigger | Means |
+|---|---|
+| `factory-ready-for-spec` | Turn this raw ticket into an implementation-ready spec. |
+| `factory-ready-to-implement` | Build this ticket from its approved spec. |
+
+On GitHub, Jira, and Linear these are label names. On the local file tracker the same two authorizations live in the ticket's `trigger:` field (as `ready-for-spec` / `ready-to-implement` — the field name already supplies the scope).
+
+Only a human ever applies one, each authorizes exactly one pass, and the workflow removes it as its claim before starting. That last part is what makes parallel agents safe: a claim first checks the trigger is actually there, so a second session dispatching the same ticket finds nothing to claim and stops.
+
+**One build engine, two front doors.** `/sonu:factory` doesn't duplicate `/sonu:build` — it feeds it. Describe work in chat and build runs its design gate in plan mode. Route work through a ticket and factory claims it, then invokes that same build with the *pause* already satisfied, because the spec you approved is the approved design — build still trees whatever forks the spec left open, in-chat rather than in plan mode.
+
+```
+/sonu:factory init              # pick and configure a tracker (once per repo or globally)
+/sonu:factory                   # scan the queue, spec what's spec-ready, build the top ready ticket
+/sonu:factory triage 123        # spec one ticket
+/sonu:factory implement 123     # build one approved ticket
+/sonu:factory 123               # infer the stage from the ticket's own trigger
+/sonu:factory classify          # groom the backlog (one type, one priority per ticket)
+/sonu:factory bugs              # hunt for one real defect and file it
+```
+
+An end-to-end trip through the queue:
+
+1. **A ticket exists** — you filed it, a teammate did, or `/sonu:factory bugs` found the defect and filed it.
+2. **You authorize a spec pass** — the `factory-ready-for-spec` label, or `trigger: ready-for-spec` on a local ticket file.
+3. **`/sonu:factory`** claims it and runs `ticket-triage`: reads the code, reproduces the bug where practical, and rewrites the ticket as a spec with testable acceptance criteria, explicit non-goals, and a verification plan. It never writes code and never authorizes the next stage.
+4. **You read the spec** and either answer its questions or authorize the build (`factory-ready-to-implement`, or `trigger: ready-to-implement` locally). This is the real gate — a human deciding the thing is worth building as specified.
+5. **`/sonu:factory`** claims it, creates a dedicated worktree, and hands it to `/sonu:build`, which builds test-first under your standards and hands back at a green suite with a risk list.
+6. **You review the diff** and run `/sonu:ship`, which takes it through review bots to a merged PR. Keep the tracker's close reference in the PR (`Closes #N` on GitHub, `Fixes ENG-123` on Linear, the issue key on Jira, the ticket id in the commit on local) — GitHub and Linear then close the ticket on merge, and for Jira and local the next `/sonu:factory` sweep marks it done.
+
+Two human decisions (approve the spec, approve the diff); everything between them is autonomous. Nothing merges without you.
+
+#### Parallel work — a worktree per ticket
+
+Every implement pass builds in its own git worktree (`../myrepo-wt-0001-fix-login-loop` on branch `ticket/0001-fix-login-loop`), unconditionally. That's what makes it safe to run several agents at once, each on a different ticket: separate directories, separate branches, no stomping. The claim happens in the main checkout *before* the worktree exists, so two sessions can never build the same ticket. A dirty main checkout is a hard stop rather than something to build around, and the factory sweep cleans up worktrees and branches for tickets whose PRs have merged. In a sandboxed harness that can't write outside the workspace, it falls back to building in place on a clean tree and says so.
+
+Two things worth knowing before you run agents in parallel. A fresh worktree gets a fresh install and **does not inherit untracked local config** — `.env` and friends stay behind, and a suite that quietly skips tests for missing config will report green while proving nothing, so the pass copies what the suite needs. And on the local file tracker, claims are commits: if your agents run on more than one machine, the claim commit has to reach the remote for the other machine to see it, which is why the pass pushes when a remote exists.
+
+#### Tracker configuration
+
+Five backends. Pick per repo, or once for everything:
+
+| `tracker:` | Backend | Notes |
+|---|---|---|
+| `github` | GitHub Issues via `gh` | Everything is a label; `Closes #N` closes the ticket when the PR merges **to the default branch** (a merge into a release branch won't). |
+| `jira` | Jira via the Atlassian MCP or REST | Native type and priority fields; nothing auto-closes, so the sweep transitions to Done. |
+| `linear` | Linear via its MCP or GraphQL | Native priority; `Fixes ENG-123` closes on merge **when Linear's GitHub integration is enabled** — without it, the sweep reports the ticket for a manual move. |
+| `local` | Markdown files in the repo | Zero dependencies, works offline, tickets diff in PRs. |
+| `custom` | Anything else | `init` interviews you and generates the adapter. |
+
+Configuration lives in `.sonu/factory-config.md` in the repo (committed, so the team shares it), falling back to `~/.sonu/factory-config.md` for a tracker you use everywhere:
+
+```markdown
+---
+tracker: local
+---
+Notes for humans go below the frontmatter; workflows read only the frontmatter.
+```
+
+Credentials never go in that file — Jira and Linear read them from environment variables (see Requirements).
+
+The **local** backend is the one that needs nothing but git. Tickets are files under `.sonu/tickets/`:
+
+```markdown
+---
+id: 0001
+title: Fix login redirect loop
+type: bug
+priority: P1
+trigger: ready-to-implement
+status: open
+created: 2031-01-15
+---
+## Problem
+## Scope and non-goals
+## Acceptance criteria
+## Verification plan
+## Discussion
+```
+
+Ticket-file edits (claims, specs, classifications, status flips) are committed on their own with a `tickets:` prefix, never mixed into a code commit — so the diff you review stays clean, and a claim is durable the moment it happens. That's the one deliberate exception to "these workflows never commit," and it covers tracker metadata only, never source code.
+
+For a tracker that isn't one of the four, `/sonu:factory init` asks how your tool works — how an agent reaches it, which environment variables hold credentials, what marks the two triggers, how type and priority map, how a merge closes a ticket — and writes an adapter file for you to review. Workflows only ever name an operation from a fixed list (list queue, list open, search, fetch, claim, update body, comment, classify, create, close the loop), so a tracker is fully supported the moment a document answers all of them; an adapter missing one is a hard stop, never an improvised command.
 
 ### `/sonu:tdd` — drive a change test-first
 
@@ -148,7 +238,7 @@ Edit `sonu/skills/code-standards/SKILL.md` to make it yours — it's plain Markd
 
 Auto-applied — once the plugin is installed, Claude follows the red-green-refactor discipline whenever it writes, changes, or tests code in any repo, even when "TDD" or "tests" aren't mentioned. `/sonu:tdd` (above) is this same skill invoked directly by name; there is no separate command component.
 
-It encodes a strict test-first methodology with honest carve-outs (spikes are thrown away and rebuilt test-first; code never lands without tests) across twelve areas:
+It encodes a strict test-first methodology with honest carve-outs (spikes are thrown away and rebuilt test-first; code never lands without tests) across thirteen areas:
 
 - **Red-green-refactor** — failing test first, minimum code to green, refactor under protection. Small steps, run tests constantly.
 - **Test-first discipline** — the one carve-out: exploratory spikes to learn a shape, discarded entirely before building the real thing test-first.
@@ -160,6 +250,7 @@ It encodes a strict test-first methodology with honest carve-outs (spikes are th
 - **The testing pyramid** — many unit tests, fewer integration, fewest end-to-end; push behavior down to the unit level.
 - **Coverage as byproduct** — use it to find gaps, not to hit a number; a test with no meaningful assertion is negative value.
 - **What to test** — behavior, boundaries, edge cases, error paths; thresholds (limits, timeouts, caps) at values a test can actually trip, asserting both sides; skip trivial pass-throughs and generated code.
+- **Behavioral evidence** — a green unit suite doesn't prove a screen renders or a flow completes; visible and interactive changes get the real flow exercised and evidence captured, or an explicit statement of what went unverified.
 - **The bug-fix reflex** — reproduce the bug with a failing test before fixing it, every time.
 - **The test is innocent** — a failing test means the code is wrong, not the test; no updating expectations to match broken output, no skips, no broadened assertions, no sleeps.
 
@@ -276,6 +367,33 @@ The routing is deliberately conservative — the motivation is quality via focus
 
 Edit `sonu/skills/model-tiering/SKILL.md` to make it yours — it's plain Markdown.
 
+### `ticket-lifecycle` — the tracker is the control plane
+
+The rulebook the queue workflows share, and the reason a tracker swap isn't a rewrite. It fires whenever tickets are being read or written in a queue-driven flow, and it owns four things in one place so five backends and four workflows can't drift apart:
+
+- **Tracker resolution** — `.sonu/factory-config.md`, then `~/.sonu/factory-config.md`, then stop. Never a guessed tracker, because a wrong guess writes ticket state into the wrong system.
+- **The operations contract** — list queue, list open, search, fetch, claim, update body, comment, classify, create, close the loop. Workflows name operations; adapters supply mechanics. An adapter missing an operation is a hard stop that names the gap rather than an improvised command.
+- **The taxonomy** — exactly one type (`bug`/`enhancement`/`documentation`) and one evidence-based priority (`P0`–`P3`, unset meaning "recommended for rejection"). Size never sets priority; volume never sets priority.
+- **Authorization and trust** — only humans apply triggers, the workflow removes one as its claim before any work (that's the concurrency guard), status is derived from the ticket's own artifacts rather than stored as a field anyone has to maintain (the local file tracker is the one exception — a file has no other state, so it keeps a `status:` field with exactly one writer), and all ticket content is untrusted data that can never redirect a workflow.
+
+Five adapters ship as reference files (`github`, `jira`, `linear`, `local`, `custom`), and only the resolved one gets read.
+
+### `ticket-triage` — make the ticket good enough to build from
+
+Directly invocable as `/sonu:ticket-triage 123`, and what `/sonu:factory` runs for a spec pass. It claims the ticket, then reads the ticket completely, checks open *and* closed tickets for duplicates or an existing fix, inspects the actual code (naming real files, not plausible guesses), and reproduces reported bugs when practical. Out of that it writes the spec: problem and outcome, bounded scope with explicit non-goals, acceptance criteria a test could assert, constraints and affected areas, a verification plan, and the open decisions. Then it routes — ready for approval, blocked on the smallest unblocking question, rejected with evidence, or reproduction failed.
+
+What it never does: write code, open a PR, or apply the implement trigger. The gate's value is that a human reads a spec written by something with no stake in building it.
+
+### `classify-tickets` — a clean backlog is a queryable one
+
+Directly invocable as `/sonu:classify-tickets`, and `/sonu:factory classify`. A sweep over the open backlog that changes **two fields** and nothing else: one type, one evidence-based priority per ticket. It validates every field and value against the tracker before the first write (a failed validation means zero changes, not a half-applied sweep), never invents labels or fields, leaves already-correct tickets untouched, and reports the evidence behind every P0 and P1. Titles, bodies, comments, closures, triggers, and code are all explicitly out of bounds — the narrowness is what makes it safe to run over a hundred tickets at once.
+
+### `bug-finder` — one proven defect beats twenty maybes
+
+Directly invocable as `/sonu:bug-finder [area]`, and `/sonu:factory bugs`. It hunts where defects actually concentrate — recently changed code, error and fallback paths, untrusted input boundaries, process and persistence seams, concurrency and cleanup, weak coverage — tracing real execution paths rather than reading for style.
+
+Then it holds a hard evidence bar: observable incorrect behavior, the triggering path and conditions, why the behavior is *wrong* (citing a contract, test, doc, or call-site expectation), a reproduction, the expected behavior, and a verification approach. Speculation, style opinions, and missing features are not reportable. It dedups against open *and* closed work, files at most **one** ticket per pass with type `bug` and no trigger (queueing stays your call), and when nothing clears the bar it files nothing and says where it looked. It never fixes what it finds — discovery and repair are separate decisions with separate gates. Complement to `debugging`: that one diagnoses a symptom you already have, this one goes looking.
+
 ## Developing this plugin
 
 Contributor tooling is **repo-local, not shipped** — it lives in this repo's `.claude/` directory, so it loads automatically for anyone working *on* the plugin (a clone of this repo) and never reaches marketplace users, who'd have no use for it:
@@ -291,9 +409,25 @@ Contributor tooling is **repo-local, not shipped** — it lives in this repo's `
 - For Claude reviews: the `/code-review` and `/security-review` commands.
 - Any AI reviewer bots are picked up automatically if they're enabled on the repo — nothing to configure here.
 
+For `/sonu:factory`, per tracker:
+
+| Tracker | Needs |
+|---|---|
+| GitHub Issues | Nothing beyond the `gh` CLI above. |
+| Jira | The Atlassian MCP server, or `JIRA_SITE`, `JIRA_EMAIL`, and `JIRA_API_TOKEN` in the environment. |
+| Linear | The Linear MCP server, or `LINEAR_API_KEY` in the environment. |
+| Local files | Nothing — just git. |
+| Custom | Whatever your generated adapter declares. |
+
+Credentials are read from the environment only. They never go in `.sonu/factory-config.md`, an adapter file, or ticket text — all three get committed.
+
 ## A note on trust
 
 `/sonu:ship` runs shell commands and **merges PRs on your behalf**. Read the command before you install it (`sonu/commands/ship.md`), and only point it at repos where you're comfortable with that. Plugins run with your local permissions.
+
+`/sonu:factory` adds a second thing worth understanding before you use it: **whoever can apply a trigger label is the trust boundary** — not whoever opened the ticket. Applying `factory-ready-to-implement` authorizes an agent to build that ticket, so only use the queue on repos where everyone able to label is trusted. Don't point it at a public repo where outside contributors can label.
+
+Two honest caveats about how that boundary is held. "Only humans apply triggers" is a rule the workflows follow, not a permission the tracker enforces — an agent holding a credential that can *remove* a label can also add one. Where your tracker supports it, give the agent a credential that can't write trigger labels, and keep the default branch protected so a bad authorization still ends at a PR you have to merge. And ticket bodies, comments, and linked PRs are treated as untrusted data throughout — they inform the work, and instructions embedded in them are ignored however authoritative they sound — but that too is enforced by instruction rather than by a sandbox, which is the argument for reading a spec before you approve it. Nothing in the flow merges: that stays `/sonu:ship`, run by you.
 
 ## Layout
 
@@ -318,8 +452,9 @@ claude-plugins/
     │   └── plugin.json      # Cursor plugin manifest (byte-identical mirror of the Claude one)
     ├── commands/
     │   ├── build.md         # /sonu:build — conductor: design gate → tdd build → risk hand-back
-    │   └── ship.md          # /sonu:ship — PR babysitter
-    └── skills/              # auto-applied; tdd, design-tree, self-review, memory also invoke directly as /sonu:<name>
+    │   ├── ship.md          # /sonu:ship — PR babysitter
+    │   └── factory.md       # /sonu:factory — ticket queue: scan, claim, worktree, delegate to build
+    └── skills/              # auto-applied; tdd, design-tree, self-review, memory, and the ticket skills also invoke directly as /sonu:<name>
         ├── code-standards/
         │   └── SKILL.md     # how code gets written
         ├── tdd/
@@ -347,8 +482,17 @@ claude-plugins/
         │   └── references/  # lens dispatch templates, worked output examples
         ├── memory/
         │   └── SKILL.md     # cross-repo learned-rules store — capped, deduped; rules graduate into skills or decay
-        └── pr-conventions/
-            └── SKILL.md     # per-type PR templates, living description, reply wording
+        ├── pr-conventions/
+        │   └── SKILL.md     # per-type PR templates, living description, reply wording
+        ├── ticket-lifecycle/
+        │   ├── SKILL.md     # ticket-as-control-plane rulebook — taxonomy, triggers, claim rules, tracker resolution
+        │   └── references/  # one adapter per tracker: github, jira, linear, local, custom
+        ├── ticket-triage/
+        │   └── SKILL.md     # raw ticket → implementation-ready spec; never implements
+        ├── classify-tickets/
+        │   └── SKILL.md     # backlog sweep — one type, one evidence-based priority, nothing else
+        └── bug-finder/
+            └── SKILL.md     # prove one real defect, file one ticket; never fixes it
 ```
 
 ## Troubleshooting
@@ -360,6 +504,8 @@ claude-plugins/
 | Behavior doesn't match this README | Installed copies are **version-pinned** — they don't track `main`. Run `/plugin marketplace update prabhdeep-tools`, then compare your installed version against the latest release tag. |
 | `/plugin marketplace update` says up-to-date but a fix you saw on `main` is missing | That fix hasn't been released yet (no version bump). Nothing propagates until a release — see `.claude/commands/release.md` in this repo. |
 | `/sonu:ship` stalls waiting for bots | The repo may simply have no AI reviewer bots enabled; the wait loop times out (~10 min) and proceeds with whoever posted. That's expected, not a hang. |
+| `/sonu:factory` says no tracker is configured | Neither `.sonu/factory-config.md` nor `~/.sonu/factory-config.md` exists → run `/sonu:factory init`, or write the file yourself with a `tracker:` value. It stops rather than guessing on purpose. |
+| `/sonu:factory` finds an empty queue | Nothing carries a trigger. Apply `factory-ready-for-spec` (or `factory-ready-to-implement` on an approved spec) to a ticket — a label on GitHub/Jira/Linear, the `trigger:` field on a local ticket file. Only a human authorizes a pass. |
 
 ## License
 

@@ -27,23 +27,46 @@ diff <(python3 -m json.tool sonu/.claude-plugin/plugin.json) \
   >/dev/null && echo "SYNC OK: plugin.json pair identical" || echo "FAIL: the two plugin.json files differ"
 ```
 
-## 2. Marketplace descriptions mention every component
+## 2. Every description mentions every component (and counts them honestly)
 
-The plugin description in both marketplace manifests must name every command and skill (this is the drift that has actually happened — twice):
+The plugin description must name every command and skill (this is the drift that has actually happened — twice). It must also not *lie about how many* there are: the description pitches "N skills", and a hardcoded number goes stale the moment a skill is added, so the count is checked against reality too.
+
+**All four description homes are checked, not just the marketplaces.** The two `plugin.json` files carry the same user-facing text; checking only the marketplaces would let the pair drift and still pass:
 ```bash
 python3 - <<'EOF'
-import json, os, sys
+import json, os, re, sys
 commands = sorted(f[:-3] for f in os.listdir('sonu/commands') if f.endswith('.md'))
 skills   = sorted(d for d in os.listdir('sonu/skills') if os.path.isdir(f'sonu/skills/{d}'))
+homes = {
+    '.claude-plugin/marketplace.json':  lambda d: d['plugins'][0]['description'],
+    '.cursor-plugin/marketplace.json':  lambda d: d['plugins'][0]['description'],
+    'sonu/.claude-plugin/plugin.json':  lambda d: d['description'],
+    'sonu/.cursor-plugin/plugin.json':  lambda d: d['description'],
+}
 fails = 0
-for mf in ('.claude-plugin/marketplace.json', '.cursor-plugin/marketplace.json'):
-    desc = json.load(open(mf))['plugins'][0]['description']
+texts = {}
+for mf, pick in homes.items():
+    desc = pick(json.load(open(mf)))
+    texts[mf] = desc
     missing = [c for c in commands if c not in desc] + [s for s in skills if s not in desc]
     if missing:
         fails += 1
         print(f"FAIL: {mf} description omits: {', '.join(missing)}")
     else:
         print(f"OK: {mf} mentions all {len(commands)} commands + {len(skills)} skills")
+    claimed = re.search(r'(\d+) skills', desc)
+    if not claimed:
+        print(f"OK: {mf} claims no skill count (nothing to drift)")
+    elif int(claimed.group(1)) != len(skills):
+        fails += 1
+        print(f"FAIL: {mf} says '{claimed.group(1)} skills' but {len(skills)} exist")
+    else:
+        print(f"OK: {mf} skill count ({len(skills)}) matches reality")
+if len(set(texts.values())) != 1:
+    fails += 1
+    print("FAIL: the four descriptions are not identical — /release Phase 2 syncs them")
+else:
+    print("OK: all four description homes carry identical text")
 sys.exit(1 if fails else 0)
 EOF
 ```
@@ -79,12 +102,12 @@ EOF
 
 ## 4. Shell fences pass syntax check in bash AND zsh
 
-Extracts every ```bash fence and runs `bash -n` + `zsh -n`. Placeholders like `<PR number>` are angle-bracket substitution markers — the script strips those lines before checking:
+Extracts every ```bash fence and runs `bash -n` + `zsh -n`. Placeholders like `<PR number>` are angle-bracket substitution markers — the script strips those lines before checking. **`references/*.md` is in scope**: a heavy skill's adapter snippets are the most operational shell in the repo, and leaving them unchecked was exactly the gap that let a zsh-only parse failure sit in a reference file:
 ```bash
 python3 - <<'EOF'
 import glob, re, subprocess, sys, tempfile, textwrap
 fails = 0
-for path in sorted(glob.glob('sonu/commands/*.md') + glob.glob('.claude/commands/*.md')) + sorted(glob.glob('sonu/skills/*/SKILL.md') + glob.glob('.claude/skills/*/SKILL.md')):
+for path in sorted(glob.glob('sonu/commands/*.md') + glob.glob('.claude/commands/*.md')) + sorted(glob.glob('sonu/skills/*/SKILL.md') + glob.glob('.claude/skills/*/SKILL.md') + glob.glob('sonu/skills/*/references/*.md') + glob.glob('.claude/skills/*/references/*.md')):
     for i, block in enumerate(re.findall(r'^ *```bash\n(.*?)^ *```', open(path).read(), re.S | re.M)):
         # Dedent first: fences inside markdown list items are indented, and an indented
         # heredoc terminator is a real zsh parse failure the executor must also avoid.
