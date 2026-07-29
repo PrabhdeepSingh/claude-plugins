@@ -42,7 +42,7 @@ What it does:
 3. **Build test-first** — runs `tdd` under `code-standards` and every bar the triage flagged; **runs the suite via Bash** to confirm green. Never takes green on faith.
 4. **Self-review + hand back** — lists the 3–5 riskiest things in the diff, then stops: *"Green and ready. Review the diff, then run `/sonu:ship`."* Never commits or merges.
 
-Two human checkpoints: approve the design (ExitPlanMode), then review the diff and choose to run ship. Everything in between is autonomous. (Invoked from `/sonu:factory` on a ticket, the first checkpoint has already happened — you approved the spec — so build goes straight to the test-first phase. Same two gates, one of them just moved onto the ticket.)
+Two human checkpoints: approve the design (ExitPlanMode), then review the diff and choose to run ship. Everything in between is autonomous. (Invoked from `/sonu:factory` on a ticket, the first checkpoint has already happened — you approved the spec — so build skips the plan-mode pause and treats the spec's acceptance criteria as the design constraints. It still trees any fork the spec left open, just in-chat. Same two gates; one of them moved onto the ticket.)
 
 ```
 /sonu:build                                # build whatever's in context
@@ -93,7 +93,7 @@ On GitHub, Jira, and Linear these are label names. On the local file tracker the
 
 Only a human ever applies one, each authorizes exactly one pass, and the workflow removes it as its claim before starting. That last part is what makes parallel agents safe: a claim first checks the trigger is actually there, so a second session dispatching the same ticket finds nothing to claim and stops.
 
-**One build engine, two front doors.** `/sonu:factory` doesn't duplicate `/sonu:build` — it feeds it. Describe work in chat and build runs its design gate in plan mode. Route work through a ticket and factory claims it, then invokes that same build with the gate already satisfied, because the spec you approved *is* the approved design.
+**One build engine, two front doors.** `/sonu:factory` doesn't duplicate `/sonu:build` — it feeds it. Describe work in chat and build runs its design gate in plan mode. Route work through a ticket and factory claims it, then invokes that same build with the *pause* already satisfied, because the spec you approved is the approved design — build still trees whatever forks the spec left open, in-chat rather than in plan mode.
 
 ```
 /sonu:factory init              # pick and configure a tracker (once per repo or globally)
@@ -112,7 +112,7 @@ An end-to-end trip through the queue:
 3. **`/sonu:factory`** claims it and runs `ticket-triage`: reads the code, reproduces the bug where practical, and rewrites the ticket as a spec with testable acceptance criteria, explicit non-goals, and a verification plan. It never writes code and never authorizes the next stage.
 4. **You read the spec** and either answer its questions or authorize the build (`factory-ready-to-implement`, or `trigger: ready-to-implement` locally). This is the real gate — a human deciding the thing is worth building as specified.
 5. **`/sonu:factory`** claims it, creates a dedicated worktree, and hands it to `/sonu:build`, which builds test-first under your standards and hands back at a green suite with a risk list.
-6. **You review the diff** and run `/sonu:ship`, which takes it through review bots to a merged PR — and the merge closes the ticket.
+6. **You review the diff** and run `/sonu:ship`, which takes it through review bots to a merged PR. Keep the tracker's close reference in the PR (`Closes #N` on GitHub, `Fixes ENG-123` on Linear, the issue key on Jira, the ticket id in the commit on local) — GitHub and Linear then close the ticket on merge, and for Jira and local the next `/sonu:factory` sweep marks it done.
 
 Two human decisions (approve the spec, approve the diff); everything between them is autonomous. Nothing merges without you.
 
@@ -120,15 +120,17 @@ Two human decisions (approve the spec, approve the diff); everything between the
 
 Every implement pass builds in its own git worktree (`../myrepo-wt-0001-fix-login-loop` on branch `ticket/0001-fix-login-loop`), unconditionally. That's what makes it safe to run several agents at once, each on a different ticket: separate directories, separate branches, no stomping. The claim happens in the main checkout *before* the worktree exists, so two sessions can never build the same ticket. A dirty main checkout is a hard stop rather than something to build around, and the factory sweep cleans up worktrees and branches for tickets whose PRs have merged. In a sandboxed harness that can't write outside the workspace, it falls back to building in place on a clean tree and says so.
 
+Two things worth knowing before you run agents in parallel. A fresh worktree gets a fresh install and **does not inherit untracked local config** — `.env` and friends stay behind, and a suite that quietly skips tests for missing config will report green while proving nothing, so the pass copies what the suite needs. And on the local file tracker, claims are commits: if your agents run on more than one machine, the claim commit has to reach the remote for the other machine to see it, which is why the pass pushes when a remote exists.
+
 #### Tracker configuration
 
 Five backends. Pick per repo, or once for everything:
 
 | `tracker:` | Backend | Notes |
 |---|---|---|
-| `github` | GitHub Issues via `gh` | Everything is a label; `Closes #N` closes the ticket on merge. |
-| `jira` | Jira via the Atlassian MCP or REST | Native type and priority fields; the sweep transitions to Done. |
-| `linear` | Linear via its MCP or GraphQL | Native priority; `Fixes ENG-123` closes on merge. |
+| `github` | GitHub Issues via `gh` | Everything is a label; `Closes #N` closes the ticket when the PR merges **to the default branch** (a merge into a release branch won't). |
+| `jira` | Jira via the Atlassian MCP or REST | Native type and priority fields; nothing auto-closes, so the sweep transitions to Done. |
+| `linear` | Linear via its MCP or GraphQL | Native priority; `Fixes ENG-123` closes on merge **when Linear's GitHub integration is enabled** — without it, the sweep reports the ticket for a manual move. |
 | `local` | Markdown files in the repo | Zero dependencies, works offline, tickets diff in PRs. |
 | `custom` | Anything else | `init` interviews you and generates the adapter. |
 
@@ -236,7 +238,7 @@ Edit `sonu/skills/code-standards/SKILL.md` to make it yours — it's plain Markd
 
 Auto-applied — once the plugin is installed, Claude follows the red-green-refactor discipline whenever it writes, changes, or tests code in any repo, even when "TDD" or "tests" aren't mentioned. `/sonu:tdd` (above) is this same skill invoked directly by name; there is no separate command component.
 
-It encodes a strict test-first methodology with honest carve-outs (spikes are thrown away and rebuilt test-first; code never lands without tests) across twelve areas:
+It encodes a strict test-first methodology with honest carve-outs (spikes are thrown away and rebuilt test-first; code never lands without tests) across thirteen areas:
 
 - **Red-green-refactor** — failing test first, minimum code to green, refactor under protection. Small steps, run tests constantly.
 - **Test-first discipline** — the one carve-out: exploratory spikes to learn a shape, discarded entirely before building the real thing test-first.
@@ -248,6 +250,7 @@ It encodes a strict test-first methodology with honest carve-outs (spikes are th
 - **The testing pyramid** — many unit tests, fewer integration, fewest end-to-end; push behavior down to the unit level.
 - **Coverage as byproduct** — use it to find gaps, not to hit a number; a test with no meaningful assertion is negative value.
 - **What to test** — behavior, boundaries, edge cases, error paths; thresholds (limits, timeouts, caps) at values a test can actually trip, asserting both sides; skip trivial pass-throughs and generated code.
+- **Behavioral evidence** — a green unit suite doesn't prove a screen renders or a flow completes; visible and interactive changes get the real flow exercised and evidence captured, or an explicit statement of what went unverified.
 - **The bug-fix reflex** — reproduce the bug with a failing test before fixing it, every time.
 - **The test is innocent** — a failing test means the code is wrong, not the test; no updating expectations to match broken output, no skips, no broadened assertions, no sleeps.
 

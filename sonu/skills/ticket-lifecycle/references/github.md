@@ -128,5 +128,5 @@ Last verified 2026-07:
 
 - `gh label create --force` updates an existing label in place; without it the command exits non-zero when the label exists. Re-verify with `gh label create --help`.
 - `gh issue edit` accepts repeated `--add-label` / `--remove-label` flags in one call, and removing an absent label is a no-op. Re-verify with `gh issue edit --help`.
-- `gh pr list --search "linked:issue-N"` finds PRs linked to an issue; if a future CLI drops the qualifier, fall back to `gh issue view N --json closedByPullRequestsReferences`.
+- `gh issue view N --json closedByPullRequestsReferences` is the linked-PR lookup. The `linked:issue` search qualifier is deliberately not used: it is a boolean ("has any linked issue"), so `linked:issue-N` does not filter to issue N and returns unrelated PRs. Re-verify the JSON field with `gh issue view --json 2>&1 | head`.
 - `Closes #N` in a PR body auto-closes on merge to the default branch only — a PR merged into a release branch will not close the ticket.

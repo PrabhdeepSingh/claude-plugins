@@ -2,7 +2,7 @@
 name: bug-finder
 description: Go hunting for one real, previously unreported defect and file it as a well-evidenced ticket — proactive discovery, not reactive diagnosis. INVOKE when asked to look for bugs, audit or sweep code for defects, hunt for problems in recently changed or risky areas, or find issues worth filing, and whenever /sonu:factory runs a bug-hunt pass. Do NOT load this when a symptom is already known or reported — diagnosing that is [[debugging]] — and not to review a pending diff, which is [[self-review]]. It reads code and files a ticket; it never fixes the defect, changes code, or opens a PR.
 argument-hint: "[optional area to hunt in]"
-allowed-tools: Bash, Read, Grep, Glob
+allowed-tools: Bash, Read, Write, Grep, Glob
 ---
 
 # Bug finder — find one real defect, prove it, file it

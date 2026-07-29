@@ -48,21 +48,46 @@ curl --fail --silent --show-error --request POST \
 
 ```bash
 ID=ENG-123   # substitute the real identifier
-QUERY='query($id:String!){issue(id:$id){identifier title description priority state{name type} labels{nodes{name}} comments{nodes{body createdAt user{name}}} attachments{nodes{url title}}}}'
+QUERY='query($id:String!){issue(id:$id){identifier title description priority state{name type} labels{nodes{id name}} comments{nodes{body createdAt user{name}}} attachments{nodes{url title}}}}'
 curl --fail --silent --show-error --request POST \
   --header "Authorization: $LINEAR_API_KEY" \
   --header "Content-Type: application/json" \
-  --data "{\"query\":\"$QUERY\",\"variables\":{\"id\":\"$ID\"}}" \
+  --data "$(jq -n --arg q "$QUERY" --arg id "$ID" '{query:$q,variables:{id:$id}}')" \
   https://api.linear.app/graphql
 ```
 
-**claim** — run **fetch** first and confirm the trigger label is actually **present**; if it is absent, this is a lost race, not a claim — stop. Then send the label set with the trigger removed, then re-fetch to confirm it is gone.
+The label `id` is selected alongside `name` deliberately — claim and classify both replace the label set wholesale and need those ids, so fetching only names forces a second round trip.
+
+**claim** — three shell steps, same shape as the other adapters: confirm **present**, mutate, confirm **gone**. Do not treat the prose as the check; a claim that lives only in prose gets skipped, and skipping it re-opens the lost-race hole the other adapters close.
+
+Step 1, confirm the trigger is present (an absent trigger is a lost race, not a claim):
+
+```bash
+ID=ENG-123   # substitute
+TRIGGER=factory-ready-to-implement
+QUERY='query($id:String!){issue(id:$id){labels{nodes{id name}}}}'
+BEFORE=$(curl --fail --silent --show-error --request POST \
+  --header "Authorization: $LINEAR_API_KEY" \
+  --header "Content-Type: application/json" \
+  --data "$(jq -n --arg q "$QUERY" --arg id "$ID" '{query:$q,variables:{id:$id}}')" \
+  https://api.linear.app/graphql)
+printf '%s' "$BEFORE" | jq -e '.errors | not' >/dev/null 2>&1 \
+  || { echo "STOP: GraphQL returned errors"; exit 1; }
+printf '%s' "$BEFORE" | jq -e --arg t "$TRIGGER" \
+  '[.data.issue.labels.nodes[].name] | index($t)' >/dev/null 2>&1 \
+  || { echo "STOP: $TRIGGER not present — nothing to claim"; exit 1; }
+# the label id set to send back, trigger excluded:
+printf '%s' "$BEFORE" | jq -c --arg t "$TRIGGER" \
+  '[.data.issue.labels.nodes[] | select(.name != $t) | .id]'
+```
+
+Step 2, send that id set (the mutation below). Step 3, re-run step 1's query and confirm the trigger is **absent** and the other labels survived; anything else is a failed claim — stop.
 
 `issueUpdate` replaces `labelIds` **wholesale**, so `LABEL_IDS` must be the issue's full remaining label id set. Sending the literal `[]` below without substituting **strips every label on the issue**, including its type — destroying classification that the fetch you just ran is the only record of:
 
 ```bash
 ID=ENG-123
-# REQUIRED substitution — the issue's remaining label ids from fetch, trigger excluded.
+# REQUIRED substitution — paste the id set step 1 printed (trigger excluded).
 # Sending an empty array here deletes ALL labels on the issue.
 LABEL_IDS='["11111111-1111-1111-1111-111111111111"]'
 QUERY='mutation($id:String!,$ids:[String!]){issueUpdate(id:$id,input:{labelIds:$ids}){success}}'
@@ -87,7 +112,8 @@ QUERY='mutation($id:String!,$body:String!){commentCreate(input:{issueId:$id,body
 curl --fail --silent --show-error --request POST \
   --header "Authorization: $LINEAR_API_KEY" \
   --header "Content-Type: application/json" \
-  --data "{\"query\":\"$QUERY\",\"variables\":{\"id\":\"$ID\",\"body\":\"$BODY\"}}" \
+  --data "$(jq -n --arg q "$QUERY" --arg id "$ID" --arg body "$BODY" \
+    '{query:$q,variables:{id:$id,body:$body}}')" \
   https://api.linear.app/graphql
 ```
 

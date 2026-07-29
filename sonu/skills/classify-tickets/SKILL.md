@@ -2,7 +2,7 @@
 name: classify-tickets
 description: Backlog hygiene as a sweep — give every open ticket exactly one type and one evidence-based priority, and change nothing else. INVOKE when grooming or triaging a backlog, when asked to prioritize or label open tickets, when priorities have drifted or a new tracker's tickets are unclassified, and whenever /sonu:factory runs a classify pass. Do NOT load this to specify one ticket in depth — that is [[ticket-triage]] — or to discover new defects, which is [[bug-finder]]. It touches classification only; it never edits ticket text, comments, closes tickets, or authorizes work. (Runs under [[ticket-lifecycle]], which owns the taxonomy, the adapters, and the trust rules.)
 argument-hint: "[optional ticket ids to limit the pass]"
-allowed-tools: Bash, Read, Grep, Glob
+allowed-tools: Bash, Read, Edit, Grep, Glob
 ---
 
 # Classify tickets — a clean backlog is a queryable one

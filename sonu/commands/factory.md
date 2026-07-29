@@ -60,7 +60,7 @@ case "$BRANCH" in
   *) echo "STOP: BRANCH must be a ticket/... branch — refusing to sweep"; exit 1 ;;
 esac
 MAIN=$(git worktree list --porcelain | head -1 | cut -d' ' -f2)
-WT=$(git worktree list --porcelain | grep -B2 -x "branch refs/heads/$BRANCH" | head -1 | cut -d' ' -f2)
+WT=$(git worktree list --porcelain | grep -B2 -F -x "branch refs/heads/$BRANCH" | head -1 | cut -d' ' -f2)
 if [ -n "$WT" ] && [ "$WT" != "$MAIN" ]; then
   git worktree remove "$WT" && echo "removed worktree $WT"
 else
@@ -69,7 +69,7 @@ fi
 git branch -d "$BRANCH" 2>/dev/null || echo "branch $BRANCH kept (unmerged or already gone)"
 ```
 
-Three guards, and none of them are optional. The `case` check refuses to run on an empty or non-`ticket/` value — an unsubstituted `BRANCH` would make the grep match `branch refs/heads/` generally, whose first hit is the **main checkout**, and `git worktree remove` would then target the repo you are working in. The `-x` makes the branch match exact, so `ticket/0001-fix` cannot match `ticket/0001-fix-more`. The `$WT != $MAIN` comparison is the last line of defense against removing the primary worktree. And `git branch -d` (never `-D`) refuses to delete anything unmerged, so a mistaken sweep cannot discard real work.
+Four guards, and none of them are optional. The `case` check refuses to run on an empty or non-`ticket/` value — an unsubstituted `BRANCH` would make the grep match `branch refs/heads/` generally, whose first hit is the **main checkout**, and `git worktree remove` would then target the repo you are working in. `-x` makes the match whole-line and `-F` makes it literal, so `ticket/0001-fix` cannot match `ticket/0001-fix-more`, and a `.` in a branch name stays a dot instead of becoming a regex wildcard that matches a neighbouring ticket's worktree. The `$WT != $MAIN` comparison is the last line of defense against removing the primary worktree. And `git branch -d` (never `-D`) refuses to delete anything unmerged, so a mistaken sweep cannot discard real work.
 
 The sweep runs before routing so a stale claim never blocks a fresh pass. If the queue is empty after sweeping, say so and stop — no tokens spent on an empty queue is a feature, not a failure.
 
@@ -120,13 +120,15 @@ SLUG=fix-login-redirect-loop         # substitute the kebab-cased title
 ROOT=$(git rev-parse --show-toplevel) || exit 1
 cd "$ROOT" || exit 1
 REPO=$(basename "$ROOT")
-BASE=$(git symbolic-ref --short HEAD)
+BASE=$(gh repo view --json defaultBranchRef -q .defaultBranchRef.name 2>/dev/null || echo main)
+[ "$(git symbolic-ref --short HEAD)" = "$BASE" ] \
+  || { echo "STOP: not on $BASE — claim and branch from the main checkout, not another ticket's worktree"; exit 1; }
 git status --porcelain | grep -q . && { echo "STOP: main checkout is dirty — commit or stash first"; exit 1; }
 git worktree add "$ROOT/../$REPO-wt-$ID-$SLUG" -b "ticket/$ID-$SLUG" "$BASE" \
   && echo "worktree ready at $ROOT/../$REPO-wt-$ID-$SLUG on ticket/$ID-$SLUG"
 ```
 
-The empty-variable guard and the `cd` to the repo root both matter: an unset `ID` or `SLUG` would create a branch named `ticket/-` (and a sibling directory to match), and a relative `../` path resolves against the current directory, which is not necessarily the repo root — that is how a worktree lands somewhere nobody expects.
+Every guard here has a specific accident behind it. The empty-variable check stops an unset `ID` or `SLUG` from creating a branch named `ticket/-` with a sibling directory to match. The `cd` to the repo root matters because a relative `../` path resolves against the current directory, which is not necessarily the repo root — that is how a worktree lands somewhere nobody expects. And the on-`$BASE` check is what keeps the new branch rooted in the default branch: run this from inside another ticket's worktree and `HEAD` is *that* ticket's branch, so the build would silently stack on unrelated unmerged work and its PR would carry both changes.
 
 A dirty main checkout is a **hard stop**, never built around — uncommitted work in the tree you are branching from ends up attributed to this ticket.
 
@@ -134,7 +136,7 @@ Then prepare it: run the repo's install step, and copy any untracked local confi
 
 **If the harness cannot operate outside the workspace root** (a sandboxed shell), fall back to building in place on a **clean** main checkout with a `ticket/$ID-$SLUG` branch, and **say so in the hand-back**. The isolation may degrade; the clean-tree requirement never does.
 
-**4. Hand the ticket to the build engine.** From inside the worktree, invoke `/sonu:build` with the ticket's spec as the task, in its ticket-driven form: the human-approved spec **is** the approved design, so build skips its plan-mode gate and goes straight to the test-first build under the standards its own triage flags. Everything about how the change gets built — tests, standards, surface bars, self-review — belongs to that command. Do not restate or second-guess any of it here.
+**4. Hand the ticket to the build engine.** From inside the worktree, invoke `/sonu:build` with the ticket's spec as the task, in its ticket-driven form: the human-approved spec **is** the approved design, so build skips its plan-mode *pause* and works from the spec's acceptance criteria as the design constraints. It still runs its design phase in-chat for whatever forks the spec leaves open — read build.md Phase 1 for exactly which steps that skips and which it keeps. Everything about how the change gets built — tests, standards, surface bars, self-review — belongs to that command. Do not restate or second-guess any of it here.
 
 **5. Hand back.** Repeat build's hand-back and add the queue facts: the ticket id, the worktree path, the branch, and the reminder that the commit and PR must carry the ticket reference the adapter specifies (`Closes #N` on GitHub, `Fixes ENG-123` on Linear, the issue key in the branch and PR title on Jira, the ticket id in the commit message on local) so the merge closes the loop.
 

@@ -35,7 +35,9 @@ Two mapping caveats, both real in practice. A project without a Story type (comm
 ```bash
 JIRA_PROJECT=ABC   # substitute, or export from the config's jira_project
 TRIGGER=factory-ready-to-implement
-JQL="project = $JIRA_PROJECT AND statusCategory != Done AND labels = $TRIGGER ORDER BY priority DESC, updated DESC"
+# Quote the label value: JQL parses a bare hyphen as an operator, so an
+# unquoted factory-ready-to-implement is a syntax error, not a filter.
+JQL="project = $JIRA_PROJECT AND statusCategory != Done AND labels = \"$TRIGGER\" ORDER BY priority DESC, updated DESC"
 curl --fail --silent --show-error --request POST \
   --user "$JIRA_EMAIL:$JIRA_API_TOKEN" \
   --header "Content-Type: application/json" \
@@ -62,7 +64,10 @@ TRIGGER=factory-ready-to-implement
 BEFORE=$(curl --fail --silent --show-error \
   --user "$JIRA_EMAIL:$JIRA_API_TOKEN" \
   "https://$JIRA_SITE/rest/api/3/issue/$KEY?fields=labels")
-printf '%s' "$BEFORE" | grep -q "$TRIGGER" \
+# Exact label membership via jq — a raw grep matches substrings, so a
+# neighbouring label like factory-ready-to-implement-backup would read
+# as the trigger and turn a successful claim into a false failure.
+printf '%s' "$BEFORE" | jq -e --arg t "$TRIGGER" '.fields.labels | index($t)' >/dev/null 2>&1 \
   || { echo "STOP: $TRIGGER not present — nothing to claim"; exit 1; }
 curl --fail --silent --show-error --request PUT \
   --user "$JIRA_EMAIL:$JIRA_API_TOKEN" \
@@ -73,7 +78,7 @@ curl --fail --silent --show-error --request PUT \
 LABELS=$(curl --fail --silent --show-error \
   --user "$JIRA_EMAIL:$JIRA_API_TOKEN" \
   "https://$JIRA_SITE/rest/api/3/issue/$KEY?fields=labels")
-if printf '%s' "$LABELS" | grep -q "$TRIGGER"; then
+if printf '%s' "$LABELS" | jq -e --arg t "$TRIGGER" '.fields.labels | index($t)' >/dev/null 2>&1; then
   echo "STOP: trigger still present — claim failed, do not proceed"
 else
   echo "CLAIMED $KEY"
@@ -124,7 +129,8 @@ SUMMARY="Session cookie survives logout"
 curl --fail --silent --show-error --request POST \
   --user "$JIRA_EMAIL:$JIRA_API_TOKEN" \
   --header "Content-Type: application/json" \
-  --data "{\"fields\":{\"project\":{\"key\":\"$JIRA_PROJECT\"},\"summary\":\"$SUMMARY\",\"issuetype\":{\"name\":\"Bug\"}}}" \
+  --data "$(jq -n --arg p "$JIRA_PROJECT" --arg s "$SUMMARY" \
+    '{fields:{project:{key:$p},summary:$s,issuetype:{name:"Bug"}}}')" \
   "https://$JIRA_SITE/rest/api/3/issue"
 ```
 

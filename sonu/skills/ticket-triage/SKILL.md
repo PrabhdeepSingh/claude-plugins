@@ -2,7 +2,7 @@
 name: ticket-triage
 description: Turn one raw ticket into an implementation-ready specification — or ask the smallest question that unblocks it — without writing a line of production code. INVOKE when specifying, refining, scoping, or triaging a ticket from any tracker (a GitHub issue, Jira issue, Linear issue, or local ticket file), when a ticket carries the ready-for-spec authorization, and whenever /sonu:factory routes a spec pass. Do NOT load this to classify a whole backlog — that is [[classify-tickets]] — to discover undiscovered defects, which is [[bug-finder]], or to build an already-approved spec, which is /sonu:build. It reads code and writes only to the ticket; it never implements, never opens a PR, and never authorizes the next stage. (Runs under [[ticket-lifecycle]], which owns the taxonomy, the tracker adapters, and the claim rules.)
 argument-hint: "[ticket id or URL]"
-allowed-tools: Bash, Read, Grep, Glob
+allowed-tools: Bash, Read, Write, Edit, Grep, Glob
 ---
 
 # Ticket triage — make the ticket good enough to build from
