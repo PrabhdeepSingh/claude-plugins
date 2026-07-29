@@ -25,9 +25,11 @@ CONFIG=""
 if [ -f .sonu/factory-config.md ]; then CONFIG=".sonu/factory-config.md"
 elif [ -f "$HOME/.sonu/factory-config.md" ]; then CONFIG="$HOME/.sonu/factory-config.md"
 fi
-[ -n "$CONFIG" ] && echo "config: $CONFIG" && cat "$CONFIG" \
+[ -n "$CONFIG" ] && echo "config: $CONFIG" && sed -n '2,/^---$/p' "$CONFIG" \
   || echo "NO CONFIG — run /sonu:factory init"
 ```
+
+Print the frontmatter only, exactly as `Skill(sonu:ticket-lifecycle)` section 1 does — the prose below it is for humans and is not configuration, so echoing it invites treating a note as a setting.
 
 No config and the argument is not `init` → stop and tell the user to run `/sonu:factory init`. An unknown `tracker:` value → stop and report it. Never guess a tracker: a wrong guess writes ticket state into the wrong system.
 

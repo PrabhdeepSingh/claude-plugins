@@ -90,17 +90,20 @@ grep -ril -- "$TOPIC" .sonu/tickets/ 2>/dev/null || echo "(no matches)"
 ```bash
 ID=0001   # substitute
 case "$ID" in [0-9][0-9][0-9][0-9]) : ;; *) echo "STOP: id must be four digits"; exit 1 ;; esac
+[ -d .sonu/tickets ] || { echo "STOP: no local ticket store — run /sonu:factory init"; exit 1; }
 find .sonu/tickets -maxdepth 1 -name "$ID-*.md"
 ```
 
-The four-digit check is not pedantry: an id of `*` or `../0001` reaching `find -name` matches files the caller never meant to touch.
+Two guards, same reasoning as *list queue*. The four-digit check is not pedantry: an id of `*` or `../0001` reaching `find -name` matches files the caller never meant to touch. And the store check runs **instead of** silencing `find` with `2>/dev/null` — a missing store, a wrong working directory, and a permission error are three different problems, and collapsing them into "no ticket found" sends the caller hunting for a ticket that was never the issue.
 
 **claim** — clear the trigger, then verify, then commit. All three steps, in that order:
 
 ```bash
 ID=0001   # substitute
 TRIGGER=ready-to-implement
-FILE=$(find .sonu/tickets -maxdepth 1 -name "$ID-*.md" 2>/dev/null | head -1)
+case "$ID" in [0-9][0-9][0-9][0-9]) : ;; *) echo "STOP: id must be four digits"; exit 1 ;; esac
+[ -d .sonu/tickets ] || { echo "STOP: no local ticket store — run /sonu:factory init"; exit 1; }
+FILE=$(find .sonu/tickets -maxdepth 1 -name "$ID-*.md" | head -1)
 [ -n "$FILE" ] || { echo "STOP: no ticket $ID"; exit 1; }
 grep -q "^trigger: $TRIGGER$" "$FILE" \
   || { echo "STOP: ticket $ID does not carry $TRIGGER — nothing to claim"; exit 1; }
@@ -112,7 +115,8 @@ Then edit the file's `trigger:` line to `none` with an editing tool (not `sed -i
 
 ```bash
 ID=0001   # substitute
-FILE=$(find .sonu/tickets -maxdepth 1 -name "$ID-*.md" 2>/dev/null | head -1)
+[ -d .sonu/tickets ] || { echo "STOP: no local ticket store"; exit 1; }
+FILE=$(find .sonu/tickets -maxdepth 1 -name "$ID-*.md" | head -1)
 [ -n "$FILE" ] || { echo "STOP: no ticket $ID"; exit 1; }
 grep -q '^trigger: none$' "$FILE" || { echo "STOP: trigger not cleared — do not proceed"; exit 1; }
 git add "$FILE" && git commit -m "tickets: claim $ID for implement"
@@ -126,7 +130,9 @@ git remote | grep -q . && git push || echo "no remote — local claim only"
 ```bash
 ID=0001   # substitute
 case "$ID" in [0-9][0-9][0-9][0-9]) : ;; *) echo "STOP: id must be four digits"; exit 1 ;; esac
+[ -d .sonu/tickets ] || { echo "STOP: no local ticket store"; exit 1; }
 FILE=$(find .sonu/tickets -maxdepth 1 -name "$ID-*.md" | head -1)
+[ -n "$FILE" ] || { echo "STOP: no ticket $ID"; exit 1; }
 grep -q '^trigger: none$' "$FILE" \
   || { echo "STOP: trigger changed during a body edit — revert it; only a human sets a trigger"; exit 1; }
 ```
