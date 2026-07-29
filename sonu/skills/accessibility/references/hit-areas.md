@@ -47,7 +47,7 @@ If the visible element is smaller (e.g., a 20×20 checkbox), extend the hit area
 ### Tailwind Example
 
 ```tsx
-<button className="relative size-5 after:absolute after:top-1/2 after:left-1/2 after:size-11 after:-translate-1/2">
+<button className="relative size-5 after:absolute after:top-1/2 after:left-1/2 after:size-11 after:-translate-x-1/2 after:-translate-y-1/2">
   <CheckIcon />
 </button>
 ```

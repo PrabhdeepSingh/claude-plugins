@@ -102,7 +102,7 @@ html {
 
 ```tsx
 <html lang="en">
-  <body class="font-sans antialiased">
+  <body className="font-sans antialiased">
     <main>{children}</main>
   </body>
 </html>

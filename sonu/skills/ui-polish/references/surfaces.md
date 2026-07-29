@@ -142,10 +142,12 @@ The shadow is comprised of three layers. The first acts as a 1px border ring, th
 In dark mode, simplify to a single white ring, since layered depth shadows aren't visible on dark backgrounds:
 
 ```css
-/* Dark mode: adapt to whatever setup the project uses
-   (prefers-color-scheme, class, data attribute, etc.) */
---shadow-border: 0 0 0 1px oklch(1 0 0 / 0.08);
---shadow-border-hover: 0 0 0 1px oklch(1 0 0 / 0.13);
+/* Dark mode: adapt the selector to the project's setup
+   (class, data attribute, or prefers-color-scheme). */
+.dark {
+  --shadow-border: 0 0 0 1px oklch(1 0 0 / 0.08);
+  --shadow-border-hover: 0 0 0 1px oklch(1 0 0 / 0.13);
+}
 ```
 
 ### Usage with Hover Transition

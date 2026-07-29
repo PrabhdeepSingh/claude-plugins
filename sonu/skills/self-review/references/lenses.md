@@ -108,6 +108,12 @@ Format entirely — no Scope and Coverage section, no severity table, no
 Considered-but-Rejected table, no Verdict. Report findings ONLY as the
 shared Risk lines defined above. A verdict cannot be consumed here.
 
+Also override interface-review's "Verify What Can Be Verified" step: do not
+run project lifecycle scripts, installers, servers, or any command that
+mutates state. Read source and the diff only; if runtime verification would
+matter, say so in the Risk line as unverified, not by executing it. The
+shared read-only frame above wins over that methodology step.
+
 Report a finding only when the diff itself introduces or worsens it. A
 pre-existing interface problem the diff merely sits near is not a finding.
 ```
