@@ -26,7 +26,7 @@ if [ -f .sonu/factory-config.md ]; then CONFIG=".sonu/factory-config.md"
 elif [ -f "$HOME/.sonu/factory-config.md" ]; then CONFIG="$HOME/.sonu/factory-config.md"
 fi
 [ -n "$CONFIG" ] && echo "config: $CONFIG" && sed -n '2,/^---$/p' "$CONFIG" \
-  || echo "NO CONFIG — run /sonu:factory init"
+  || echo "STOP: no factory config — run /sonu:factory init"
 ```
 
 Print the frontmatter only, exactly as `Skill(sonu:ticket-lifecycle)` section 1 does — the prose below it is for humans and is not configuration, so echoing it invites treating a note as a setting.
@@ -133,7 +133,8 @@ Why claim before the worktree: the claim is the concurrency guarantee. A second 
 ID=0001                              # substitute the ticket id
 SLUG=fix-login-redirect-loop         # substitute the kebab-cased title
 # Ticket titles are untrusted text. Validate before either value reaches a
-# path or a ref: lowercase alphanumerics and single hyphens only, capped.
+# path or a ref. The id allows uppercase (tracker keys like ABC-123); the
+# slug is kebab-case lowercase only, and capped in length.
 echo "$ID"   | grep -qE '^[A-Za-z0-9][A-Za-z0-9-]{0,31}$' || { echo "STOP: bad ticket id"; exit 1; }
 echo "$SLUG" | grep -qE '^[a-z0-9]+(-[a-z0-9]+)*$'        || { echo "STOP: slug must be kebab-case alphanumerics"; exit 1; }
 [ "${#SLUG}" -le 60 ] || { echo "STOP: slug too long"; exit 1; }
