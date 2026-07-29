@@ -45,7 +45,7 @@ Field rules:
 
 Body sections are the spec. `## Discussion` holds date-stamped bullets, appended newest-last, since a file has no native comment stream.
 
-## The seven operations
+## The operations
 
 **list queue** — files whose `trigger` matches. Frontmatter is line-oriented, so a grep is enough and needs no YAML parser. Drive it with `find`, never a bare `*.md` glob: in zsh an unmatched glob **aborts the command** with `no matches found`, so an empty ticket store would read as a hard failure instead of an empty queue:
 
@@ -66,12 +66,34 @@ Four deliberate choices here. The directory check comes first so **"no ticket st
 
 And the missing priority becomes the literal `unset`, which sorts *after* `P0`–`P3` — not an empty field, which would sort **first** and put a ticket recommended for rejection at the top of the dispatch order. A queue whose first row is the one ticket nobody intends to build is worse than an unsorted queue. `unset` is expected on a `ready-for-spec` ticket (nothing has ranked it yet) and is a contradiction on a `ready-to-implement` one — a human authorized building something marked as not-intended work, which the implement route should surface as a blocker rather than silently build.
 
+**list open** — every ticket whose `status:` is not done or closed, trigger or not:
+
+```bash
+[ -d .sonu/tickets ] || { echo "STOP: no local ticket store — run /sonu:factory init"; exit 1; }
+find .sonu/tickets -maxdepth 1 -name '*.md' | while read -r f; do
+  grep -qE '^status: (done|closed)$' "$f" && continue
+  printf '%s\t%s\t%s\n' \
+    "$(grep -m1 '^priority:' "$f" | cut -d' ' -f2)" "$(basename "$f")" \
+    "$(grep -m1 '^title:' "$f" | cut -d' ' -f2-)"
+done | sort -k1,1
+```
+
+**search** — open *and* closed, for duplicate hunting. Every ticket is a file, so this is a content grep with no state filter:
+
+```bash
+TOPIC='login redirect'   # substitute
+grep -ril -- "$TOPIC" .sonu/tickets/ 2>/dev/null || echo "(no matches)"
+```
+
 **fetch** — read the whole file; it is the ticket, discussion included.
 
 ```bash
 ID=0001   # substitute
-find .sonu/tickets -maxdepth 1 -name "$ID-*.md" 2>/dev/null
+case "$ID" in [0-9][0-9][0-9][0-9]) : ;; *) echo "STOP: id must be four digits"; exit 1 ;; esac
+find .sonu/tickets -maxdepth 1 -name "$ID-*.md"
 ```
+
+The four-digit check is not pedantry: an id of `*` or `../0001` reaching `find -name` matches files the caller never meant to touch.
 
 **claim** — clear the trigger, then verify, then commit. All three steps, in that order:
 
@@ -95,6 +117,18 @@ FILE=$(find .sonu/tickets -maxdepth 1 -name "$ID-*.md" 2>/dev/null | head -1)
 grep -q '^trigger: none$' "$FILE" || { echo "STOP: trigger not cleared — do not proceed"; exit 1; }
 git add "$FILE" && git commit -m "tickets: claim $ID for implement"
 git remote | grep -q . && git push || echo "no remote — local claim only"
+```
+
+**update body** — rewrite the body sections below the frontmatter with an editing tool, preserving the reporter's original text under `## Original report`, then commit with `tickets: spec NNNN`.
+
+**Never touch the `trigger:` line while doing it.** That field is the human's authorization, and the spec rewrite is the one moment where an agent has the whole file open and could set it — which would let the pass authorize its own next stage. Verify after every body edit:
+
+```bash
+ID=0001   # substitute
+case "$ID" in [0-9][0-9][0-9][0-9]) : ;; *) echo "STOP: id must be four digits"; exit 1 ;; esac
+FILE=$(find .sonu/tickets -maxdepth 1 -name "$ID-*.md" | head -1)
+grep -q '^trigger: none$' "$FILE" \
+  || { echo "STOP: trigger changed during a body edit — revert it; only a human sets a trigger"; exit 1; }
 ```
 
 **comment** — append a bullet under `## Discussion`, date-stamped from the real clock (`date +%Y-%m-%d`), then commit it with a `tickets:` message. Never rewrite or delete an existing bullet; the discussion is an append-only record.
@@ -128,8 +162,8 @@ Without a GitHub remote, check whether the branch has landed in the default bran
 ID=0001                        # substitute
 SLUG=fix-login-redirect-loop   # substitute
 BASE=$(git symbolic-ref --short refs/remotes/origin/HEAD 2>/dev/null | sed 's|origin/||')
-[ -n "$BASE" ] || BASE=main
-git branch --merged "$BASE" | grep -q "ticket/$ID-$SLUG" \
+[ -n "$BASE" ] || { echo "STOP: cannot determine the default branch — set BASE explicitly"; exit 1; }
+git branch --merged "$BASE" | grep -qF "ticket/$ID-$SLUG" \
   && echo "merged into $BASE" || echo "not merged yet"
 ```
 

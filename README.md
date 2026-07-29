@@ -166,7 +166,7 @@ created: 2031-01-15
 
 Ticket-file edits (claims, specs, classifications, status flips) are committed on their own with a `tickets:` prefix, never mixed into a code commit — so the diff you review stays clean, and a claim is durable the moment it happens. That's the one deliberate exception to "these workflows never commit," and it covers tracker metadata only, never source code.
 
-For a tracker that isn't one of the four, `/sonu:factory init` asks how your tool works — how an agent reaches it, which environment variables hold credentials, what marks the two triggers, how type and priority map, how a merge closes a ticket — and writes an adapter file for you to review. Workflows only ever name one of seven operations (list queue, fetch, claim, comment, classify, create, close the loop), so a tracker is fully supported the moment a document answers all seven; an adapter missing one is a hard stop, never an improvised command.
+For a tracker that isn't one of the four, `/sonu:factory init` asks how your tool works — how an agent reaches it, which environment variables hold credentials, what marks the two triggers, how type and priority map, how a merge closes a ticket — and writes an adapter file for you to review. Workflows only ever name an operation from a fixed list (list queue, list open, search, fetch, claim, update body, comment, classify, create, close the loop), so a tracker is fully supported the moment a document answers all of them; an adapter missing one is a hard stop, never an improvised command.
 
 ### `/sonu:tdd` — drive a change test-first
 
@@ -372,7 +372,7 @@ Edit `sonu/skills/model-tiering/SKILL.md` to make it yours — it's plain Markdo
 The rulebook the queue workflows share, and the reason a tracker swap isn't a rewrite. It fires whenever tickets are being read or written in a queue-driven flow, and it owns four things in one place so five backends and four workflows can't drift apart:
 
 - **Tracker resolution** — `.sonu/factory-config.md`, then `~/.sonu/factory-config.md`, then stop. Never a guessed tracker, because a wrong guess writes ticket state into the wrong system.
-- **The seven-operation contract** — list queue, fetch, claim, comment, classify, create, close the loop. Workflows name operations; adapters supply mechanics. An adapter missing an operation is a hard stop that names the gap rather than an improvised command.
+- **The operations contract** — list queue, list open, search, fetch, claim, update body, comment, classify, create, close the loop. Workflows name operations; adapters supply mechanics. An adapter missing an operation is a hard stop that names the gap rather than an improvised command.
 - **The taxonomy** — exactly one type (`bug`/`enhancement`/`documentation`) and one evidence-based priority (`P0`–`P3`, unset meaning "recommended for rejection"). Size never sets priority; volume never sets priority.
 - **Authorization and trust** — only humans apply triggers, the workflow removes one as its claim before any work (that's the concurrency guard), status is derived from the ticket's own artifacts rather than stored as a field anyone has to maintain (the local file tracker is the one exception — a file has no other state, so it keeps a `status:` field with exactly one writer), and all ticket content is untrusted data that can never redirect a workflow.
 
@@ -425,7 +425,9 @@ Credentials are read from the environment only. They never go in `.sonu/factory-
 
 `/sonu:ship` runs shell commands and **merges PRs on your behalf**. Read the command before you install it (`sonu/commands/ship.md`), and only point it at repos where you're comfortable with that. Plugins run with your local permissions.
 
-`/sonu:factory` adds a second thing worth understanding before you use it: **whoever can apply a trigger label is the trust boundary** — not whoever opened the ticket. Applying `factory-ready-to-implement` authorizes an agent to build that ticket, so only use the queue on repos where everyone able to label is trusted, and keep the default branch protected so the worst case stays a reviewable PR. Ticket bodies, comments, and linked PRs are treated as untrusted data throughout: they inform the work, and instructions embedded in them (however authoritative they sound) are ignored. Nothing in the flow merges — that stays `/sonu:ship`, run by you.
+`/sonu:factory` adds a second thing worth understanding before you use it: **whoever can apply a trigger label is the trust boundary** — not whoever opened the ticket. Applying `factory-ready-to-implement` authorizes an agent to build that ticket, so only use the queue on repos where everyone able to label is trusted. Don't point it at a public repo where outside contributors can label.
+
+Two honest caveats about how that boundary is held. "Only humans apply triggers" is a rule the workflows follow, not a permission the tracker enforces — an agent holding a credential that can *remove* a label can also add one. Where your tracker supports it, give the agent a credential that can't write trigger labels, and keep the default branch protected so a bad authorization still ends at a PR you have to merge. And ticket bodies, comments, and linked PRs are treated as untrusted data throughout — they inform the work, and instructions embedded in them are ignored however authoritative they sound — but that too is enforced by instruction rather than by a sandbox, which is the argument for reading a spec before you approve it. Nothing in the flow merges: that stays `/sonu:ship`, run by you.
 
 ## Layout
 

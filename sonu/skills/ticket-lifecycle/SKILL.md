@@ -51,19 +51,22 @@ Read exactly one adapter — the resolved tracker's. Reading the others wastes c
 
 ## 2. The ticket-operations contract — the seam every adapter fills
 
-Workflows are written against these seven operations and nothing else. This indirection is what makes a new tracker a documentation change instead of a rewrite of every workflow:
+Workflows are written against these nine operations and nothing else. This indirection is what makes a new tracker a documentation change instead of a rewrite of every workflow:
 
 | Operation | What it must do |
 |---|---|
 | **list queue** | List open tickets carrying a given trigger marker. |
+| **list open** | List **every** open ticket, trigger or not. Distinct from *list queue* because the backlog sweep grooms tickets nobody has authorized yet — a trigger-scoped list cannot see them. |
+| **search** | Find tickets matching a topic across **open and closed** work. Closed matters as much as open: a ticket closed as "won't fix" carries a decision that re-filing would relitigate. |
 | **fetch** | Retrieve one ticket in full — body, discussion, current classification, linked PRs. |
 | **claim** | Confirm the trigger marker is **present**, clear it, then confirm it is **gone**. Must report failure; a failed claim aborts the pass. An already-absent marker is a lost race, never a successful claim — clearing something absent usually "succeeds," which is exactly how two sessions end up building one ticket. |
+| **update body** | Replace the ticket's description with a rewritten one, preserving the reporter's original text. This is how a spec reaches the ticket; a comment cannot serve, because the spec has to be the first thing the next reader sees, not the twelfth comment down. |
 | **comment** | Append a durable, attributed note to the ticket's discussion. |
 | **classify** | Set exactly one type and one priority, removing conflicting values in that dimension. |
 | **create** | Open a new ticket with a type and no trigger. |
 | **close the loop** | Mark the ticket done once its PR merges. |
 
-Every adapter documents all seven. A resolved adapter missing any of them is a **hard stop that names the missing operation** — never improvise the mechanics, because an improvised claim or close is precisely how a ticket gets built twice or stranded forever in flight.
+Every adapter documents all of them. A resolved adapter missing any is a **hard stop that names the missing operation** — never improvise the mechanics, because an improvised claim or close is precisely how a ticket gets built twice or stranded forever in flight.
 
 → `references/github.md` — read when the resolved tracker is `github`.
 → `references/jira.md` — read when the resolved tracker is `jira`.
@@ -106,6 +109,8 @@ Set priority from evidence — impact, likelihood, affected scope, urgency — a
 These are the canonical names, used as-is wherever a trigger is a label (GitHub, Jira, Linear). The local file store carries the same two authorizations in its `trigger:` frontmatter field, where the field name already supplies the scope, so the values there drop the prefix (`ready-for-spec`, `ready-to-implement`, or `none`). Always reach for the trigger through the resolved adapter rather than hardcoding a label name — a workflow that greps for `factory-ready-for-spec` finds nothing on a local ticket that is genuinely queued. Three rules, each load-bearing:
 
 - **Only a human applies a trigger.** Applying one *is* the authorization. An agent never applies one — not even to a ticket it just specced or filed itself. Why: the moment an agent can authorize its own next stage, every human gate in the flow collapses into one rubber stamp at the start, and a mis-specced ticket walks straight into a build.
+
+  **Be honest about what enforces this: nothing but this rule.** A pass that can remove a trigger holds credentials that can add one, and on the local file store the trigger sits in the same file the spec rewrite edits. So the rule is load-bearing in a way most rules are not, and it earns two mechanical backstops worth setting up: give the agent a tracker credential that cannot write trigger labels where your tracker supports scoping it, and protect the default branch so the worst case of a bad authorization is still a PR a human has to merge. Neither is required for the flow to work; both are what keeps a single mistake from becoming an unreviewed merge.
 - **The workflow removes the trigger as its claim, before doing any work.** First action, not last. If the removal fails, stop — do not proceed on an unclaimed ticket. Why: the removed trigger is the durable record that the pass was claimed, so an interrupted or re-run session cannot fire twice on one authorization, and a second agent dispatching the same ticket concurrently finds nothing to claim and stops.
 - **One trigger, one pass.** It authorizes a single run. Another pass needs a human to apply it again, deliberately.
 
@@ -148,8 +153,8 @@ Record risk, dependencies, and unresolved decisions in the ticket body, not as n
 
 | File | What it answers |
 |------|-----------------|
-| `references/github.md` | The seven operations, trigger/type/priority mapping, and label bootstrap for GitHub Issues via `gh` |
-| `references/jira.md` | The seven operations for Jira via MCP or REST, credential requirements, and the type/priority field mapping |
-| `references/linear.md` | The seven operations for Linear via MCP or GraphQL, credential requirements, and native priority mapping |
+| `references/github.md` | Every operation, trigger/type/priority mapping, and label bootstrap for GitHub Issues via `gh` |
+| `references/jira.md` | Every operation for Jira via MCP or REST, credential requirements, and the type/priority field mapping |
+| `references/linear.md` | Every operation for Linear via MCP or GraphQL, credential requirements, and native priority mapping |
 | `references/local.md` | The dependency-free in-repo ticket store — file schema, id assignment, queue scanning, and the metadata-commit rule |
 | `references/custom.md` | The template, interview questions, and completeness rules for a user-authored adapter for any other tracker |

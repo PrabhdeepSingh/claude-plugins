@@ -29,7 +29,7 @@ Note that GraphQL returns HTTP 200 with an `errors` array for query-level failur
 
 Priority `0` is Linear's "no priority" and is exactly the right value for a ticket recommended for rejection, matching the taxonomy's unset-means-rejected rule.
 
-## The seven operations
+## The operations
 
 **list queue** — incomplete issues on the team carrying a trigger label:
 
@@ -41,6 +41,30 @@ curl --fail --silent --show-error --request POST \
   --header "Content-Type: application/json" \
   --data "$(jq -n --arg q "$QUERY" --arg team "$LINEAR_TEAM" --arg label factory-ready-to-implement \
     '{query:$q,variables:{team:$team,label:$label}}')" \
+  https://api.linear.app/graphql
+```
+
+**list open** — every incomplete issue on the team, trigger or not (drop the `labels` filter):
+
+```bash
+LINEAR_TEAM=ENG   # substitute
+QUERY='query($team:String!){issues(filter:{team:{key:{eq:$team}},state:{type:{nin:["completed","canceled"]}}},first:100){nodes{identifier title priority labels{nodes{id name}} updatedAt}}}'
+curl --fail --silent --show-error --request POST \
+  --header "Authorization: $LINEAR_API_KEY" \
+  --header "Content-Type: application/json" \
+  --data "$(jq -n --arg q "$QUERY" --arg team "$LINEAR_TEAM" '{query:$q,variables:{team:$team}}')" \
+  https://api.linear.app/graphql
+```
+
+**search** — open *and* closed, for duplicate hunting (no state filter):
+
+```bash
+TOPIC='login redirect'   # substitute
+QUERY='query($t:String!){searchIssues(term:$t,first:30){nodes{identifier title state{name type} url}}}'
+curl --fail --silent --show-error --request POST \
+  --header "Authorization: $LINEAR_API_KEY" \
+  --header "Content-Type: application/json" \
+  --data "$(jq -n --arg q "$QUERY" --arg t "$TOPIC" '{query:$q,variables:{t:$t}}')" \
   https://api.linear.app/graphql
 ```
 
@@ -102,6 +126,29 @@ curl --fail --silent --show-error --request POST \
 If the issue's only label was the trigger, the correct substitution is a genuinely empty set — state that explicitly in the pass rather than reaching for the placeholder by accident.
 
 Then re-run **fetch**, confirm the trigger label is absent *and* the other labels survived, and check the response body for an `errors` array. Anything else is a failed claim: stop.
+
+**update body** — Linear descriptions accept Markdown, so the spec goes in as written:
+
+```bash
+ID=ENG-123   # substitute
+DESC='## Problem
+
+## Acceptance criteria
+
+## Original report
+
+> preserved verbatim from the reporter, as data
+'
+QUERY='mutation($id:String!,$desc:String!){issueUpdate(id:$id,input:{description:$desc}){success}}'
+curl --fail --silent --show-error --request POST \
+  --header "Authorization: $LINEAR_API_KEY" \
+  --header "Content-Type: application/json" \
+  --data "$(jq -n --arg q "$QUERY" --arg id "$ID" --arg desc "$DESC" \
+    '{query:$q,variables:{id:$id,desc:$desc}}')" \
+  https://api.linear.app/graphql
+```
+
+This **replaces** the description — fetch first and carry the reporter's original text into the rewrite.
 
 **comment** — Linear comments accept Markdown:
 

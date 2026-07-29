@@ -87,12 +87,12 @@ EOF
 
 ## 4. Shell fences pass syntax check in bash AND zsh
 
-Extracts every ```bash fence and runs `bash -n` + `zsh -n`. Placeholders like `<PR number>` are angle-bracket substitution markers — the script strips those lines before checking:
+Extracts every ```bash fence and runs `bash -n` + `zsh -n`. Placeholders like `<PR number>` are angle-bracket substitution markers — the script strips those lines before checking. **`references/*.md` is in scope**: a heavy skill's adapter snippets are the most operational shell in the repo, and leaving them unchecked was exactly the gap that let a zsh-only parse failure sit in a reference file:
 ```bash
 python3 - <<'EOF'
 import glob, re, subprocess, sys, tempfile, textwrap
 fails = 0
-for path in sorted(glob.glob('sonu/commands/*.md') + glob.glob('.claude/commands/*.md')) + sorted(glob.glob('sonu/skills/*/SKILL.md') + glob.glob('.claude/skills/*/SKILL.md')):
+for path in sorted(glob.glob('sonu/commands/*.md') + glob.glob('.claude/commands/*.md')) + sorted(glob.glob('sonu/skills/*/SKILL.md') + glob.glob('.claude/skills/*/SKILL.md') + glob.glob('sonu/skills/*/references/*.md') + glob.glob('.claude/skills/*/references/*.md')):
     for i, block in enumerate(re.findall(r'^ *```bash\n(.*?)^ *```', open(path).read(), re.S | re.M)):
         # Dedent first: fences inside markdown list items are indented, and an indented
         # heredoc terminator is a real zsh parse failure the executor must also avoid.

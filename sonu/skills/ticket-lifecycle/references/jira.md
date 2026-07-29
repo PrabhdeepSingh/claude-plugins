@@ -28,7 +28,7 @@ Every REST fence below assumes those three variables are exported and uses `--fa
 
 Two mapping caveats, both real in practice. A project without a Story type (common on service-desk projects) takes Task for `enhancement` — check the project's issue types once and record the choice in the config's prose section. And a project with a customized priority scheme may lack Highest or Lowest; map to the nearest existing value and say so in the pass report rather than failing the whole pass over a field name.
 
-## The seven operations
+## The operations
 
 **list queue** — JQL, scoped to the configured project. The endpoint is `/rest/api/3/search/jql`, and POST avoids URL-length limits and JQL encoding entirely:
 
@@ -46,6 +46,31 @@ curl --fail --silent --show-error --request POST \
 ```
 
 Three things this endpoint requires that the old one did not, each a silent-wrong-answer if missed: the **`fields` array is mandatory** (it returns almost nothing by default), paging is **cursor-based via `nextPageToken`** rather than `startAt`, and there is no `total` count. If the queue is larger than `maxResults`, follow `nextPageToken` — do not assume one page is the whole queue.
+
+**list open** — every open ticket in the project, trigger or not (drop the `labels` clause from the queue query):
+
+```bash
+JIRA_PROJECT=ABC   # substitute
+JQL="project = $JIRA_PROJECT AND statusCategory != Done ORDER BY priority DESC, updated DESC"
+curl --fail --silent --show-error --request POST \
+  --user "$JIRA_EMAIL:$JIRA_API_TOKEN" \
+  --header "Content-Type: application/json" \
+  --data "$(jq -n --arg jql "$JQL" '{jql:$jql,fields:["summary","labels","priority","issuetype","status"],maxResults:100}')" \
+  "https://$JIRA_SITE/rest/api/3/search/jql"
+```
+
+**search** — open *and* closed, for duplicate hunting (no `statusCategory` filter):
+
+```bash
+JIRA_PROJECT=ABC          # substitute
+TOPIC='login redirect'    # substitute
+JQL="project = $JIRA_PROJECT AND text ~ \"$TOPIC\" ORDER BY updated DESC"
+curl --fail --silent --show-error --request POST \
+  --user "$JIRA_EMAIL:$JIRA_API_TOKEN" \
+  --header "Content-Type: application/json" \
+  --data "$(jq -n --arg jql "$JQL" '{jql:$jql,fields:["summary","status","resolution"],maxResults:30}')" \
+  "https://$JIRA_SITE/rest/api/3/search/jql"
+```
 
 **fetch** — the issue with its comments and any linked development work:
 
@@ -84,6 +109,21 @@ else
   echo "CLAIMED $KEY"
 fi
 ```
+
+**update body** — the description is an ADF document, same as a comment, so build it with `jq`. One paragraph node per block keeps the spec readable; do not paste Markdown into a single text node, since ADF renders it literally:
+
+```bash
+KEY=ABC-123   # substitute
+SPEC='Problem: expired sessions bounce between login and dashboard.'
+curl --fail --silent --show-error --request PUT \
+  --user "$JIRA_EMAIL:$JIRA_API_TOKEN" \
+  --header "Content-Type: application/json" \
+  --data "$(jq -n --arg s "$SPEC" \
+    '{fields:{description:{type:"doc",version:1,content:[{type:"paragraph",content:[{type:"text",text:$s}]}]}}}')" \
+  "https://$JIRA_SITE/rest/api/3/issue/$KEY"
+```
+
+This **replaces** the description, so fetch it first and carry the reporter's original text into the new document — a spec that silently deletes what the reporter wrote loses the only first-hand account of the problem.
 
 **comment** — the v3 API takes Atlassian Document Format, not raw Markdown. Keep comment text to plain paragraphs; a Markdown table pasted into an ADF `text` node renders as literal pipes. Build the payload with `jq` so the text is JSON-encoded — a spec comment full of quotes, backticks, and newlines pasted straight into a `--data` string breaks the JSON or truncates the comment:
 

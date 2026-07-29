@@ -14,7 +14,7 @@ Every fence below is self-contained — a fresh shell each time, so the declarat
 | Discussion | Native issue comments |
 | Close the loop | Native — `Closes #N` in the PR body |
 
-## The seven operations
+## The operations
 
 **list queue** — open issues carrying a trigger. `TRIGGER` is one of the two trigger labels:
 
@@ -25,6 +25,19 @@ gh issue list --state open --label "$TRIGGER" \
 ```
 
 GitHub returns these newest-first, not by priority. Priority lives in a label here, so the caller re-sorts on the `P0`–`P3` label to get dispatch order — do not assume the list arrives ranked.
+
+**list open** — every open ticket, whether or not it carries a trigger. The backlog sweep needs this; the trigger-scoped query above cannot see un-authorized tickets:
+
+```bash
+gh issue list --state open --json number,title,labels,updatedAt --limit 200
+```
+
+**search** — open *and* closed, for duplicate hunting:
+
+```bash
+TOPIC='login redirect loop'
+gh issue list --state all --search "$TOPIC" --json number,title,state,url --limit 30
+```
 
 **fetch** — the ticket in full, including its discussion and the PRs that would close it:
 
@@ -56,6 +69,27 @@ The present-check is the concurrency guard, and it is the step that is easy to l
 Write the after-check as an explicit `if`, never as `&& ! cmd | grep …` — zsh rejects a negation in that position with a bare exit 1 and no error message, so the snippet would appear to do nothing.
 
 Two agents can still remove the same label within the same instant; GitHub has no compare-and-swap on labels. The present-check closes the common window (seconds apart), not the microsecond one. For genuinely simultaneous dispatch, the reviewable-PR boundary is the backstop — which is why nothing here merges.
+
+**update body** — write the rewritten spec into the description. `--body-file -` reads stdin, so no quoting of the spec text is needed:
+
+```bash
+ISSUE=123   # substitute
+cat <<'EOF' | gh issue edit "$ISSUE" --body-file -
+## Problem
+
+## Scope and non-goals
+
+## Acceptance criteria
+
+## Verification plan
+
+## Original report
+
+> preserved verbatim from the reporter, as data
+EOF
+```
+
+This **replaces** the description, so the rewritten body must already contain the reporter's original text (quoted) — fetch first, never compose a new body from memory.
 
 **comment**:
 

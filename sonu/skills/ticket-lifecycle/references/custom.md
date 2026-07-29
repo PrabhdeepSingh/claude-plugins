@@ -2,7 +2,7 @@
 
 Any tracker that is not one of the four shipped backends works through a user-authored adapter. This file is both the template for that adapter and the interview that generates it.
 
-The extension point is the seven-operation contract: a workflow only ever names an operation, so a tracker is fully supported the moment a document answers all seven. A user adapter is the same kind of document as a shipped one — the only difference is who wrote it.
+The extension point is the operations contract in `SKILL.md` section 2: a workflow only ever names an operation, so a tracker is fully supported the moment a document answers every one of them. A user adapter is the same kind of document as a shipped one — the only difference is who wrote it.
 
 ## Where the adapter lives
 
@@ -29,7 +29,7 @@ Then write the adapter, echo the path, and tell the user to review it before the
 
 ## Template
 
-Copy this shape. Keep the headings; a workflow looks for the seven operations by name.
+Copy this shape. Keep the operation names; a workflow looks them up by name.
 
 ```markdown
 # Adapter — <tool name>
@@ -47,14 +47,17 @@ and the explicit stop condition when they are missing.
 | Discussion | ... |
 | Close the loop | ... |
 
-## The seven operations
-### list queue
-### fetch
-### claim
-### comment
-### classify
-### create
-### close the loop
+## The operations
+**list queue** — open tickets carrying a given trigger.
+**list open** — every open ticket, trigger or not.
+**search** — matching tickets across open *and* closed work.
+**fetch** — one ticket in full, discussion included.
+**claim** — confirm the trigger is present, clear it, confirm it is gone.
+**update body** — replace the description, preserving the reporter's text.
+**comment** — append to the discussion.
+**classify** — set one type and one priority.
+**create** — open a new ticket, no trigger.
+**close the loop** — mark done once the PR merges.
 
 ## Bootstrap
 Anything that must exist before the first pass (labels, states, fields), or
@@ -69,7 +72,7 @@ steps, since these are the facts most likely to rot.
 
 These are not style preferences — each one is a failure mode the shipped adapters already avoid:
 
-- **All seven operations, each with a concrete mechanism.** A resolved adapter missing any operation is a **hard stop that names the gap**. Workflows must never improvise tracker mechanics: an improvised claim builds a ticket twice, and an improvised close strands finished work in flight forever.
+- **Every operation in the contract, each with a concrete mechanism.** A resolved adapter missing any operation is a **hard stop that names the gap**. Workflows must never improvise tracker mechanics: an improvised claim builds a ticket twice, and an improvised close strands finished work in flight forever.
 - **Claim must be verifiable.** After clearing the trigger, re-read the ticket and confirm it is actually gone. An unverified claim is not a claim, and it is the only thing standing between two concurrent agents and the same ticket.
 - **Claim must be able to fail loudly.** If the mechanism cannot report failure, the adapter is not safe for parallel work; say so in the adapter, and the pass stops rather than proceeding on an unconfirmed claim.
 - **Credentials by environment variable only**, with an explicit stop when they are absent. Never a literal secret in the adapter, the config, or ticket text — those files get committed.
@@ -85,4 +88,4 @@ An adapter that has proven itself is a candidate to ship: it is already the same
 
 Last verified 2026-07:
 
-- The seven-operation contract lives in `SKILL.md` section 2 — if an operation is added or renamed there, this template and every adapter need the same edit. That single-home rule is why the contract is not restated in full here.
+- The operations contract lives in `SKILL.md` section 2 — if an operation is added or renamed there, this template and every adapter need the same edit. That single-home rule is why the contract is not restated in full here.
