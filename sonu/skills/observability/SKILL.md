@@ -1,6 +1,7 @@
 ---
 name: observability
-description: Producing telemetry worth having — instrumentation (metrics, traces, error capture), health-check endpoints, and alert quality for any service or endpoint. INVOKE PROACTIVELY whenever creating a new service, API endpoint, background job, or scheduled task; adding metrics, tracing, error tracking (Sentry/Datadog/App Insights SDKs), health/liveness/readiness endpoints, dashboards, or alert rules; or when the user says "add monitoring/logging/alerting." Log-line mechanics live in [[code-standards]] section 8; the CONSUMING side — pulling events while diagnosing — is [[debugging]].
+description: >-
+  Producing telemetry worth having — metrics, traces, error capture, health-check endpoints, and alerts that page on user-facing symptoms. INVOKE PROACTIVELY when creating a service, endpoint, or background job, or adding instrumentation, dashboards, health endpoints, or alert rules — "add monitoring/logging/alerting". Log-line mechanics: [[code-standards]]; consuming telemetry while diagnosing: [[debugging]].
 ---
 
 # Observability — instrument for the question you'll ask at 2am

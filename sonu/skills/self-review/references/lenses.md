@@ -1,6 +1,6 @@
 # Lens dispatch templates — the step-4b fan-out
 
-Six lenses, one subagent each, dispatched **in parallel in a single turn** on the cheapest trustworthy executor tier below the session (per the model-tiering ladder). Every lens is read-only and context-free: it gets the prompt below with the placeholders filled — never a summary of the conversation, never the author's intent.
+Six lenses, one subagent each, plus a seventh **interface** lens dispatched only when the diff touches user-facing interface files — all **in parallel in a single turn** on the cheapest trustworthy executor tier below the session (per the model-tiering ladder). Every lens is read-only and context-free: it gets the prompt below with the placeholders filled — never a summary of the conversation, never the author's intent.
 
 ## The shared frame (include in every lens prompt)
 
@@ -17,6 +17,11 @@ no writes, no state-changing commands.
 
 Report each finding on its own line, exactly:
 Risk: <what> — <why it goes wrong, the concrete mechanism> [file:line] (confidence: high|medium|low)
+
+Your ENTIRE final reply must be those Risk lines alone (or exactly
+"Nothing in my lens.") — no preamble, no summary, no closing prose. The
+caller consumes your final reply verbatim; a finding narrated anywhere
+else is lost.
 
 Only report findings inside your lens (below). If you find nothing, reply
 exactly: "Nothing in my lens." Do NOT invent findings to seem useful — an
@@ -88,9 +93,28 @@ defaulted failure path whose default now means something else. Compare
 old and new behavior explicitly and name what a caller observes.
 ```
 
+## The conditional seventh lens — interface
+
+Dispatch this one **only when** the diff touches user-facing interface files: components, screens, templates, stylesheets, or interface copy. On a diff with no such files, don't dispatch it — there is nothing in its lens by construction.
+
+```
+Your lens: INTERFACE. Apply the sonu:interface-review methodology in `quick`
+mode, scoped to the interface files in this diff, and report only what it
+finds. Cover its six domains through their owning skills — accessibility,
+layout, ux-writing, typography, colors, ui-polish.
+
+OVERRIDE, and this matters: ignore interface-review's own Review Output
+Format entirely — no Scope and Coverage section, no severity table, no
+Considered-but-Rejected table, no Verdict. Report findings ONLY as the
+shared Risk lines defined above. A verdict cannot be consumed here.
+
+Report a finding only when the diff itself introduces or worsens it. A
+pre-existing interface problem the diff merely sits near is not a finding.
+```
+
 ## Dispatch mechanics
 
-- All six go out in one turn; they have no dependencies on each other.
+- All lenses go out in one turn; they have no dependencies on each other. The interface lens joins the same batch when its condition is met.
 - Model: cheapest trustworthy executor tier below the session on the model-tiering ladder (its Provenance table is authoritative). No such tier → don't dispatch; the skill's step-2 rule already routed to the inline pass.
 - A lens that errors or returns garbage is treated as "Nothing in my lens" **plus** a note in the final output that the lens was degraded — never silently counted as a clean pass.
 - Lens replies are evidence, not verdicts. Every accept/reject happens in the session (SKILL.md step 5).

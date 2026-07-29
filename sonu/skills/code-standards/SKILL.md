@@ -1,6 +1,7 @@
 ---
 name: code-standards
-description: Prabhdeep (Sonu) Singh's personal coding standards — the house rules and baseline quality bar for writing code the way he does. INVOKE whenever writing, generating, refactoring, or reviewing ANY code in ANY language — including database schema design, API endpoints, SQL/queries, logging, validation, and error handling — even when the user doesn't say "standards" or "style." If you're about to write or edit code, consult this first. (Pairs with [[tdd]], which covers red-green-refactor discipline; that skill assumes this one's bar.)
+description: >-
+  Prabhdeep (Sonu) Singh's personal coding standards — the house rules and quality bar for how code gets written. INVOKE before writing, generating, refactoring, or reviewing ANY code in ANY language — schemas, endpoints, queries, logging, validation, error handling — even when nobody says "standards" or "style". ([[tdd]] assumes this bar.)
 ---
 
 # Code Standards — write it like Sonu would

@@ -1,6 +1,7 @@
 ---
 name: tdd
-description: Test-driven development — the red-green-refactor discipline for writing code that's correct by design, not by accident. INVOKE PROACTIVELY — even when the user never says "TDD" or "tests" — whenever writing or changing code, implementing a feature, fixing a bug, adding/running/naming tests, structuring a test suite, or choosing what to mock. (Pairs with [[code-standards]] — tests are code held to the same bar.)
+description: >-
+  Test-driven development — the red-green-refactor discipline for code that's correct by design, not by accident. INVOKE PROACTIVELY whenever writing or changing code, fixing a bug, adding or structuring tests, or choosing what to mock — even when nobody says "TDD" or "tests". (Tests are code held to [[code-standards]]'s bar.)
 argument-hint: "[feature, bug, or behavior to drive with tests]"
 allowed-tools: Skill, Read, Write, Edit
 ---

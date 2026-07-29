@@ -1,6 +1,7 @@
 ---
 name: seo-standards
-description: Best-in-class technical SEO for any web page. INVOKE whenever creating or editing HTML/JSX/TSX/Vue/Svelte/Astro templates; route or URL definitions; redirects; `<head>` metadata (title, meta description, canonical, robots, hreflang, Open Graph); structured data/JSON-LD; sitemaps or robots.txt; or anything served as a web page or that affects how one is crawled or indexed — even when nobody says "SEO." For the WRITING itself (prose, articles, landing copy), use the [[content-seo]] sibling instead — this skill is the plumbing, not the editorial.
+description: >-
+  Technical SEO for anything served as a web page. INVOKE when creating or editing page templates (HTML/JSX/TSX/Vue/Svelte/Astro), routes, redirects, <head> metadata, structured data/JSON-LD, sitemaps, or robots.txt — even when nobody says "SEO". The writing itself is [[content-seo]]; this skill is the plumbing, not the editorial.
 ---
 
 # SEO Standards — build it like Google would reward it

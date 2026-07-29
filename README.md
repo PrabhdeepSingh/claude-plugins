@@ -29,7 +29,7 @@ After that, skills auto-apply in every session and `/sonu:build`, `/sonu:ship`, 
 
 ## Commands
 
-`/sonu:build`, `/sonu:ship`, and `/sonu:factory` are commands proper — they sequence phases and hold gates. `/sonu:tdd`, `/sonu:design-tree`, `/sonu:self-review`, `/sonu:memory`, `/sonu:ticket-triage`, `/sonu:classify-tickets`, and `/sonu:bug-finder` are the skills themselves invoked directly by name: same syntax, same behavior, but no separate command component (a command and a skill can't share a name — they collide on the harness's one invocation surface).
+`/sonu:build`, `/sonu:ship`, and `/sonu:factory` are commands proper — they sequence phases and hold gates. `/sonu:tdd`, `/sonu:design-tree`, `/sonu:self-review`, `/sonu:memory`, `/sonu:interface-review`, `/sonu:ticket-triage`, `/sonu:classify-tickets`, and `/sonu:bug-finder` are the skills themselves invoked directly by name: same syntax, same behavior, but no separate command component (a command and a skill can't share a name — they collide on the harness's one invocation surface).
 
 ### `/sonu:build` — decide → build → hand back
 
@@ -319,7 +319,7 @@ Edit `sonu/skills/pr-conventions/SKILL.md` to tune the templates or add new chan
 
 Auto-applied — once the plugin is installed, Claude runs it at two moments without being asked: before handing back from `/sonu:build` (so you know where to look before you run `/sonu:ship`), and in `/sonu:ship`'s pre-PR fix loop (each pass reviews, the loop fixes, and the final pass's list is embedded in the PR body for traceability and surfaced in the final report). `/sonu:self-review` (above) is this same skill invoked directly by name.
 
-How it reviews scales to the diff. A small diff (under ~100 changed code lines) gets one inline pass. A substantial one gets the fan-out: **six independent review lenses run in parallel as read-only subagents** — correctness, security surfaces, data integrity and migration, blast radius and consumer impact, test adequacy, silent behavior change — each reading the diff cold, with no access to the conversation that produced the code. The author reviewing its own work is the least reliable judge; fresh eyes that never saw the intent don't inherit the blind spots. The session then synthesizes adversarially: **findings are rejected by default** unless they cite a concrete `file:line` with an articulable failure mechanism, duplicates from independent lenses merge (and rank higher for being co-flagged), and pure style nits die. Lenses run on a cheaper model tier per `model-tiering`; every accept/reject decision stays on the session. On a harness without subagents, it degrades to the single inline pass — same output shape, nothing breaks.
+How it reviews scales to the diff. A small diff (under ~100 changed code lines) gets one inline pass. A substantial one gets the fan-out: **six independent review lenses run in parallel as read-only subagents** — correctness, security surfaces, data integrity and migration, blast radius and consumer impact, test adequacy, silent behavior change — each reading the diff cold, with no access to the conversation that produced the code. A seventh **interface** lens joins them only when the diff actually touches user-facing interface files, applying `interface-review`'s domains to catch the regressions a reviewer can't see by reading diff text. The author reviewing its own work is the least reliable judge; fresh eyes that never saw the intent don't inherit the blind spots. The session then synthesizes adversarially: **findings are rejected by default** unless they cite a concrete `file:line` with an articulable failure mechanism, duplicates from independent lenses merge (and rank higher for being co-flagged), and pure style nits die. Lenses run on a cheaper model tier per `model-tiering`; every accept/reject decision stays on the session. On a harness without subagents, it degrades to the single inline pass — same output shape, nothing breaks.
 
 It also compounds: scope-matched rules from the `memory` store (below) ride into every review as extra checks, and confirmed findings that generalize beyond the repo flow back as candidate rules.
 
@@ -348,7 +348,7 @@ Auto-applied — it fires automatically whenever you're designing or planning an
 It encodes a design methodology built around one core idea: design is traversing a branching tree, not marching a line. What that looks like in practice:
 
 - **Interview first.** Before branching anything, ask 2–4 targeted questions to confirm intent, constraints, success criteria, and non-goals. Designing the right problem saves more context and tokens than anything else.
-- **Load the standards as constraints.** `code-standards` always, plus `safe-migrations`/`seo-standards`/`content-seo`/`infra-standards`/`observability` when the surface matches — a fork a standard already settles is stated and cited, never treed. The plan-vs-standards conflict gets resolved at design time, not discovered by the executor mid-build.
+- **Load the standards as constraints.** `code-standards` always, plus `safe-migrations`/`seo-standards`/`content-seo`/`infra-standards`/`observability`/`blast-radius` and the interface bars (`accessibility`, `layout`, `ui-polish`, and `typography`/`colors`/`ux-writing`) when the surface matches — a fork a standard already settles is stated and cited, never treed. The plan-vs-standards conflict gets resolved at design time, not discovered by the executor mid-build.
 - **Find the real forks.** Only decision points where the design could genuinely go in ≥2 consequential ways — not trivia, not forced choices.
 - **Enumerate genuine alternatives** at every fork. No strawmen invented to be knocked down.
 - **Record the chosen branch** with a decisive reason (a real constraint, trade-off, or irreversibility) — not a vague preference.
@@ -393,6 +393,23 @@ Directly invocable as `/sonu:classify-tickets`, and `/sonu:factory classify`. A 
 Directly invocable as `/sonu:bug-finder [area]`, and `/sonu:factory bugs`. It hunts where defects actually concentrate — recently changed code, error and fallback paths, untrusted input boundaries, process and persistence seams, concurrency and cleanup, weak coverage — tracing real execution paths rather than reading for style.
 
 Then it holds a hard evidence bar: observable incorrect behavior, the triggering path and conditions, why the behavior is *wrong* (citing a contract, test, doc, or call-site expectation), a reproduction, the expected behavior, and a verification approach. Speculation, style opinions, and missing features are not reportable. It dedups against open *and* closed work, files at most **one** ticket per pass with type `bug` and no trigger (queueing stays your call), and when nothing clears the bar it files nothing and says where it looked. It never fixes what it finds — discovery and repair are separate decisions with separate gates. Complement to `debugging`: that one diagnoses a symptom you already have, this one goes looking.
+
+### `interface-review` — the whole screen, not six separate audits
+
+Directly invocable as `/sonu:interface-review [quick|full] [scope]`. A cross-discipline review of a screen, flow, or feature that coordinates the six interface skills below, then consolidates everything into **one** ranked findings table with a single severity scale and one verdict (`Block` / `Needs changes` / `Approve`). It owns orchestration only — every rule belongs to the domain skill that owns it, and a finding is assigned to exactly one owner rather than reported six times.
+
+The discipline is in what it refuses to do: `quick` mode caps at 5 findings and drops `LOW`, `full` at 15; every finding cites `path/to/file:line` with the current implementation; a visual claim inferred only from source gets marked **Not verified** rather than promoted to a finding; a domain whose owning skill is unavailable is reported `Not reviewed` by name instead of quietly counted as covered; and a **Considered but Rejected** table makes restraint visible, so you can see what it looked at and deliberately let stand. Reviews are read-only unless you also ask for the fixes.
+
+### The six interface domains — the bars that fire while you build
+
+Skills, not commands. Like `code-standards`, there's nothing to invoke: they fire automatically on interface work, and `/sonu:build` activates them as design constraints in Phase 1 and build bars in Phase 2 whenever the change touches components, screens, styles, templates, or interface copy. Each one is a spine of rules with reference files carrying the depth, and each defers to its siblings rather than duplicating them.
+
+- **`accessibility`** — the floor, not a compliance pass. Native elements before ARIA, `:focus-visible` rings, a keyboard path for every pointer interaction, focus trap-and-restore, hit-area minimums, labeled and typed controls, errors that actually announce, live regions, alt text by purpose, and surviving 200% zoom and 320px reflow.
+- **`layout`** — structure communicates before a word is read. Group with space rather than lines (2× the intra-group gap), controls that look interactive, shared alignment edges, logical properties over physical left/right, visible cues for hidden content, breakpoints that come from the content instead of device presets, and layouts that survive translation and RTL mirroring.
+- **`ui-polish`** — the compounding details. Concentric border radius, optical over geometric alignment, shadows for elevation and borders for structure, interruptible transitions, restrained enter/exit motion, exact icon-animation and press-feedback values, never `transition: all`, and icon stroke weight matched to text weight.
+- **`typography`** — mostly restraint. `.woff2`, high-level CSS properties over raw OpenType tags, a small semantic type scale, line-height by role, a capped measure (60–75 characters), deliberate wrapping and truncation, tabular numbers on changing values, and 16px inputs so iOS doesn't zoom.
+- **`colors`** — OKLCH as a design control, with the project's existing tokens respected rather than converted on sight. Perceptually uniform palettes without hue drift, contrast measured on the rendered pair (APCA and WCAG) and *reported* rather than silently changed, gamut awareness with sRGB fallbacks, and one meaning per color.
+- **`ux-writing`** — copy that disappears into the interface. One voice with tone that flexes to the stakes, verb-first buttons that repeat the consequence ("Delete project", never "OK"), one flow vocabulary, links that describe their destination, toggles labeled for the ON state, errors that say how to fix the problem next to where it broke, and empty states that point forward.
 
 ## Developing this plugin
 
@@ -454,7 +471,7 @@ claude-plugins/
     │   ├── build.md         # /sonu:build — conductor: design gate → tdd build → risk hand-back
     │   ├── ship.md          # /sonu:ship — PR babysitter
     │   └── factory.md       # /sonu:factory — ticket queue: scan, claim, worktree, delegate to build
-    └── skills/              # auto-applied; tdd, design-tree, self-review, memory, and the ticket skills also invoke directly as /sonu:<name>
+    └── skills/              # auto-applied; tdd, design-tree, self-review, memory, interface-review, and the ticket skills also invoke directly as /sonu:<name>
         ├── code-standards/
         │   └── SKILL.md     # how code gets written
         ├── tdd/
@@ -473,6 +490,25 @@ claude-plugins/
         │   └── SKILL.md     # technical SEO for web pages
         ├── content-seo/
         │   └── SKILL.md     # editorial SEO for published prose
+        ├── interface-review/
+        │   └── SKILL.md     # holistic interface audit — coordinates the six domains below into one verdict
+        ├── accessibility/
+        │   ├── SKILL.md     # keyboard, focus, ARIA, forms, screen readers, hit areas, motion
+        │   └── references/  # focus & keyboard, semantics & ARIA, forms, screen readers, hit areas, motion & zoom
+        ├── layout/
+        │   ├── SKILL.md     # grouping, alignment, reading order, breakpoints, direction-aware structure
+        │   └── references/  # grouping & alignment, spacing & adaptivity
+        ├── ui-polish/
+        │   ├── SKILL.md     # radius, elevation, motion, press feedback, icons
+        │   └── references/  # surfaces, animations, icons, performance
+        ├── typography/
+        │   ├── SKILL.md     # type scale, spacing, wrapping, truncation, text detailing
+        │   └── references/  # choosing fonts, variable fonts & OpenType, spacing & sizing, wrapping & punctuation, details, CSS cheat sheet
+        ├── colors/
+        │   ├── SKILL.md     # OKLCH palettes, contrast measurement, gamut, one meaning per color
+        │   └── references/  # conversion, palette generation, contrast, gamut & Tailwind, usage
+        ├── ux-writing/
+        │   └── SKILL.md     # interface copy — labels, errors, empty states, settings, voice
         ├── design-tree/
         │   └── SKILL.md     # design by branching tree, not linear narrative
         ├── model-tiering/
