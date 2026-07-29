@@ -15,7 +15,7 @@ Linear has a native priority scale and native PR magic words, so priority maps t
 
 Every fence below assumes `LINEAR_API_KEY` is exported and uses `--fail --silent --show-error`. `LINEAR_TEAM` comes from the config's `linear_team` key and is **declared in each fence that needs it** — a fresh shell never inherits it, and an empty team filter returns either a GraphQL error or an empty queue that reads as "no work."
 
-Note that GraphQL returns HTTP 200 with an `errors` array for query-level failures, so **check the response body for `errors`** rather than trusting the exit status alone — `--fail` will not catch a rejected mutation, which means a failed claim can look like a successful one.
+Note that GraphQL returns HTTP 200 with an `errors` array for query-level failures, so **check the response body for `errors`** rather than trusting the exit status alone — `--fail` will not catch a rejected mutation, which means a failed claim can look like a successful one. Test it as `(.errors // []) | length == 0`, not `.errors | not`: an empty `errors: []` array is truthy in jq, so the shorter form reads a perfectly good response as a failure.
 
 ## Mapping
 
@@ -71,7 +71,7 @@ BEFORE=$(curl --fail --silent --show-error --request POST \
   --header "Content-Type: application/json" \
   --data "$(jq -n --arg q "$QUERY" --arg id "$ID" '{query:$q,variables:{id:$id}}')" \
   https://api.linear.app/graphql)
-printf '%s' "$BEFORE" | jq -e '.errors | not' >/dev/null 2>&1 \
+printf '%s' "$BEFORE" | jq -e '(.errors // []) | length == 0' >/dev/null 2>&1 \
   || { echo "STOP: GraphQL returned errors"; exit 1; }
 printf '%s' "$BEFORE" | jq -e --arg t "$TRIGGER" \
   '[.data.issue.labels.nodes[].name] | index($t)' >/dev/null 2>&1 \

@@ -120,15 +120,17 @@ SLUG=fix-login-redirect-loop         # substitute the kebab-cased title
 ROOT=$(git rev-parse --show-toplevel) || exit 1
 cd "$ROOT" || exit 1
 REPO=$(basename "$ROOT")
-BASE=$(gh repo view --json defaultBranchRef -q .defaultBranchRef.name 2>/dev/null || echo main)
+BASE=$(git symbolic-ref --short refs/remotes/origin/HEAD 2>/dev/null | sed 's|^origin/||')
+[ -n "$BASE" ] || BASE=$(gh repo view --json defaultBranchRef -q .defaultBranchRef.name 2>/dev/null)
+[ -n "$BASE" ] || { echo "STOP: cannot determine the default branch — set BASE explicitly"; exit 1; }
 [ "$(git symbolic-ref --short HEAD)" = "$BASE" ] \
-  || { echo "STOP: not on $BASE — claim and branch from the main checkout, not another ticket's worktree"; exit 1; }
+  || { echo "STOP: on $(git symbolic-ref --short HEAD), not $BASE — claim and branch from the main checkout, never from another ticket's worktree"; exit 1; }
 git status --porcelain | grep -q . && { echo "STOP: main checkout is dirty — commit or stash first"; exit 1; }
 git worktree add "$ROOT/../$REPO-wt-$ID-$SLUG" -b "ticket/$ID-$SLUG" "$BASE" \
   && echo "worktree ready at $ROOT/../$REPO-wt-$ID-$SLUG on ticket/$ID-$SLUG"
 ```
 
-Every guard here has a specific accident behind it. The empty-variable check stops an unset `ID` or `SLUG` from creating a branch named `ticket/-` with a sibling directory to match. The `cd` to the repo root matters because a relative `../` path resolves against the current directory, which is not necessarily the repo root — that is how a worktree lands somewhere nobody expects. And the on-`$BASE` check is what keeps the new branch rooted in the default branch: run this from inside another ticket's worktree and `HEAD` is *that* ticket's branch, so the build would silently stack on unrelated unmerged work and its PR would carry both changes.
+Every guard here has a specific accident behind it. The empty-variable check stops an unset `ID` or `SLUG` from creating a branch named `ticket/-` with a sibling directory to match. The `cd` to the repo root matters because a relative `../` path resolves against the current directory, which is not necessarily the repo root — that is how a worktree lands somewhere nobody expects. And the on-`$BASE` check is what keeps the new branch rooted in the default branch: run this from inside another ticket's worktree and `HEAD` is *that* ticket's branch, so the build would silently stack on unrelated unmerged work and its PR would carry both changes. `BASE` is resolved from `origin/HEAD` first and `gh` only as a fallback, then **stops rather than defaulting to `main`** — a hardcoded guess blocks every repo whose default is `master` or `develop` (the guard would reject the user for standing on their own default branch) and would branch from a ref that may not exist.
 
 A dirty main checkout is a **hard stop**, never built around — uncommitted work in the tree you are branching from ends up attributed to this ticket.
 
