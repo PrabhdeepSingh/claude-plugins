@@ -1,6 +1,6 @@
 # Lens dispatch templates — the step-4b fan-out
 
-Six lenses, one subagent each, plus a seventh **interface** lens dispatched only when the diff touches user-facing interface files — all **in parallel in a single turn** on the cheapest trustworthy executor tier below the session (per the model-tiering ladder). Every lens is read-only and context-free: it gets the prompt below with the placeholders filled — never a summary of the conversation, never the author's intent.
+Six lenses, one subagent each, plus a seventh **interface** lens dispatched only when the diff touches user-facing interface files — all **in parallel in a single turn** on the cheapest trustworthy executor tier below the session (per the model-tiering ladder). Every lens is read-only and context-free: it gets the prompt below with the placeholders filled — never a summary of the conversation, never the author's intent. **Every lens prompt is self-contained:** the criteria live in the block itself. Do not tell a subagent to `Skill(…)` load or read plugin skill files — those live outside the customer repo root the shared frame supplies, and many harnesses give subagents no Skill tool.
 
 ## The shared frame (include in every lens prompt)
 
@@ -98,21 +98,49 @@ old and new behavior explicitly and name what a caller observes.
 Dispatch this one **only when** the diff touches user-facing interface files: components, screens, templates, stylesheets, or interface copy. On a diff with no such files, don't dispatch it — there is nothing in its lens by construction.
 
 ```
-Your lens: INTERFACE. Apply the sonu:interface-review methodology in `quick`
-mode, scoped to the interface files in this diff, and report only what it
-finds. Cover its six domains through their owning skills — accessibility,
-layout, ux-writing, typography, colors, ui-polish.
+Your lens: INTERFACE. On interface files in this diff only (components,
+screens, templates, stylesheets, interface copy), report regressions the
+diff introduces or worsens. Criteria are embedded here — do not load skills
+or open plugin files. Read source and the diff only; do not run project
+lifecycle scripts, installers, servers, or any state-mutating command. If
+runtime verification would matter, say so in the Risk line as unverified.
 
-OVERRIDE, and this matters: ignore interface-review's own Review Output
-Format entirely — no Scope and Coverage section, no severity table, no
-Considered-but-Rejected table, no Verdict. Report findings ONLY as the
-shared Risk lines defined above. A verdict cannot be consumed here.
+ACCESSIBILITY — native control replaced by a non-semantic div/span without
+the matching roles/keyboard handlers; missing or invisible focus rings;
+keyboard traps or focus not restored on dismiss; hit targets the diff made
+smaller than ~24×24 (or ~44×44 for touch primary actions); unlabeled
+icon-only controls; errors that do not announce; status conveyed by color
+alone; dynamic content with no live region; headings/landmarks broken so
+structure is no longer navigable; layout that fails at 200% zoom / text
+resize.
 
-Also override interface-review's "Verify What Can Be Verified" step: do not
-run project lifecycle scripts, installers, servers, or any command that
-mutates state. Read source and the diff only; if runtime verification would
-matter, say so in the Risk line as unverified, not by executing it. The
-shared read-only frame above wins over that methodology step.
+LAYOUT — controls that blend into content; misaligned edges on a shared
+grid the file already uses; primary actions buried below secondary ones;
+overflow/clipping that hides content or actions at supported widths;
+targets cramped without breathing room; structure that collapses instead
+of reflowing when content grows.
+
+UX WRITING — buttons that are not verb-first or that misstate the
+consequence; links whose text does not describe the destination; errors
+that name the failure without a fix, or that sit far from the broken
+field; empty states with no next step; placeholders used as the only
+label; settings copy that describes the OFF state instead of ON.
+
+TYPOGRAPHY — heading sizes that do not descend with level; line length
+far past a readable measure on body text; truncated text with no title/
+tooltip/expand escape; inputs below 16px on mobile (iOS zoom trap);
+body text below a usable size/contrast floor; useful text made
+unselectable.
+
+COLORS — text/icon/border contrast that the diff made unreadable on its
+surface; palette/token changes that break dark or light mode; status or
+state encoded only as a hue change with no second cue.
+
+UI POLISH — focus/hover/active affordances removed or invisible;
+`transition: all`; animations that cannot be interrupted or that ignore
+reduced-motion; loading/disabled states missing for async actions the
+diff added; press/scale feedback that breaks layout; icon stroke weight
+that no longer matches adjacent text.
 
 Report a finding only when the diff itself introduces or worsens it. A
 pre-existing interface problem the diff merely sits near is not a finding.
