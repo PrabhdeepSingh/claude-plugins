@@ -28,6 +28,14 @@ on:
     - cron: "*/30 * * * *"
   workflow_dispatch: {}
 
+# One scan at a time: overlapping runs can both pass the already-flagged check
+# and post duplicate comments. cancel-in-progress stays false on purpose — the
+# scan writes (label, then comment), and cancelling between the two writes
+# leaves a flag with no explanatory record; a queued run waiting is harmless.
+concurrency:
+  group: factory-liveness
+  cancel-in-progress: false
+
 permissions:
   issues: write
   pull-requests: read
@@ -67,7 +75,7 @@ jobs:
               [ $(( now - $(date -u -d "$last" +%s) )) -gt "$stale_s" ] || continue
               # PR activity on the ticket branch counts as life (ship loops wait silently on bots)
               pr_last=$(gh pr list --repo "$REPO" --state open --limit 100 --json headRefName,updatedAt \
-                --jq "[.[] | select(.headRefName | startswith(\"ticket/$n-\"))] | last | .updatedAt // empty")
+                --jq "[.[] | select(.headRefName | startswith(\"ticket/$n-\"))] | (max_by(.updatedAt) | .updatedAt) // empty")
               if [ -n "$pr_last" ]; then
                 [ $(( now - $(date -u -d "$pr_last" +%s) )) -gt "$stale_s" ] || continue
               fi
