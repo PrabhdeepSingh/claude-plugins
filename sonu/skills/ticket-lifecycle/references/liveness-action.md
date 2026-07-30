@@ -67,7 +67,7 @@ jobs:
               [ $(( now - $(date -u -d "$last" +%s) )) -gt "$stale_s" ] || continue
               # PR activity on the ticket branch counts as life (ship loops wait silently on bots)
               pr_last=$(gh pr list --repo "$REPO" --state open --limit 100 --json headRefName,updatedAt \
-                --jq "[.[] | select(.headRefName | startswith(\"ticket/$n-\"))] | last | .updatedAt // empty")
+                --jq "[.[] | select(.headRefName | startswith(\"ticket/$n-\"))] | (max_by(.updatedAt) | .updatedAt) // empty")
               if [ -n "$pr_last" ]; then
                 [ $(( now - $(date -u -d "$pr_last" +%s) )) -gt "$stale_s" ] || continue
               fi
