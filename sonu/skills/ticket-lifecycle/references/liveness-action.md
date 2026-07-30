@@ -56,8 +56,11 @@ jobs:
               echo "$labels" | jq -e 'index("factory:agent-lost")' >/dev/null && continue
               echo "$labels" | jq -e 'map(select(startswith("factory-ready-"))) | length > 0' >/dev/null && continue
               # heartbeat age — no heartbeat means no evidence, and absence of evidence never flags
+              # tail -n 1: --paginate emits one jq result PER PAGE, so a >100-comment
+              # ticket would otherwise make $last multi-line and break the date parse
               last=$(gh api "repos/$REPO/issues/$n/comments" --paginate \
-                --jq '[.[] | select(.body | startswith("factory heartbeat"))] | last | .updated_at // empty')
+                --jq '[.[] | select(.body | startswith("factory heartbeat"))] | last | .updated_at // empty' \
+                | tail -n 1)
               [ -n "$last" ] || continue
               [ $(( now - $(date -u -d "$last" +%s) )) -gt "$stale_s" ] || continue
               # PR activity on the ticket branch counts as life (ship loops wait silently on bots)

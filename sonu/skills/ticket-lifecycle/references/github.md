@@ -104,7 +104,7 @@ EOF
 gh issue comment "$ISSUE" --body "$BODY"
 ```
 
-**heartbeat** — one comment per claim, edited in place. Create it once with the comment operation, then update it via the REST comment endpoint (issue comments are addressed repo-wide by comment id, not per-issue):
+**heartbeat** — one comment per **ticket**, edited in place. Adopt the existing `factory heartbeat` comment when one exists (find it below); create it only when absent, then update it via the REST comment endpoint (issue comments are addressed repo-wide by comment id, not per-issue):
 
 ```bash
 ISSUE=123   # substitute — creation only happens once, at claim

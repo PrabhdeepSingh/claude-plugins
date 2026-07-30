@@ -139,7 +139,7 @@ curl --fail --silent --show-error --request POST \
   "https://$JIRA_SITE/rest/api/3/issue/$KEY/comment"
 ```
 
-**heartbeat** — one comment per claim, edited in place via the comment's own endpoint. Create it once with the *comment* operation and record the id from the response; update it with a PUT — same ADF shape, same jq encoding:
+**heartbeat** — one comment per **ticket**, edited in place via the comment's own endpoint. Adopt the existing `factory heartbeat` comment when one exists (list comments and match the prefix); create it with the *comment* operation only when absent, recording the id from the response; update with a PUT — same ADF shape, same jq encoding:
 
 ```bash
 KEY=ABC-123          # substitute

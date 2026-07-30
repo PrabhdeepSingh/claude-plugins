@@ -166,7 +166,7 @@ curl --fail --silent --show-error --request POST \
   https://api.linear.app/graphql
 ```
 
-**heartbeat** — one comment per claim, edited in place with `commentUpdate`. Create it once with the *comment* operation (the `commentCreate` response carries the comment id when you select it — add `comment{id}` to the mutation's selection); update it thereafter:
+**heartbeat** — one comment per **ticket**, edited in place with `commentUpdate`. Adopt the existing `factory heartbeat` comment when one exists (the *fetch* operation's `comments` selection carries bodies to match the prefix against — add `id` to its selection); create it with the *comment* operation only when absent (add `comment{id}` to `commentCreate`'s selection to record the id); update thereafter:
 
 ```bash
 COMMENT_ID=00000000-0000-0000-0000-000000000000   # substitute — from the create response
