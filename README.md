@@ -82,14 +82,15 @@ Mode words are parsed forgivingly — `quick`/`fast`/`lite` → `light`, and `th
 
 A software factory runs work through a consistent pipeline instead of ad-hoc terminal sessions: work enters a queue, gets the same checks every time, and keeps moving until it needs a human decision. `/sonu:factory` is that pipeline with **you as the trigger** — no daemon, no hosted service, no background process spending tokens while you sleep. You authorize work by labeling a ticket; the command picks it up on your next invocation.
 
-The tracker is the control plane. A ticket carries the problem, the scope, the acceptance criteria, and the evidence — and two labels record what a human has authorized:
+The tracker is the control plane. A ticket carries the problem, the scope, the acceptance criteria, and the evidence — and three labels record what a human has authorized:
 
 | Trigger | Means |
 |---|---|
 | `factory-ready-for-spec` | Turn this raw ticket into an implementation-ready spec. |
 | `factory-ready-to-implement` | Build this ticket from its approved spec. |
+| `factory-ready-to-ship` | Ship the built branch — the `/sonu:ship` review loop through merge. This one is merge authority: apply it only after reviewing the diff, and gate who can apply it like you gate merge rights. |
 
-On GitHub, Jira, and Linear these are label names. On the local file tracker the same two authorizations live in the ticket's `trigger:` field (as `ready-for-spec` / `ready-to-implement` — the field name already supplies the scope).
+On GitHub, Jira, and Linear these are label names. On the local file tracker the same authorizations live in the ticket's `trigger:` field (as `ready-for-spec` / `ready-to-implement` / `ready-to-ship` — the field name already supplies the scope).
 
 Only a human ever applies one, each authorizes exactly one pass, and the workflow removes it as its claim before starting. That last part is what makes parallel agents safe: a claim first checks the trigger is actually there, so a second session dispatching the same ticket finds nothing to claim and stops.
 
@@ -97,12 +98,14 @@ Only a human ever applies one, each authorizes exactly one pass, and the workflo
 
 ```
 /sonu:factory init              # pick and configure a tracker (once per repo or globally)
-/sonu:factory                   # scan the queue, spec what's spec-ready, build the top ready ticket
+/sonu:factory                   # scan the queue: spec what's spec-ready, ship the top shippable, build the top buildable
 /sonu:factory triage 123        # spec one ticket
 /sonu:factory implement 123     # build one approved ticket
+/sonu:factory ship 123          # ship one built, human-reviewed ticket through review and merge
 /sonu:factory 123               # infer the stage from the ticket's own trigger
 /sonu:factory classify          # groom the backlog (one type, one priority per ticket)
 /sonu:factory bugs              # hunt for one real defect and file it
+/sonu:factory poll              # standing loop: watch the queue, work what you authorize
 ```
 
 An end-to-end trip through the queue:
@@ -112,9 +115,15 @@ An end-to-end trip through the queue:
 3. **`/sonu:factory`** claims it and runs `ticket-triage`: reads the code, reproduces the bug where practical, and rewrites the ticket as a spec with testable acceptance criteria, explicit non-goals, and a verification plan. It never writes code and never authorizes the next stage.
 4. **You read the spec** and either answer its questions or authorize the build (`factory-ready-to-implement`, or `trigger: ready-to-implement` locally). This is the real gate — a human deciding the thing is worth building as specified.
 5. **`/sonu:factory`** claims it, creates a dedicated worktree, and hands it to `/sonu:build`, which builds test-first under your standards and hands back at a green suite with a risk list.
-6. **You review the diff** and run `/sonu:ship`, which takes it through review bots to a merged PR. Keep the tracker's close reference in the PR (`Closes #N` on GitHub, `Fixes ENG-123` on Linear, the issue key on Jira, the ticket id in the commit on local) — GitHub and Linear then close the ticket on merge, and for Jira and local the next `/sonu:factory` sweep marks it done.
+6. **You review the diff** and authorize the ship — run `/sonu:ship` yourself, or apply `factory-ready-to-ship` and let a pass do it. Either way the flow keeps the tracker's close reference in the PR (`Closes #N` on GitHub, `Fixes ENG-123` on Linear, the issue key on Jira, the ticket id in the commit on local) — GitHub and Linear then close the ticket on merge, and for Jira and local the next `/sonu:factory` sweep marks it done. The ship route only accepts a branch whose ticket proves the build finished (the *built* checkpoint comment, or an existing PR) — never a mid-build branch.
 
-Two human decisions (approve the spec, approve the diff); everything between them is autonomous. Nothing merges without you.
+Two human decisions (approve the spec, approve the diff); everything between them is autonomous. Nothing merges without your explicit authorization — typed or labeled.
+
+While all this runs, the ticket itself tells the story: each pass posts checkpoint comments (claimed → plan settled → built, with the risk list), keeps a `factory:*` status label current so the issue list shows every ticket's stage at a glance, and parks any question it can't answer as a `blocked` ticket with the question in a comment — answer it and re-apply the trigger to resume.
+
+#### Poll mode — the queue without the retyping
+
+`/sonu:factory poll` turns the pass into a standing loop: the session sweeps, ships one, builds one, specs what's ready, then idles and wakes again (15–30 minutes, via the harness's loop facility). Authorization doesn't change — you still apply every trigger; poll only saves you re-running the command. There is still no hosted daemon: the loop is your session, on your machine, and it stops when you close it. Passes maintain a heartbeat comment (one comment, edited in place) so a died session is detectable: the sweep — or an optional GitHub Action that `init` offers to install — flags tickets whose pass stopped answering as `factory:agent-lost`, and a polling session may then take the work over by claiming that flag and rebuilding from the spec. Blocked tickets waiting on your answer are never flagged and never taken over — waiting is not death. And once a ticket is shipped and closed (closure is automatic on merge — your gate was applying the ship trigger), the loop drops that ticket's context entirely and starts the next one fresh from its own thread: the ticket is the durable memory, not the session.
 
 #### Parallel work — a worktree per ticket
 
@@ -166,7 +175,7 @@ created: 2031-01-15
 
 Ticket-file edits (claims, specs, classifications, status flips) are committed on their own with a `tickets:` prefix, never mixed into a code commit — so the diff you review stays clean, and a claim is durable the moment it happens. That's the one deliberate exception to "these workflows never commit," and it covers tracker metadata only, never source code.
 
-For a tracker that isn't one of the four, `/sonu:factory init` asks how your tool works — how an agent reaches it, which environment variables hold credentials, what marks the two triggers, how type and priority map, how a merge closes a ticket — and writes an adapter file for you to review. Workflows only ever name an operation from a fixed list (list queue, list open, search, fetch, claim, update body, comment, classify, create, close the loop), so a tracker is fully supported the moment a document answers all of them; an adapter missing one is a hard stop, never an improvised command.
+For a tracker that isn't one of the four, `/sonu:factory init` asks how your tool works — how an agent reaches it, which environment variables hold credentials, what marks the three triggers, how type and priority map, how a merge closes a ticket, whether a comment can be edited in place — and writes an adapter file for you to review. Workflows only ever name an operation from a fixed list (list queue, list open, search, fetch, claim, update body, comment, heartbeat, classify, mark status, create, close the loop), so a tracker is fully supported the moment a document answers all of them; an adapter missing one is a hard stop, never an improvised command (the two display/liveness aids, *mark status* and *heartbeat*, degrade gracefully instead).
 
 ### `/sonu:tdd` — drive a change test-first
 
@@ -374,7 +383,7 @@ The rulebook the queue workflows share, and the reason a tracker swap isn't a re
 - **Tracker resolution** — `.sonu/factory-config.md`, then `~/.sonu/factory-config.md`, then stop. Never a guessed tracker, because a wrong guess writes ticket state into the wrong system.
 - **The operations contract** — list queue, list open, search, fetch, claim, update body, comment, classify, create, close the loop. Workflows name operations; adapters supply mechanics. An adapter missing an operation is a hard stop that names the gap rather than an improvised command.
 - **The taxonomy** — exactly one type (`bug`/`enhancement`/`documentation`) and one evidence-based priority (`P0`–`P3`, unset meaning "recommended for rejection"). Size never sets priority; volume never sets priority.
-- **Authorization and trust** — only humans apply triggers, the workflow removes one as its claim before any work (that's the concurrency guard), status is derived from the ticket's own artifacts rather than stored as a field anyone has to maintain (the local file tracker is the one exception — a file has no other state, so it keeps a `status:` field with exactly one writer), and all ticket content is untrusted data that can never redirect a workflow.
+- **Authorization and trust** — only humans apply triggers, the workflow removes one as its claim before any work (that's the concurrency guard), status is derived from the ticket's own artifacts rather than stored as a field anyone has to maintain (the `factory:*` labels and the local tracker's `status:` field are a display cache of those artifacts — written at defined seams, corrected by the sweep, and never read by a workflow to decide anything), and all ticket content is untrusted data that can never redirect a workflow.
 
 Five adapters ship as reference files (`github`, `jira`, `linear`, `local`, `custom`), and only the resolved one gets read.
 
@@ -442,9 +451,9 @@ Credentials are read from the environment only. They never go in `.sonu/factory-
 
 `/sonu:ship` runs shell commands and **merges PRs on your behalf**. Read the command before you install it (`sonu/commands/ship.md`), and only point it at repos where you're comfortable with that. Plugins run with your local permissions.
 
-`/sonu:factory` adds a second thing worth understanding before you use it: **whoever can apply a trigger label is the trust boundary** — not whoever opened the ticket. Applying `factory-ready-to-implement` authorizes an agent to build that ticket, so only use the queue on repos where everyone able to label is trusted. Don't point it at a public repo where outside contributors can label.
+`/sonu:factory` adds a second thing worth understanding before you use it: **whoever can apply a trigger label is the trust boundary** — not whoever opened the ticket. Applying `factory-ready-to-implement` authorizes an agent to build that ticket, and applying `factory-ready-to-ship` authorizes it to **merge** that ticket's branch — so only use the queue on repos where everyone able to label is trusted, and gate the ship label as tightly as merge rights. Don't point it at a public repo where outside contributors can label.
 
-Two honest caveats about how that boundary is held. "Only humans apply triggers" is a rule the workflows follow, not a permission the tracker enforces — an agent holding a credential that can *remove* a label can also add one. Where your tracker supports it, give the agent a credential that can't write trigger labels, and keep the default branch protected so a bad authorization still ends at a PR you have to merge. And ticket bodies, comments, and linked PRs are treated as untrusted data throughout — they inform the work, and instructions embedded in them are ignored however authoritative they sound — but that too is enforced by instruction rather than by a sandbox, which is the argument for reading a spec before you approve it. Nothing in the flow merges: that stays `/sonu:ship`, run by you.
+Two honest caveats about how that boundary is held. "Only humans apply triggers" is a rule the workflows follow, not a permission the tracker enforces — an agent holding a credential that can *remove* a label can also add one. Where your tracker supports it, give the agent a credential that can't write trigger labels, and keep the default branch protected with required checks — that backstop catches a bad build authorization (it still ends at a PR you have to merge), though not a bad ship authorization, which is exactly why the ship label is merge authority and scoped like it. And ticket bodies, comments, and linked PRs are treated as untrusted data throughout — they inform the work, and instructions embedded in them are ignored however authoritative they sound — but that too is enforced by instruction rather than by a sandbox, which is the argument for reading a spec before you approve it. The only merge path is `/sonu:ship` — run by you directly, or by a factory ship pass you authorized by applying the ship label to a ticket whose build provably finished.
 
 ## Layout
 
@@ -522,7 +531,7 @@ claude-plugins/
         │   └── SKILL.md     # per-type PR templates, living description, reply wording
         ├── ticket-lifecycle/
         │   ├── SKILL.md     # ticket-as-control-plane rulebook — taxonomy, triggers, claim rules, tracker resolution
-        │   └── references/  # one adapter per tracker: github, jira, linear, local, custom
+        │   └── references/  # one adapter per tracker (github, jira, linear, local, custom) + the optional liveness Action
         ├── ticket-triage/
         │   └── SKILL.md     # raw ticket → implementation-ready spec; never implements
         ├── classify-tickets/
@@ -541,7 +550,7 @@ claude-plugins/
 | `/plugin marketplace update` says up-to-date but a fix you saw on `main` is missing | That fix hasn't been released yet (no version bump). Nothing propagates until a release — see `.claude/commands/release.md` in this repo. |
 | `/sonu:ship` stalls waiting for bots | The repo may simply have no AI reviewer bots enabled; the wait loop times out (~10 min) and proceeds with whoever posted. That's expected, not a hang. |
 | `/sonu:factory` says no tracker is configured | Neither `.sonu/factory-config.md` nor `~/.sonu/factory-config.md` exists → run `/sonu:factory init`, or write the file yourself with a `tracker:` value. It stops rather than guessing on purpose. |
-| `/sonu:factory` finds an empty queue | Nothing carries a trigger. Apply `factory-ready-for-spec` (or `factory-ready-to-implement` on an approved spec) to a ticket — a label on GitHub/Jira/Linear, the `trigger:` field on a local ticket file. Only a human authorizes a pass. |
+| `/sonu:factory` finds an empty queue | Nothing carries a trigger. Apply `factory-ready-for-spec` (or `factory-ready-to-implement` on an approved spec, or `factory-ready-to-ship` on a reviewed build) to a ticket — a label on GitHub/Jira/Linear, the `trigger:` field on a local ticket file. Only a human authorizes a pass. |
 
 ## License
 

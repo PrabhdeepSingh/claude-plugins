@@ -1,6 +1,6 @@
 # Adapter — Jira
 
-Jira has native type and priority fields, so those dimensions map onto real fields rather than labels; the two triggers stay labels because they are this flow's own vocabulary. Closing the loop is **not** native — a merged GitHub PR does not transition a Jira issue unless the org has wired an integration — so the factory sweep transitions it explicitly.
+Jira has native type and priority fields, so those dimensions map onto real fields rather than labels; the triggers stay labels because they are this flow's own vocabulary. Closing the loop is **not** native — a merged GitHub PR does not transition a Jira issue unless the org has wired an integration — so the factory sweep transitions it explicitly.
 
 ## Access — MCP first, REST second, stop third
 
@@ -20,10 +20,12 @@ Every REST fence below assumes those three variables are exported and uses `--fa
 
 | Concept | Stored as |
 |---|---|
-| Trigger | Label `factory-ready-for-spec` / `factory-ready-to-implement` |
+| Trigger | Label `factory-ready-for-spec` / `factory-ready-to-implement` / `factory-ready-to-ship` |
+| Liveness flag | Label `factory:agent-lost` — machine attestation of a dead pass; removed as the takeover claim, never human-applied |
 | Type | Issue type — `bug` maps to Bug, `enhancement` to Story, `documentation` to Task plus a `documentation` label |
 | Priority | Priority field — P0/P1/P2/P3 map to Highest/High/Medium/Low |
 | Discussion | Native comments |
+| Status marker | Label `factory:spec-ready` / `factory:building` / `factory:in-review` / `factory:blocked` — machine-written display cache, never applied by humans and never read to decide |
 | Close the loop | Issue key in branch name and PR title, then a Done transition during the sweep |
 
 Two mapping caveats, both real in practice. A project without a Story type (common on service-desk projects) takes Task for `enhancement` — check the project's issue types once and record the choice in the config's prose section. And a project with a customized priority scheme may lack Highest or Lowest; map to the nearest existing value and say so in the pass report rather than failing the whole pass over a field name.
@@ -137,6 +139,21 @@ curl --fail --silent --show-error --request POST \
   "https://$JIRA_SITE/rest/api/3/issue/$KEY/comment"
 ```
 
+**heartbeat** — one comment per claim, edited in place via the comment's own endpoint. Create it once with the *comment* operation and record the id from the response; update it with a PUT — same ADF shape, same jq encoding:
+
+```bash
+KEY=ABC-123          # substitute
+COMMENT_ID=10042     # substitute — from the create response, or list comments and match the "factory heartbeat" prefix
+TEXT="factory heartbeat — last seen 2031-01-15T14:30:00Z — stage: built"
+curl --fail --silent --show-error --request PUT \
+  --user "$JIRA_EMAIL:$JIRA_API_TOKEN" \
+  --header "Content-Type: application/json" \
+  --data "$(jq -n --arg t "$TEXT" '{body:{type:"doc",version:1,content:[{type:"paragraph",content:[{type:"text",text:$t}]}]}}')" \
+  "https://$JIRA_SITE/rest/api/3/issue/$KEY/comment/$COMMENT_ID"
+```
+
+Never post a second heartbeat — the single edited comment is the unambiguous "last seen" every liveness detector reads.
+
 **classify** — type and priority are single-valued fields, so setting them removes the conflicting value inherently. Any `documentation` label for the docs type is a separate label edit:
 
 ```bash
@@ -160,6 +177,29 @@ curl --fail --silent --show-error --request PUT \
 ```
 
 If the project's field configuration makes priority required (so `null` is rejected), say so in the pass report and leave the existing value rather than inventing a rank — the report is where the "recommend rejection" signal then lives.
+
+**mark status** — one status marker at a time, and deliberately two calls: first remove every `factory:*` status label (removing an absent label is a no-op), then add the target. A single update carrying the target in both the remove and add lists bets on Jira's processing order, and losing that bet strips the marker you meant to set. Native workflow transitions are deliberately **not** used for this — status schemes vary per project, and the adapter cannot assume one:
+
+```bash
+KEY=ABC-123   # substitute
+curl --fail --silent --show-error --request PUT \
+  --user "$JIRA_EMAIL:$JIRA_API_TOKEN" \
+  --header "Content-Type: application/json" \
+  --data '{"update":{"labels":[{"remove":"factory:spec-ready"},{"remove":"factory:building"},{"remove":"factory:in-review"},{"remove":"factory:blocked"}]}}' \
+  "https://$JIRA_SITE/rest/api/3/issue/$KEY"
+```
+
+```bash
+KEY=ABC-123               # substitute
+STATUS=factory:building   # one of: factory:spec-ready factory:building factory:in-review factory:blocked
+curl --fail --silent --show-error --request PUT \
+  --user "$JIRA_EMAIL:$JIRA_API_TOKEN" \
+  --header "Content-Type: application/json" \
+  --data "{\"update\":{\"labels\":[{\"add\":\"$STATUS\"}]}}" \
+  "https://$JIRA_SITE/rest/api/3/issue/$KEY"
+```
+
+Clearing the marker is the first call alone. These labels are the display cache from the spine's section 6 — passes write them, the sweep corrects them, and no workflow reads them to decide anything.
 
 **create**:
 
@@ -194,7 +234,7 @@ Put the issue key in the branch name (`ticket/ABC-123-slug`) and the PR title so
 
 ## Bootstrap
 
-Jira labels are created implicitly on first use, so there is nothing to pre-create. Verify once instead: the configured project exists, its issue types cover the three type values (noting the Story-or-Task decision), and its priority scheme covers the four values. Report any gap and record the substitutions in the config's prose section — do not invent fields, types, or statuses.
+Jira labels are created implicitly on first use, so there is nothing to pre-create. Verify once instead: the configured project exists, its issue types cover the three type values (noting the Story-or-Task decision), and its priority scheme covers the four values. Also confirm the label field accepts the `factory:*` status names by setting and clearing one on a scratch issue — Jira rejects spaces in labels, and if a workspace's configuration rejects the colon too, fall back to `factory-status-*` names and record the substitution in the config's prose section. Report any gap — do not invent fields, types, or statuses.
 
 ## Provenance and maintenance
 
@@ -204,3 +244,4 @@ Last verified 2026-07:
 - The queue query is `POST /rest/api/3/search/jql`. The older `/rest/api/3/search` has been **removed** from Jira Cloud and returns `410 Gone` pointing at this replacement — if a snippet anywhere still targets it, that snippet is already broken. The replacement requires an explicit `fields` array and pages by `nextPageToken` (no `startAt`, no `total`). Re-verify against Atlassian's issue-search API group.
 - Transition IDs differ per project workflow — always resolve by name at runtime.
 - Basic auth with an API token is the documented Cloud mechanism; Jira Data Center or Server deployments differ and are out of scope for this adapter.
+- Jira Cloud labels reject spaces; colons in label names are accepted on standard configurations, but this is workspace-configurable — the Bootstrap's scratch-issue check is the re-verification, and `factory-status-*` is the recorded fallback naming.

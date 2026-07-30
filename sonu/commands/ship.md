@@ -8,7 +8,7 @@ allowed-tools: Bash, Read, Edit, Write, Skill
 
 Handles everything from the current working-tree state through a clean, merged PR. Run after implementation is complete and the owner has said "go". Do not stop until the PR is merged (or auto-merging), or a decision only the owner can make is reached.
 
-**Autonomy contract — run start-to-finish without checking back.** Invoking `/ship` (or saying "ship it") IS the authorization for the entire flow through merge. Once started, flow through every phase — including the final merge — without pausing to report or to ask for a go-ahead. In particular:
+**Autonomy contract — run start-to-finish without checking back.** Invoking `/ship` (or saying "ship it") IS the authorization for the entire flow through merge. A human applying `factory-ready-to-ship` to a ticket is that same authorization for the ticket's branch, delivered through `/sonu:factory`'s ship route — the route claims the trigger, verifies the build finished, and invokes this command; nothing else about this flow changes. Once started, flow through every phase — including the final merge — without pausing to report or to ask for a go-ahead. In particular:
 
 - **Clean reviews are not a checkpoint.** If every review source comes back with nothing actionable, go straight to Phase 7 and merge. Never stop to say "reviews are clean, shall I merge?" — that is not a decision the owner needs to make.
 - **Green checks are not a checkpoint.** When the safety checks pass, merge. Do not pause for confirmation.
