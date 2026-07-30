@@ -49,11 +49,13 @@ jobs:
           stale_s=$(( STALE_HOURS * 3600 ))
           for label in "factory:building" "factory:in-review"; do
             gh issue list --repo "$REPO" --state open --label "$label" \
-              --json number --jq '.[].number' |
+              --limit 200 --json number --jq '.[].number' |
             while read -r n; do
               labels=$(gh issue view "$n" --repo "$REPO" --json labels --jq '[.labels[].name]')
-              # already flagged, or still queued (trigger present) -> not a dead claim
+              # already flagged, still queued (trigger present), or blocked (waiting on a
+              # human — exempt from liveness even on a drifted label set) -> never flag
               echo "$labels" | jq -e 'index("factory:agent-lost")' >/dev/null && continue
+              echo "$labels" | jq -e 'index("factory:blocked")' >/dev/null && continue
               echo "$labels" | jq -e 'map(select(startswith("factory-ready-"))) | length > 0' >/dev/null && continue
               # heartbeat age — no heartbeat means no evidence, and absence of evidence never flags
               # tail -n 1: --paginate emits one jq result PER PAGE, so a >100-comment
@@ -64,7 +66,7 @@ jobs:
               [ -n "$last" ] || continue
               [ $(( now - $(date -u -d "$last" +%s) )) -gt "$stale_s" ] || continue
               # PR activity on the ticket branch counts as life (ship loops wait silently on bots)
-              pr_last=$(gh pr list --repo "$REPO" --state open --json headRefName,updatedAt \
+              pr_last=$(gh pr list --repo "$REPO" --state open --limit 100 --json headRefName,updatedAt \
                 --jq "[.[] | select(.headRefName | startswith(\"ticket/$n-\"))] | last | .updatedAt // empty")
               if [ -n "$pr_last" ]; then
                 [ $(( now - $(date -u -d "$pr_last" +%s) )) -gt "$stale_s" ] || continue

@@ -69,7 +69,7 @@ Workflows are written against these operations and nothing else. This indirectio
 | **create** | Open a new ticket with a type and no trigger. |
 | **close the loop** | Mark the ticket done once its PR merges. |
 
-Every adapter documents all of them. A resolved adapter missing any is a **hard stop that names the missing operation** — never improvise the mechanics, because an improvised claim or close is precisely how a ticket gets built twice or stranded forever in flight. One deliberate exception: *mark status* and *heartbeat* are display and liveness aids, never authority, so an adapter that omits them — a custom adapter written before the operations existed — degrades gracefully: skip the markers and the pulse, say so in the pass report (liveness then reads only checkpoint ages), and still never improvise a mechanism.
+Every shipped adapter documents all of them, and a generated custom adapter should too. For every operation except two, a resolved adapter missing it is a **hard stop that names the missing operation** — never improvise the mechanics, because an improvised claim or close is precisely how a ticket gets built twice or stranded forever in flight. The two exceptions are *mark status* and *heartbeat*: display and liveness aids, never authority, so an adapter that omits them — a custom adapter written before the operations existed — degrades gracefully: skip the markers and the pulse, say so in the pass report (liveness then reads only checkpoint ages), and still never improvise a mechanism.
 
 → `references/github.md` — read when the resolved tracker is `github`.
 → `references/jira.md` — read when the resolved tracker is `jira`.
@@ -150,7 +150,7 @@ Record risk, dependencies, and unresolved decisions in the ticket body, not as n
 ## Self-check before you call it done
 
 - Did you resolve the tracker from config (repo, then global) and read exactly the one matching adapter — stopping rather than guessing when no config exists or the value is unknown?
-- Did every tracker interaction go through one of the contract's named operations, with a hard stop naming any operation the adapter doesn't define?
+- Did every tracker interaction go through one of the contract's named operations — with a hard stop naming any operation the adapter doesn't define, or a reported graceful skip for the two display/liveness aids?
 - Does every open ticket you touched carry exactly one type, and exactly one priority when actionable — with priority unset where you recommended rejection, and never set from implementation size?
 - Did any agent-side step apply a trigger? That is a violation — only humans authorize.
 - Was the trigger removed *before* the work started, with the pass stopping on a failed claim?
