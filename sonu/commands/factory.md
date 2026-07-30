@@ -37,6 +37,8 @@ No config and the argument is not `init` → stop and tell the user to run `/son
 
 ## Phase 1 — `init` (only when the argument is `init`)
 
+**Re-init is the upgrade path, and Bootstrap always runs.** When a config file already exists, don't re-interview: confirm the existing tracker and scope in one line (change them only if the user asks), skip steps 1–4, and go straight to step 5. Running the adapter's Bootstrap is the point of a re-init — every adapter's Bootstrap is idempotent by design (`--force`, `|| true`), and re-running it is how trigger and status labels added in newer plugin versions reach a repo configured under an older one. Skipping it because "the repo is already set up" is the bug: the label set drifts silently until a pass tries to write a label that does not exist. Then continue with steps 6–9 as they apply (offer the liveness Action only if it isn't already installed).
+
 1. Ask which tracker: GitHub Issues, Jira, Linear, the local in-repo file store, or something else.
 2. Ask whether this choice is for **this repo** (write `.sonu/factory-config.md`, committed so the team shares it) or **all repos** (write `~/.sonu/factory-config.md`).
 3. Collect the per-tracker keys — `jira_site` and `jira_project`, or `linear_team`. Never collect a secret: credentials come from environment variables, named in the adapter, and never land in this file.
