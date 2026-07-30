@@ -1,6 +1,6 @@
 ---
 description: Run one pass of the ticket queue — scan the tracker for human-authorized tickets, claim one, and route it to the right workflow (spec a raw ticket, groom the backlog, hunt a bug, or build an approved spec in its own worktree via /sonu:build). You are the trigger; there is no daemon. Never merges and never authorizes its own next stage. Configure a tracker first with /sonu:factory init. To build something not tracked as a ticket, use /sonu:build directly.
-argument-hint: "[init | triage <id> | implement <id> | classify | bugs | <id>]"
+argument-hint: "[init | triage <id> | implement <id> | ship <id> | poll | classify | bugs | <id>]"
 allowed-tools: Bash, Read, Write, Edit, Grep, Glob, Skill
 ---
 
@@ -251,7 +251,7 @@ The id/slug validation is the same untrusted-title discipline as Phase 5, and th
 
 `poll` turns the human-triggered pass into a standing loop — the human's authorizations still come one trigger at a time; poll only automates "run `/sonu:factory` again."
 
-**The loop.** Each wake runs one full pass: Phase 2 (scan + sweep, including liveness), then the default-pass legs — ship one, implement one, triage every spec-ready ticket — then idle. Pace the idle with the harness's loop or scheduling facility (in Claude Code, `/loop` or self-paced wakeups) at a **15–30 minute cadence**. If the harness has no such facility, say so and stop — poll is unavailable there, and busy-waiting with sleeps burns tokens to simulate a timer. A parked (`blocked`) ticket never blocks the loop: post its blocker, move to the next ticket in the same wake.
+**The loop.** Each wake runs one full pass: Phase 2 (scan + sweep, including liveness), then the default-pass legs — ship one, implement one, triage every spec-ready ticket. **Then, before ending the pass, re-arm the next wake yourself — this is a mandatory closing step of the route, not advice to the human.** Invoke the harness's loop or scheduling facility with the literal prompt `/sonu:factory poll` at a **15–30 minute cadence**: in Claude Code, invoke the `loop` skill with that prompt and an interval in that range, or schedule a self-paced wakeup carrying that prompt. A poll pass that ends with no next wake scheduled has silently degraded into a single pass — the human typing `poll` again by hand is the failure this step exists to prevent. Only when the harness has no loop or scheduling facility at all, say so and stop — poll is unavailable there, and busy-waiting with sleeps burns tokens to simulate a timer. A parked (`blocked`) ticket never blocks the loop: post its blocker, move to the next ticket in the same wake.
 
 **Takeover — the only path onto another session's ticket.** A ticket flagged `factory:agent-lost` (by the sweep's liveness check or the optional liveness Action) may be taken over, and only via the flag:
 
