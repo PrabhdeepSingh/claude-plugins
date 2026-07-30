@@ -28,6 +28,14 @@ on:
     - cron: "*/30 * * * *"
   workflow_dispatch: {}
 
+# One scan at a time: overlapping runs can both pass the already-flagged check
+# and post duplicate comments. cancel-in-progress stays false on purpose — the
+# scan writes (label, then comment), and cancelling between the two writes
+# leaves a flag with no explanatory record; a queued run waiting is harmless.
+concurrency:
+  group: factory-liveness
+  cancel-in-progress: false
+
 permissions:
   issues: write
   pull-requests: read
