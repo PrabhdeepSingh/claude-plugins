@@ -39,8 +39,8 @@ Field rules:
 - `title` — one line, the same text the slug is derived from.
 - `type` — `bug`, `enhancement`, or `documentation`.
 - `priority` — `P0` through `P3`, or omitted entirely when the recommendation is rejection.
-- `trigger` — `ready-for-spec`, `ready-to-implement`, or `none`. The values deliberately omit the `factory-` prefix that label-based trackers need, because the field name already scopes them. **Only a human sets this to a non-`none` value.**
-- `status` — `open`, `in-review`, `done`, or `closed`. This is the one place status is stored rather than derived, because a file has no other state to read (spine section 6).
+- `trigger` — `ready-for-spec`, `ready-to-implement`, `ready-to-ship`, or `none`. The values deliberately omit the `factory-` prefix that label-based trackers need, because the field name already scopes them. **Only a human sets this to a non-`none` value.**
+- `status` — `open`, `spec-ready`, `building`, `blocked`, `in-review`, `done`, or `closed`. The status markers and the done-states share this one field because a file has no other state to read (spine section 6); it is the display cache, written only at the seams the transitions below name, and never read by a workflow to decide anything.
 - `created` — ISO date.
 
 Body sections are the spec. `## Discussion` holds date-stamped bullets, appended newest-last, since a file has no native comment stream.
@@ -139,7 +139,13 @@ grep -q '^trigger: none$' "$FILE" \
 
 **comment** — append a bullet under `## Discussion`, date-stamped from the real clock (`date +%Y-%m-%d`), then commit it with a `tickets:` message. Never rewrite or delete an existing bullet; the discussion is an append-only record.
 
+**heartbeat** — the one named carve-out from append-only: a single bullet per ticket beginning `factory heartbeat —` is **edited in place** rather than re-appended — a later pass adopts the existing bullet, never adds a second — because two heartbeats make "last seen" ambiguous for every liveness detector. Update it in the same edit and the same `tickets:` commit as each checkpoint bullet — the checkpoints already commit at those seams, so the pulse rides along without extra commit noise. Honest limitation: on a store with no remote, the heartbeat is visible only on this machine; cross-machine liveness needs the pushes the metadata-commit rule already prescribes.
+
+**agent-lost flag** — the liveness attestation is a `flag: agent-lost` frontmatter line (absent otherwise), written by the sweep with a `tickets: flag NNNN agent-lost` commit and **removed** — edit, verify absent, commit — as the takeover claim. Never set by a human; a human who wants a fresh pass re-applies the trigger instead.
+
 **classify** — edit the `type:` and `priority:` lines. Single-valued fields mean conflicting values cannot coexist. Omit `priority:` entirely for a ticket recommended for rejection rather than inventing a value. Commit with `tickets: classify NNNN`.
+
+**mark status** — edit the `status:` line to the marker value (`spec-ready`, `building`, `blocked`, or `in-review`) with an editing tool, re-read to confirm, and commit with `tickets: status NNNN <value>`. Clearing the marker sets the line back to `open`. The values drop the `factory:` prefix the label trackers need, exactly as `trigger:` does — the field name already scopes them. Never touch the `trigger:` line in the same edit; run the same after-edit verification the *update body* operation requires.
 
 **create** — next id is the highest existing prefix plus one, zero-padded to four; the first ticket is `0001`:
 
@@ -173,7 +179,7 @@ git branch --merged "$BASE" | grep -qF "ticket/$ID-$SLUG" \
   && echo "merged into $BASE" || echo "not merged yet"
 ```
 
-**Status transitions**, so the field is never guessed at: `open` on creation and through triage; the sweep sets **`in-review`** once it finds an open PR for the ticket's branch, **`done`** once that PR is merged (or the branch has landed), and `closed` when a human closes the ticket without merging anything. Each flip is one `tickets: ...` commit. Nothing else writes this field — a status nobody owns is the stale bookkeeping the derived-status rule exists to avoid.
+**Status transitions**, so the field is never guessed at — one writer per transition: `open` on creation. The **triage pass** sets `spec-ready` when its spec awaits approval, `blocked` when it stops on questions, and back to `open` when it recommends rejection or could not reproduce. The **implement pass** sets `building` at its claim and `blocked` on any stop after it. The **sweep** sets `in-review` once it finds an open PR for the ticket's branch, `done` once that PR is merged (or the branch has landed), and corrects any marker that has drifted from those artifacts. `closed` is a human's edit, for a ticket closed without a merge. Each flip is one `tickets: ...` commit. Nothing else writes this field, and no workflow reads it to decide anything — a status somebody trusts but nobody owns is the stale bookkeeping the derived-status rule exists to avoid.
 
 ## The metadata-commit rule
 

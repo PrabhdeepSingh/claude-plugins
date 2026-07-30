@@ -15,15 +15,16 @@ Commit the repo-local one so the team shares it. Keep the global one for a perso
 
 ## The interview — generating an adapter during init
 
-When the user's tool is not one of the shipped four, ask these seven questions, then write the adapter from the answers. Ask them in one batch; they are short, and a round trip per question wastes the user's time.
+When the user's tool is not one of the shipped four, ask these eight questions, then write the adapter from the answers. Ask them in one batch; they are short, and a round trip per question wastes the user's time.
 
 1. **What is the tool**, and what does it call a ticket (issue, work item, card, story)?
 2. **How does an agent reach it** — a CLI (which command, is it authenticated already), an MCP server (which tools), or an HTTP API (which base URL)?
 3. **Which credentials**, and where do they come from? Environment variable names only — never a pasted secret, and never a value written into the config or the adapter.
-4. **What marks the two triggers** — a label, a status/state, a field value, a tag?
+4. **What marks the three triggers** — a label, a status/state, a field value, a tag? And what stores the four machine-written status markers (`spec-ready`, `building`, `in-review`, `blocked`) and the `agent-lost` liveness flag so a human can read progress from the ticket list — the same mechanism, or a different one?
 5. **How do type and priority map** onto native fields or labels, including what to do when a value has no native equivalent?
 6. **How is a ticket marked done**, and does merging a PR do it automatically (magic words, an integration) or does the sweep have to do it explicitly?
 7. **How is a ticket identified** in a branch name and commit message, so the work traces back to it?
+8. **Can a comment be edited in place** (for the single heartbeat comment a claimed pass keeps updated)? If the tool cannot edit comments, say so — the adapter then omits *heartbeat* and liveness degrades to checkpoint ages.
 
 Then write the adapter, echo the path, and tell the user to review it before the first pass — a generated adapter is a draft, and question 5's edge cases are where a wrong guess hides.
 
@@ -55,7 +56,12 @@ and the explicit stop condition when they are missing.
 **claim** — confirm the trigger is present, clear it, confirm it is gone.
 **update body** — replace the description, preserving the reporter's text.
 **comment** — append to the discussion.
+**heartbeat** — create, then edit in place, the one liveness comment per claim.
+Omit (with a note) if the tool cannot edit comments; never post repeats instead.
 **classify** — set one type and one priority.
+**mark status** — set the display-cache status marker to one of spec-ready,
+building, in-review, blocked (removing any other), or clear it. Written by
+passes, corrected by the sweep, never read by a workflow to decide.
 **create** — open a new ticket, no trigger.
 **close the loop** — mark done once the PR merges.
 

@@ -8,9 +8,11 @@ Every fence below is self-contained — a fresh shell each time, so the declarat
 
 | Concept | Stored as |
 |---|---|
-| Trigger | Label `factory-ready-for-spec` / `factory-ready-to-implement` |
+| Trigger | Label `factory-ready-for-spec` / `factory-ready-to-implement` / `factory-ready-to-ship` |
+| Liveness flag | Label `factory:agent-lost` — machine attestation of a dead pass; removed as the takeover claim, never human-applied |
 | Type | Label `bug` / `enhancement` / `documentation` |
 | Priority | Label `P0` / `P1` / `P2` / `P3` |
+| Status marker | Label `factory:spec-ready` / `factory:building` / `factory:in-review` / `factory:blocked` — machine-written display cache, never applied by humans and never read to decide |
 | Discussion | Native issue comments |
 | Close the loop | Native — `Closes #N` in the PR body |
 
@@ -102,6 +104,29 @@ EOF
 gh issue comment "$ISSUE" --body "$BODY"
 ```
 
+**heartbeat** — one comment per **ticket**, edited in place. Adopt the existing `factory heartbeat` comment when one exists (find it below); create it only when absent, then update it via the REST comment endpoint (issue comments are addressed repo-wide by comment id, not per-issue):
+
+```bash
+ISSUE=123   # substitute — creation only happens once, at claim
+gh issue comment "$ISSUE" --body "factory heartbeat — last seen 2031-01-15T12:00:00Z — stage: claimed"
+```
+
+```bash
+REPO=$(gh repo view --json nameWithOwner -q .nameWithOwner)
+COMMENT_ID=123456789   # substitute — from the create response, or find it below
+gh api --method PATCH "repos/$REPO/issues/comments/$COMMENT_ID" \
+  -f body="factory heartbeat — last seen 2031-01-15T14:30:00Z — stage: built"
+```
+
+Find an existing heartbeat by listing the issue's comments and matching the leading `factory heartbeat` prefix — and **never post a second one**: the single edited comment is what keeps liveness readable without notification noise, and two heartbeats make "last seen" ambiguous for every detector.
+
+```bash
+ISSUE=123   # substitute
+REPO=$(gh repo view --json nameWithOwner -q .nameWithOwner)
+gh api "repos/$REPO/issues/$ISSUE/comments" --paginate \
+  --jq '[.[] | select(.body | startswith("factory heartbeat"))] | last | {id, updated_at}'
+```
+
 **classify** — set one type and one priority, removing conflicting values in the same dimension. Remove-then-add in one call so the issue is never briefly untyped:
 
 ```bash
@@ -123,6 +148,19 @@ gh issue edit "$ISSUE" \
 
 There is no "none" label to apply — inventing a `P4` or leaving a stale priority both destroy the taxonomy's signal that an unset priority means "not intended work."
 
+**mark status** — one status marker at a time. Two calls, deliberately: the first removes every `factory:*` status label (removing an absent label is a no-op, so listing all four is safe), the second adds the target. One remove-and-add call would put the target in both lists, and betting on `gh`'s processing order is how a marker silently fails to stick:
+
+```bash
+ISSUE=123                 # substitute
+STATUS=factory:building   # one of: factory:spec-ready factory:building factory:in-review factory:blocked
+gh issue edit "$ISSUE" \
+  --remove-label "factory:spec-ready" --remove-label "factory:building" \
+  --remove-label "factory:in-review" --remove-label "factory:blocked"
+gh issue edit "$ISSUE" --add-label "$STATUS"
+```
+
+Clearing the marker is the first command alone. These labels are the display cache from the spine's section 6 — passes write them, the sweep corrects them, and no workflow reads them to decide anything.
+
 **create** — a new ticket with a type and no trigger:
 
 ```bash
@@ -142,11 +180,17 @@ gh issue create --title "$TITLE" --body "$BODY" --label bug
 
 ## Bootstrap
 
-One time per repo. `--force` keeps the two trigger labels idempotent because this flow owns them; the type and priority labels use `|| true` because GitHub seeds several of these on new repos and their existing colours should not be clobbered:
+One time per repo. `--force` keeps the trigger and status labels idempotent because this flow owns them; the type and priority labels use `|| true` because GitHub seeds several of these on new repos and their existing colours should not be clobbered. The four `factory:*` status labels share one muted colour on purpose — status is machine-written record, and it should look distinct from the vivid human-applied triggers:
 
 ```bash
 gh label create "factory-ready-for-spec" --color 5319E7 --description "Human authorization — run one triage pass" --force
 gh label create "factory-ready-to-implement" --color 0E8A16 --description "Human authorization — build from the approved spec" --force
+gh label create "factory-ready-to-ship" --color 0052CC --description "Human authorization — ship the built branch through review and merge" --force
+gh label create "factory:agent-lost" --color E99695 --description "Machine attestation — pass presumed dead; takeover allowed" --force
+gh label create "factory:spec-ready" --color C5DEF5 --description "Status (machine-written) — spec awaiting human review" --force
+gh label create "factory:building" --color C5DEF5 --description "Status (machine-written) — implement pass in flight" --force
+gh label create "factory:in-review" --color C5DEF5 --description "Status (machine-written) — PR open" --force
+gh label create "factory:blocked" --color F9D0C4 --description "Status (machine-written) — stopped; last comment names why" --force
 gh label create "bug" --color D73A4A --description "Existing behavior is incorrect" || true
 gh label create "enhancement" --color A2EEEF --description "New capability or improved behavior" || true
 gh label create "documentation" --color 0075CA --description "Documentation is the primary deliverable" || true
@@ -156,11 +200,14 @@ gh label create "P2" --color FBCA04 --description "Schedule normally" || true
 gh label create "P3" --color C2E0C6 --description "Low-impact or opportunistic" || true
 ```
 
+The optional liveness Action (offered during init) is templated in `references/liveness-action.md` — read that file when installing or tuning it.
+
 ## Provenance and maintenance
 
 Last verified 2026-07:
 
 - `gh label create --force` updates an existing label in place; without it the command exits non-zero when the label exists. Re-verify with `gh label create --help`.
+- Issue comments are edited via `PATCH /repos/{owner}/{repo}/issues/comments/{comment_id}` — the id is repo-scoped, not per-issue. Re-verify with `gh api --help` and the REST issues-comments docs.
 - `gh issue edit` accepts repeated `--add-label` / `--remove-label` flags in one call, and removing an absent label is a no-op. Re-verify with `gh issue edit --help`.
 - `gh issue view N --json closedByPullRequestsReferences` is the linked-PR lookup. The `linked:issue` search qualifier is deliberately not used: it is a boolean ("has any linked issue"), so `linked:issue-N` does not filter to issue N and returns unrelated PRs. Re-verify the JSON field with `gh issue view --json 2>&1 | head`.
 - `Closes #N` in a PR body auto-closes on merge to the default branch only — a PR merged into a release branch will not close the ticket.

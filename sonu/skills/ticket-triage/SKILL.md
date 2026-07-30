@@ -63,10 +63,12 @@ Then classify the ticket while you are there — exactly one type, one priority 
 
 Every pass ends in exactly one of four routes, stated in one comment:
 
-- **Ready for approval** — the spec is complete. Summarize scope, acceptance criteria, verification plan, and any meaningful risk, and say plainly that a human applies the implement trigger after reviewing — naming it the way this tracker expresses it (the `factory-ready-to-implement` label, or `trigger: ready-to-implement` in a local ticket file). **Never apply that trigger yourself** (lifecycle section 5): approving your own spec removes the only gate between a misread ticket and a build.
-- **Blocked on a decision** — information or a judgment call is missing. Ask the **smallest set of focused questions** that unblocks it, each with the options you have already found and the trade-off between them. A wall of questions is a way of doing no work; two sharp ones with context are the work.
+- **Ready for approval** — the spec is complete. Summarize scope, acceptance criteria, verification plan, and any meaningful risk, and say plainly that a human applies the implement trigger after reviewing — naming it the way this tracker expresses it (the `factory-ready-to-implement` label, or `trigger: ready-to-implement` in a local ticket file). Mark status `spec-ready` via the adapter's *mark status* operation — the list-level signal that a spec awaits review; it is a display marker (lifecycle section 6), not an authorization. **Never apply that trigger yourself** (lifecycle section 5): approving your own spec removes the only gate between a misread ticket and a build.
+- **Blocked on a decision** — information or a judgment call is missing. Ask the **smallest set of focused questions** that unblocks it, each with the options you have already found and the trade-off between them. A wall of questions is a way of doing no work; two sharp ones with context are the work. Mark status `blocked` — the list-level signal matching the questions in the comment.
 - **Rejected or already resolved** — duplicate, already implemented, unsafe, or inconsistent with the repo. Give the evidence (the ticket number, the commit, the file) and recommend the next action. Leave priority unset. Do not close a ticket somebody else opened on your own judgment unless the repo's convention allows it — recommend, and let the human close.
 - **Reproduction failed** — you could not observe the reported behavior. Say exactly what you tried, with what versions and inputs, and ask for the specific missing detail. Never spec a fix for a bug nobody has seen happen. Leave priority unset here too: a ticket nobody can reproduce is not yet actionable work, and ranking it invites it into a queue it cannot be built from.
+
+On the last two routes — rejected and reproduction failed — clear the status marker: there is no in-flight state to advertise, and a leftover marker is the stale cache the lifecycle's derived-status rule warns about.
 
 ## 5. Stay inside the lines
 
@@ -91,6 +93,7 @@ The only writes outside the ticket, on the local file tracker only, are that tic
 - Did you avoid inventing any requirement nobody asked for?
 - Exactly one type, and exactly one priority from evidence — unset if you recommended rejection?
 - Does the ticket end with exactly one clear route and the next human action named?
+- Does the status marker match the route — `spec-ready`, `blocked`, or cleared — with the trigger untouched either way?
 - Did you leave the implement trigger alone, write no code, and open no PR?
 
 ## Provenance and maintenance

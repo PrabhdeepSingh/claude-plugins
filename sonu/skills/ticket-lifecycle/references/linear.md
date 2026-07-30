@@ -1,6 +1,6 @@
 # Adapter — Linear
 
-Linear has a native priority scale and native PR magic words, so priority maps to a real field and closing the loop is free. Type and the two triggers are labels.
+Linear has a native priority scale and native PR magic words, so priority maps to a real field and closing the loop is free. Type and the triggers are labels.
 
 ## Access — MCP first, GraphQL second, stop third
 
@@ -21,10 +21,12 @@ Note that GraphQL returns HTTP 200 with an `errors` array for query-level failur
 
 | Concept | Stored as |
 |---|---|
-| Trigger | Label `factory-ready-for-spec` / `factory-ready-to-implement` |
+| Trigger | Label `factory-ready-for-spec` / `factory-ready-to-implement` / `factory-ready-to-ship` |
+| Liveness flag | Label `factory:agent-lost` — machine attestation of a dead pass; removed as the takeover claim, never human-applied |
 | Type | Label `bug` / `enhancement` / `documentation` |
 | Priority | Native priority — P0 is 1 (Urgent), P1 is 2 (High), P2 is 3 (Medium), P3 is 4 (Low); 0 means no priority |
 | Discussion | Native comments |
+| Status marker | Label `factory:spec-ready` / `factory:building` / `factory:in-review` / `factory:blocked` — machine-written display cache, never applied by humans and never read to decide |
 | Close the loop | Native — `Fixes ENG-123` in the PR body, with the GitHub integration enabled |
 
 Priority `0` is Linear's "no priority" and is exactly the right value for a ticket recommended for rejection, matching the taxonomy's unset-means-rejected rule.
@@ -164,6 +166,22 @@ curl --fail --silent --show-error --request POST \
   https://api.linear.app/graphql
 ```
 
+**heartbeat** — one comment per **ticket**, edited in place with `commentUpdate`. Adopt the existing `factory heartbeat` comment when one exists (the *fetch* operation's `comments` selection carries bodies to match the prefix against — add `id` to its selection); create it with the *comment* operation only when absent (add `comment{id}` to `commentCreate`'s selection to record the id); update thereafter:
+
+```bash
+COMMENT_ID=00000000-0000-0000-0000-000000000000   # substitute — from the create response
+BODY='factory heartbeat — last seen 2031-01-15T14:30:00Z — stage: built'
+QUERY='mutation($id:String!,$body:String!){commentUpdate(id:$id,input:{body:$body}){success}}'
+curl --fail --silent --show-error --request POST \
+  --header "Authorization: $LINEAR_API_KEY" \
+  --header "Content-Type: application/json" \
+  --data "$(jq -n --arg q "$QUERY" --arg id "$COMMENT_ID" --arg body "$BODY" \
+    '{query:$q,variables:{id:$id,body:$body}}')" \
+  https://api.linear.app/graphql
+```
+
+Same `errors`-array check as every mutation, and never a second heartbeat — one edited comment is the unambiguous "last seen".
+
 **classify** — priority is a single field; the type label replaces its siblings, so pass the full intended label set (type label plus any unrelated labels the issue already carries, minus the other two type labels):
 
 ```bash
@@ -179,6 +197,8 @@ curl --fail --silent --show-error --request POST \
     '{query:$q,variables:{id:$id,p:$p,ids:$ids}}')" \
   https://api.linear.app/graphql
 ```
+
+**mark status** — labels replace **wholesale** here (see *claim*), so the operation is a set edit, not an add/remove pair: fetch the issue's label ids, drop every `factory:*` status label id from the set, append the target status label's id, and send the **full** resulting set with the same `issueUpdate` mutation the claim uses. Clearing the marker is the same edit without the append. Native workflow states are deliberately **not** used for this — they vary per team, and the adapter cannot assume a schema. The status labels must already exist on the team (Bootstrap), their ids come from the same `labels{nodes{id name}}` fetch the claim documents, and every mutation gets the same `errors`-array check. Sending anything less than the full set silently strips the issue's other labels — the exact accident the claim section warns about. These labels are the display cache from the spine's section 6 — passes write them, the sweep corrects them, and no workflow reads them to decide anything.
 
 **create** — needs the team's UUID, not its key; resolve it once:
 
@@ -216,7 +236,7 @@ Apply the type label in a follow-up `issueUpdate`, and leave the triggers off �
 
 ## Bootstrap
 
-Linear labels must exist before they can be attached, so create the five (two triggers plus three types) once in the team's label settings, or via `issueLabelCreate`. Verify the team key in the config resolves to a real team; report and stop if it does not.
+Linear labels must exist before they can be attached, so create the eleven (three triggers, three types, four `factory:*` status markers, and `factory:agent-lost`) once in the team's label settings, or via `issueLabelCreate`. Give the status markers one muted colour, distinct from the triggers — they are machine-written record and should look it. Verify the team key in the config resolves to a real team; report and stop if it does not.
 
 ## Provenance and maintenance
 
