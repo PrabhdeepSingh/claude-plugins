@@ -14,9 +14,9 @@ The factory sweep checks liveness on every pass — but a sweep only runs when a
 - **Token:** the workflow's own `GITHUB_TOKEN` with the `permissions:` block below — `issues: write` to label and comment, `pull-requests: read` for the PR-activity check. No personal token, no secret to provision. That token can label, so the Action sits inside the same trust boundary as anyone who can apply labels — say so when installing it.
 - **Runner:** `ubuntu-latest` (the script uses GNU `date -d`; the `gh` CLI is preinstalled on GitHub-hosted runners).
 
-## The criteria (identical to the sweep's)
+## The criteria (the sweep's, applied more conservatively)
 
-A ticket is flagged only when **all** hold: open, carrying `factory:building` or `factory:in-review` (never `blocked` — waiting on a human is not death, so blocked tickets are exempt entirely); no `factory-ready-*` trigger present (a trigger means queued, not claimed); a `factory heartbeat` comment exists and is older than the threshold (no heartbeat → skip: a pass from before heartbeats existed should never be flagged on absence of evidence); and no open PR on the ticket's branch has activity newer than the threshold (a ship loop legitimately sits silent while bots review — PR activity is life). Bias alive: a false "lost" costs duplicate work; a missed one only delays pickup.
+A ticket is flagged only when **all** hold: open, carrying `factory:building` or `factory:in-review` (never `blocked` — waiting on a human is not death, so blocked tickets are exempt entirely); no `factory-ready-*` trigger present (a trigger means queued, not claimed); a `factory heartbeat` comment exists and is older than the threshold (no heartbeat → skip: a pass from before heartbeats existed should never be flagged on absence of evidence — the one place this is stricter than the sweep, which may fall back to checkpoint ages); and no open PR on the ticket's branch has activity newer than the threshold (a ship loop legitimately sits silent while bots review — PR activity is life). Bias alive: a false "lost" costs duplicate work; a missed one only delays pickup.
 
 ## Template
 
