@@ -150,6 +150,8 @@ On an orchestrator-class session model, this bar is also the delegation bar: [[m
 
 **On partial information:** if the interview didn't surface enough to fill all branches, emit what's known and mark open nodes with `[?]` — that's more honest than filling them speculatively.
 
+**`[?]` vs not-yet-specifiable.** A `[?]` is a sharp question the owner can rule on at the approval gate. Work you can sense coming but cannot yet phrase that sharply is not a `[?]` and not a fork — leave it out of the tree entirely. The fog test that draws this line lives in [[ticket-lifecycle]] section 9; do not invent speculative nodes to stand in for fog.
+
 ---
 
 ## Self-check before you call it done

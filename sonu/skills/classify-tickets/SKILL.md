@@ -53,7 +53,7 @@ If anything was ambiguous, say which ticket and what would resolve it rather tha
 
 ## 5. What this pass must never do
 
-Explicitly out of bounds, no matter how obviously right it seems: editing titles or bodies, adding comments, closing or reopening tickets, applying or removing triggers, changing status, creating branches, touching code, or opening PRs.
+Explicitly out of bounds, no matter how obviously right it seems: editing titles or bodies, adding comments, closing or reopening tickets, applying or removing triggers, changing status, creating or removing dependency edges (`blocked_by` / issue links / relations), creating branches, touching code, or opening PRs.
 
 Why the hard boundary: this is the one pass designed to run over the entire backlog at once, so a mistake here is a mistake multiplied by every open ticket. Keeping it to two fields means the worst case is two wrong fields on one ticket, fixed by re-running it. A pass that could also close tickets could close a hundred.
 
