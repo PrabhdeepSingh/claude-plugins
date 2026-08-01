@@ -17,7 +17,7 @@ The factory sweep checks liveness on every pass — but a sweep only runs when a
 
 ## The criteria (the sweep's, applied more conservatively)
 
-A ticket is flagged only when **all** hold: open, carrying `factory:building` or `factory:in-review` (never `blocked` — waiting on a human is not death, so blocked tickets are exempt entirely); no `factory-ready-*` trigger present (a trigger means queued, not claimed); a `factory heartbeat` comment exists and is older than the threshold (no heartbeat → skip: a pass from before heartbeats existed should never be flagged on absence of evidence — the one place this is stricter than the sweep, which may fall back to checkpoint ages); the heartbeat's body does not **end with** `stage: built` — matched at the end of the line, as the script's `case` pattern does; a mid-build heartbeat reads `stage: building — step k/N: …` and must stay flaggable (the hand-back writes `stage: built` when it parks a green build for the human's ship decision — built-awaiting-ship is waiting, exactly like `blocked`, and it is the flow's normal success path: flagging it would mark every unshipped green build dead); and no open PR on the ticket's branch has activity newer than the threshold (a ship loop legitimately sits silent while bots review — PR activity is life). Bias alive: a false "lost" costs duplicate work; a missed one only delays pickup.
+A ticket is flagged only when **all** hold: open, carrying `factory:building` or `factory:in-review` (never `blocked` — waiting on a human is not death, so blocked tickets are exempt entirely); no `factory-ready-*` trigger present (a trigger means queued, not claimed); a `factory heartbeat` comment exists and is older than the threshold (no heartbeat → skip: a pass from before heartbeats existed should never be flagged on absence of evidence — the one place this is stricter than the sweep, which may fall back to checkpoint ages); the heartbeat's body does not **end with** `stage: built` — anchored at the end, trailing whitespace tolerated, exactly as the script's jq `test` does; a mid-build heartbeat reads `stage: building — step k/N: …` and must stay flaggable (the hand-back writes `stage: built` when it parks a green build for the human's ship decision — built-awaiting-ship is waiting, exactly like `blocked`, and it is the flow's normal success path: flagging it would mark every unshipped green build dead); and no open PR on the ticket's branch has activity newer than the threshold (a ship loop legitimately sits silent while bots review — PR activity is life). Bias alive: a false "lost" costs duplicate work; a missed one only delays pickup.
 
 ## Template
 
@@ -66,19 +66,24 @@ jobs:
               echo "$labels" | jq -e 'index("factory:agent-lost")' >/dev/null && continue
               echo "$labels" | jq -e 'index("factory:blocked")' >/dev/null && continue
               echo "$labels" | jq -e 'map(select(startswith("factory-ready-"))) | length > 0' >/dev/null && continue
-              # heartbeat age — no heartbeat means no evidence, and absence of evidence never flags
+              # Heartbeat record: timestamp + "is this the built hand-back?", as two TSV
+              # fields. jq decides the second one, on the real body, because the body must
+              # never reach the shell: @tsv escapes a trailing newline to the two literal
+              # characters \n, and an end-anchored shell match against that fails — which
+              # would flag the very built ticket this check exists to exempt.
               # tail -n 1: --paginate emits one jq result PER PAGE, so a >100-comment
-              # ticket would otherwise make $hb multi-line and break the parse; @tsv
-              # keeps the record one line even if a heartbeat body ever grows a newline
+              # ticket would otherwise make $hb multi-line and break the date parse.
               hb=$(gh api "repos/$REPO/issues/$n/comments" --paginate \
-                --jq '[.[] | select(.body | startswith("factory heartbeat"))] | last | select(. != null) | [.updated_at, .body] | @tsv' \
+                --jq '[.[] | select(.body | startswith("factory heartbeat"))] | last | select(. != null) | [.updated_at, (.body | test("stage: built[[:space:]]*$"))] | @tsv' \
                 | tail -n 1)
+              # no heartbeat means no evidence, and absence of evidence never flags
               [ -n "$hb" ] || continue
               # stage: built is the implement pass's hand-back — a green build parked for
               # the human's ship decision. Waiting, exactly like blocked -> never flag.
-              # End-anchored on purpose: the stage is the line's last field, and a
-              # substring match would also exempt e.g. "stage: building" — a dead build
-              case "$hb" in *"stage: built") continue ;; esac
+              # Anchored at the line's end (trailing whitespace tolerated) on purpose: a
+              # substring match would also exempt "stage: building — step k/N", a live or
+              # dead build, which must stay flaggable.
+              [ "$(printf '%s\n' "$hb" | cut -f2)" = "true" ] && continue
               last=$(printf '%s\n' "$hb" | cut -f1)
               [ $(( now - $(date -u -d "$last" +%s) )) -gt "$stale_s" ] || continue
               # PR activity on the ticket branch counts as life (ship loops wait silently on bots)
@@ -106,3 +111,4 @@ Last verified 2026-07:
 - `gh` is preinstalled on GitHub-hosted runners and honors `GH_TOKEN`; re-verify against the runner image docs if a run fails with "gh: not found".
 - `date -u -d "<ISO8601>" +%s` is GNU coreutils behavior (ubuntu runners); macOS `date` would need `-j -f`. The template pins `ubuntu-latest` for exactly this reason.
 - Issue comments API (`repos/{repo}/issues/{n}/comments`) returns `updated_at` per comment; the heartbeat prefix match relies on the adapter's `factory heartbeat` convention (see `github.md`).
+- The built-exemption test runs inside jq — `test("stage: built[[:space:]]*$")` — because `@tsv` escapes a trailing newline to a literal `\n`, which would defeat an end-anchored match in the shell. Re-verify the POSIX bracket support with `jq -rn '"x stage: built\n" | test("stage: built[[:space:]]*$")'` (expects `true`).
