@@ -27,7 +27,8 @@ Handles everything from the current working-tree state through a clean, merged P
 LEDGER="$(git rev-parse --git-dir)/sonu-ship-ledger.md"
 ```
 
-- **Create it in Phase 0** and **rewrite it at the end of every phase** with the current facts, one per line: `repo:`, `base:`, `branch:`, `pr:`, `mode:`, `phase_done:`, `prepr_passes:`, `prepr_reviewed_sha:`, `cycles_used:`, `last_fix_sha:`, `prev_at:`, `handled_comment_ids:` (comma-separated), `open_items:` (anything mid-flight).
+- **Adopt it or create it in Phase 0** — never blindly create — and **rewrite it at the end of every phase** with the current facts, one per line: `repo:`, `base:`, `branch:`, `pr:`, `mode:`, `phase_done:`, `prepr_passes:`, `prepr_reviewed_sha:`, `cycles_used:`, `last_fix_sha:`, `prev_at:`, `handled_comment_ids:` (comma-separated), `open_items:` (anything mid-flight).
+- **A surviving ledger means a previous run did not finish.** The merge deletes it (below), so its presence says exactly one thing: an earlier session on this branch stopped mid-flow. Adopt that ledger — read every field, resume from `phase_done:` — rather than writing a fresh one. Re-initializing looks harmless and is not: `prepr_passes:` and `cycles_used:` are the caps that bound the review loops, and **a cap that resets is not a cap.** A run re-invoked five times then gets five uncapped Phase 1.5 loops, each re-reviewing the whole branch and committing another round of fixes that becomes the next run's input — a treadmill that never converges on a merge. That has shipped; it is the reason this bullet exists.
 - **Whenever you are unsure of the current state** — after a context compaction, a long wait, or an interrupted turn — read the ledger *before* touching the PR, and resume from `phase_done`, not from memory. The ledger is the source of truth for literal values the snippets need (`PR`, `PREV_AT`, handled IDs).
 - **Delete it after the merge** (`rm -f "$LEDGER"`) as part of the final report — a stale ledger must never leak into the next run.
 
@@ -62,10 +63,37 @@ When `light` skips a review, say so in one line in the final report — don't le
    BASE=$(gh repo view --json defaultBranchRef -q .defaultBranchRef.name)  # e.g. main / master
    ```
    If `gh repo view` fails (no GitHub remote), stop and tell the owner — this flow needs a GitHub remote.
-2. **Initialize the state ledger** (see the contract above): write `repo:`, `base:`, `branch:`, `mode:`, `phase_done: 0` to `$(git rev-parse --git-dir)/sonu-ship-ledger.md`. Update it at the end of every phase from here on.
+2. **Adopt or initialize the state ledger** (see the contract above). Read it *before* deciding anything — including before Phase 1.5 and the effort mode:
+   ```bash
+   LEDGER="$(git rev-parse --git-dir)/sonu-ship-ledger.md"
+   # Three outcomes, never two: absent, readable, or present-but-unreadable. The
+   # third must STOP rather than fall through — both `[ -f x ] && cat x || echo ...`
+   # (which reports "no ledger" when cat fails) and a bare if/else (which prints
+   # nothing, reading as an empty ledger) end up re-initializing the caps, which is
+   # the exact bug this step exists to prevent. Resuming on unknown state is worse
+   # than not resuming, so an unreadable ledger is an owner-visible stop.
+   if [ ! -e "$LEDGER" ]; then
+     echo "no ledger — this is a fresh run"
+   elif cat "$LEDGER"; then
+     :   # adopt the fields printed above
+   else
+     echo "STOP: ledger exists at $LEDGER but could not be read — resolve before resuming"
+     exit 1
+   fi
+   ```
+   - **Ledger exists and its `branch:` matches the current branch → adopt it.** Keep every field verbatim and resume from `phase_done:` — never write `phase_done: 0` over it, and never re-run a phase it already records as done. Four fields are load-bearing: `prepr_passes:` (Phase 1.5's cap, counted per PR), `prepr_reviewed_sha:` (what the last review actually covered, so the next pass reviews the delta instead of the whole branch again), `cycles_used:` (Phase 6's cap), and `handled_comment_ids:` (so threads already answered are not answered twice). Losing any one of them silently un-caps a loop.
+   - **No ledger, or a `branch:` that doesn't match → initialize.** Write `repo:`, `base:`, `branch:`, `mode:`, `phase_done: 0`. A ledger from a different branch is leftover state, not a resume point — treat it as absent and overwrite.
+
+   **The ledger says where the pass got to — never that a gate was satisfied.** It is a resume pointer, not evidence. Whatever `phase_done:` claims, Phase 7's merge gate is re-verified against the PR itself every time: safety checks green now, `mergeStateStatus` clean now. A ledger reading `phase_done: 7` on an unmerged PR means the last run died mid-merge, not that merging was approved — resuming on its say-so would merge past a check that has since gone red.
+
+   Update it at the end of every phase from here on.
 3. `git status` and `git diff --stat` — understand what changed. Use the line count + file types to pick the effort mode (above).
 4. If on the default branch (`$BASE`), branch: `git checkout -b <kebab-name-matching-task>`.
-5. Existing PR on this branch? `gh pr list --head "$(git branch --show-current)" --json number,url`. If one exists, record its number as `PR` and skip **only the `gh pr create` call (Phase 1 step 5)** — you must still stage, commit, push, and run the Phase 1.5 pre-PR fix loop (Phase 1 steps 1–4). After the loop, refresh the PR description: invoke `Skill(sonu:pr-conventions)` (Section C — *Keep the description current*) to re-render the body in place — updating Summary/Changes and refreshing the Risk section from the new `RISKS` list while preserving the team-template structure. Capture the updated body into `BODY` explicitly before writing it back (passing an unset variable to `--body` will blank the PR description):
+5. Existing PR on this branch? `gh pr list --head "$(git branch --show-current)" --json number,url`. If one exists, record its number as `PR` and skip **only the `gh pr create` call (Phase 1 step 5)**. What else runs is decided by the ledger from step 2, not by this step:
+   - **Ledger adopted** — resume at `phase_done:`. Run Phase 1 steps 1–4 only for the phases it does *not* already record as done; a ledger that has passed Phase 1.5 does not re-enter it. This is the resume case — a previous run on this same PR stopped mid-flow, and re-running its finished phases is what turns a resume into a treadmill.
+   - **No ledger** — a genuinely fresh run against an existing PR (you built more work and re-ran ship, or the worktree was recreated). Stage, commit, push, and run the full Phase 1.5 pre-PR fix loop (Phase 1 steps 1–4) as written.
+
+   In both cases, once the loop is settled, refresh the PR description: invoke `Skill(sonu:pr-conventions)` (Section C — *Keep the description current*) to re-render the body in place — updating Summary/Changes and refreshing the Risk section from the new `RISKS` list while preserving the team-template structure. Capture the updated body into `BODY` explicitly before writing it back (passing an unset variable to `--body` will blank the PR description):
    ```bash
    # Compose this at column 0 — a heredoc terminator (PREOF) must start the line, unindented.
    BODY=$(cat <<'PREOF'
@@ -103,16 +131,20 @@ When `light` skips a review, say so in one line in the final report — don't le
 
 ## Phase 1.5 — Pre-PR fix loop (review → fix → re-review, until dry)
 
-**Why here:** a finding caught before `gh pr create` costs one local edit; the same finding caught after costs a bot round — wait, reply, resolve, re-review — and the fix commits themselves become fresh material for the next bot pass. So the whole review → fix → re-review cycle runs *before* any reviewer sees the change. **This loop is mandatory whenever the run reaches it with commits to review; the pass cap limits how many passes, not whether the loop runs.** The one shortening is by effort mode: in **`light`**, run exactly one pass — review, fix what it finds, done, no re-review. `auto`/`full` run the full loop.
+**Why here:** a finding caught before `gh pr create` costs one local edit; the same finding caught after costs a bot round — wait, reply, resolve, re-review — and the fix commits themselves become fresh material for the next bot pass. So the whole review → fix → re-review cycle runs *before* any reviewer sees the change. **This loop is mandatory whenever the run reaches it with commits to review; the pass cap limits how many passes, not whether the loop runs.** "Commits to review" means commits the ledger has not already recorded as reviewed — on a resumed run with nothing new since `prepr_reviewed_sha:`, or with `prepr_passes:` already at the cap, the loop is *satisfied*, not skipped, and step 5 terminates it. That is not the same as declining to run it. The other shortening is by effort mode: in **`light`**, run exactly one pass — review, fix what it finds, done, no re-review. `auto`/`full` run the full loop.
 
-1. **Pass 1 — review the whole branch.** `Skill(sonu:self-review)` on the committed branch diff (`git diff origin/<base>...HEAD` — the working tree is clean here, so `git diff HEAD` would return nothing; for a single-commit branch `git show HEAD` is equivalent). The skill self-gates: a small diff gets its inline pass, a substantial one gets its lens fan-out.
-2. **Partition the findings** exactly as Phase 3 does: valid → `FIX`; already-correct / intentional / nitpick → `JUSTIFY` (keep the justifications — they seed the PR body and any later bot rebuttals).
+1. **Pass 1 — review what has not been reviewed yet.** `Skill(sonu:self-review)`, scoped by the ledger's `prepr_reviewed_sha:`:
+   - **No `prepr_reviewed_sha:` recorded** (a first pass) → the whole committed branch diff, `git diff origin/<base>...HEAD`. The working tree is clean here, so `git diff HEAD` would return nothing; for a single-commit branch `git show HEAD` is equivalent.
+   - **A `prepr_reviewed_sha:` recorded** (an adopted ledger — a previous run already reviewed up to that sha) → the delta only, `git diff <prepr_reviewed_sha>..HEAD`, exactly as step 4 scopes an intra-run re-review. **Nothing new since that sha is a dry pass by definition** — go straight to step 5 and terminate. Re-reviewing already-reviewed code is how the same nitpick class resurfaces on every invocation and manufactures the fix commits that feed the next round.
+
+   The skill self-gates: a small diff gets its inline pass, a substantial one gets its lens fan-out.
+2. **Partition the findings** exactly as Phase 3 does: valid → `FIX`; already-correct / intentional / nitpick → `JUSTIFY` (keep the justifications — they seed the PR body and any later bot rebuttals). Worth restating here because this loop commits what it fixes: **cosmetic findings — docstrings, comments, naming polish, formatting with no behavior change — are `JUSTIFY`, not `FIX`**, unless they violate a convention the repo actually states (`CODING.md` / `CONTRIBUTING.md`). Each cosmetic fix commit is fresh material for the next pass and for every bot, so a loop that "fixes" nitpicks re-arms itself.
 3. **Apply every `FIX` in this session** (never delegated), then re-run the repo's test suite. **Green gates the loop** — do not proceed to the next pass, and do not open the PR, with a red suite. Commit the fixes in the repo style (imperative, ≤72-char subject, no AI attribution — the Phase 1 rules apply to these commits too).
 4. **Re-review the delta.** Run `Skill(sonu:self-review)` again scoped to what changed since the last reviewed state: `git diff <prepr_reviewed_sha>..HEAD` plus the full content of any file the fixes touched. New findings → back to step 2 with only those.
-5. **Terminate on a dry pass or the cap.** A pass yielding zero `FIX` items is **dry** — `git push` any fix commits (Phase 1 step 3 pushed before this loop ran, so the loop's own commits are not on the remote yet), record the final risk list as `RISKS`, and proceed to Phase 1 step 5. Hard cap: **3 passes**. If pass 3 still yields fixes, apply them, get the suite green, push, record the still-open concerns in `RISKS` (they become reviewer-attention items, not silent omissions), and proceed — never loop past the cap.
+5. **Terminate on a dry pass or the cap.** A pass yielding zero `FIX` items is **dry** — `git push` any fix commits (Phase 1 step 3 pushed before this loop ran, so the loop's own commits are not on the remote yet), record the final risk list as `RISKS`, and proceed to Phase 1 step 5. Hard cap: **3 passes, counted per PR over its lifetime, not per invocation.** `prepr_passes:` accumulates in the ledger across every resumed run and is reset by exactly one thing — the merge that deletes the ledger. A cap counted per invocation bounds nothing: re-invoke the command five times and you get fifteen passes, which is the treadmill the ledger contract warns about. So a resumed run that adopts `prepr_passes: 3` is **already at the cap** — it runs no further pre-PR passes at all. If pass 3 still yields fixes, apply them, get the suite green, push, record the still-open concerns in `RISKS` (they become reviewer-attention items, not silent omissions), and proceed — never loop past the cap.
 6. **Ledger after every pass:** update `prepr_passes:` and `prepr_reviewed_sha:` (the HEAD SHA the last completed review actually covered). On resume after a compaction or interruption, those two fields say exactly which pass you're in and what the next delta diff is — re-derive from the ledger, not from memory.
 
-**Boundaries:** this loop always runs at Phase 1 step 4 — before `gh pr create` on a new PR, and before the description-refresh on an existing one (Phase 0 step 5). Same mechanics either way; on an open PR its findings land as fix commits. It never replaces Phases 2–6: the bots and the post-PR loop remain the backstop for whatever this loop missed.
+**Boundaries:** this loop runs at Phase 1 step 4 — before `gh pr create` on a new PR, and before the description-refresh on an existing one (Phase 0 step 5) — in every case except one: a resumed run whose adopted ledger already records this loop as complete does not re-enter it (Phase 0 step 5). That is the loop having already run, not a skip. Same mechanics otherwise; on an open PR its findings land as fix commits. It never replaces Phases 2–6: the bots and the post-PR loop remain the backstop for whatever this loop missed — including anything a capped or already-satisfied Phase 1.5 did not look at.
 
 ---
 
@@ -255,6 +287,8 @@ mutation($id:ID!){ resolveReviewThread(input:{threadId:$id}){ thread{ isResolved
 |------|--------|
 | `light` | exactly 1 |
 | `auto` / `full` | up to 3 |
+
+Cycles are counted **per PR over its lifetime**, not per invocation — `cycles_used:` accumulates in the ledger across resumed runs, exactly like Phase 1.5's `prepr_passes:`, and only the merge that deletes the ledger resets it. A resumed run that adopts `cycles_used: 3` is already at the cap: stop, summarize the open items, and hand to the owner rather than starting a fourth cycle that a fresh ledger would have hidden.
 
 1. **Capture each bot's current latest review timestamp first** — a rerun must wait for activity *newer* than what's already there, or it exits instantly on the existing reviews. Echo the value; step 2's loop needs it as a literal:
    ```bash
