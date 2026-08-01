@@ -211,6 +211,8 @@ gh issue list --state open --search "label:$TRIGGER is:blocked" \
 
 If the search qualifier ever fails or returns a nonsense set, fall back to: list the trigger queue, then for each ticket call the per-issue *read blockers* endpoint and subtract those with any open blocker.
 
+The list-wide form only answers membership (frontier vs dependency-blocked). The factory scan must still **name** each authorized-but-dependency-blocked ticket's open blockers — run the per-issue *read blockers* endpoint for that report, not only the search filter.
+
 **link blocker** — record that ticket A is blocked by ticket B, then read back. The POST body's `issue_id` is B's **database id, not its issue number** — and it must be sent as a JSON integer (`-F`, never `-f`, which stringifies and 422s):
 
 ```bash

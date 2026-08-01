@@ -240,11 +240,13 @@ curl --fail --silent --show-error \
   --user "$JIRA_EMAIL:$JIRA_API_TOKEN" \
   "https://$JIRA_SITE/rest/api/3/issue/$KEY?fields=issuelinks" \
   | jq '[.fields.issuelinks[]
-      | select(.type.inward == "is blocked by" and .inwardIssue != null)
-      | {key: .inwardIssue.key, status: .inwardIssue.fields.status.name, summary: .inwardIssue.fields.summary}]'
+      | select(.type.inward == "is blocked by" and .outwardIssue != null)
+      | {key: .outwardIssue.key,
+         category: .outwardIssue.fields.status.statusCategory.key,
+         summary: .outwardIssue.fields.summary}]'
 ```
 
-A blocker is still open when its status category is not `done`. List-wide form: JQL `labels = "factory-ready-to-implement" AND issueLinkType = "is blocked by"` for the dependency-blocked authorized set, and the same without the link clause for the full trigger queue — subtract to get the frontier. If the link-type name has been renamed on the instance, skip the JQL form and fall back to per-issue *read blockers* over the trigger queue.
+Direction, load-bearing: when *this* issue is the dependent (inward side of a `Blocks` link), the blocker appears in **`outwardIssue`**, not `inwardIssue`. Swapping those fields reads the wrong side of every edge. A blocker is still open when its `statusCategory.key` is not `done` — use the category, never the localized `status.name`. List-wide form: JQL `labels = "factory-ready-to-implement" AND issueLinkType = "is blocked by"` for the dependency-blocked authorized set, and the same without the link clause for the full trigger queue — subtract to get the frontier. If the link-type name has been renamed on the instance, skip the JQL form and fall back to per-issue *read blockers* over the trigger queue.
 
 **link blocker** — record that A is blocked by B (`Blocks` link: outward = blocker, inward = dependent), then read back. Prefer MCP; REST:
 
@@ -258,18 +260,18 @@ curl --fail --silent --show-error --request POST \
     '{type:{name:"Blocks"},inwardIssue:{key:$a},outwardIssue:{key:$b}}')" \
   "https://$JIRA_SITE/rest/api/3/issueLink" \
   || { echo "STOP: link blocker failed for $A blocked-by $B"; exit 1; }
-# Read-back — part of the operation.
+# Read-back — part of the operation. On A (the dependent), the blocker is outwardIssue.
 curl --fail --silent --show-error \
   --user "$JIRA_EMAIL:$JIRA_API_TOKEN" \
   "https://$JIRA_SITE/rest/api/3/issue/$A?fields=issuelinks" \
   | jq --arg b "$B" '[.fields.issuelinks[]
-      | select(.type.inward == "is blocked by" and .inwardIssue.key == $b)] | length' \
+      | select(.type.inward == "is blocked by" and .outwardIssue.key == $b)] | length' \
   | grep -qx 1 \
   || { echo "STOP: read-back failed — $B not in $A's blockers (direction or link-type name may differ)"; exit 1; }
 echo "LINKED $A blocked-by $B"
 ```
 
-Worked example: linking `ABC-200` blocked-by `ABC-100` means `ABC-100` is the outward (blocker) and `ABC-200` is the inward (dependent). Swapping them makes `ABC-200` appear to block `ABC-100` — which is why the read-back is mandatory.
+Worked example: linking `ABC-200` blocked-by `ABC-100` means create with `outwardIssue` = `ABC-100` (blocker) and `inwardIssue` = `ABC-200` (dependent). Reading blockers of `ABC-200` then finds `ABC-100` in **`outwardIssue`**. Swapping create or read makes `ABC-200` appear to block `ABC-100` — which is why the read-back is mandatory.
 
 ## Bootstrap
 

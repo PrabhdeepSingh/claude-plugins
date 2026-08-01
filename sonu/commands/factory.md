@@ -82,8 +82,8 @@ For each branch whose PR is **open**, read the ticket's heartbeat and newest fac
 
 | Observables | Action |
 |---|---|
-| Newest checkpoint is a stop/blocker comment, or status marker is `blocked` | **Leave for the human.** A stopped ship is held on purpose; resuming loops onto the same wall. |
-| Ticket carries `factory:agent-lost` | **Takeover** — claim the flag and run Phase 9's takeover steps 1–4 (referenced, not duplicated). The flag claim is the serializer; any routed pass may take over, not only `poll`. |
+| Newest factory-posted checkpoint is a stop/blocker comment | **Leave for the human.** A stopped ship is held on purpose; resuming loops onto the same wall. Decide from the checkpoint artifact, never from the `blocked` status marker — markers are written, never read ([[ticket-lifecycle]] section 6). |
+| Ticket carries `factory:agent-lost` | **Takeover candidate** — report it for Phase 3. Do **not** claim the flag or run takeover here; the sweep only classifies. Execution lives in the ship/implement leg (or an explicit route), which runs Phase 9's steps 1–4. |
 | Stage value *ends with* `parked`, quiet ≥ **5 minutes** | **Resumable ship.** |
 | No `parked` marker, quiet ≥ **30 minutes** | **Resumable ship** (bias-alive quiet threshold). |
 | Quiet under the applicable threshold | **Leave alone** — report *"heartbeat pulsed N minutes ago, inside the ship-idle threshold — treated as in flight."* |
@@ -155,9 +155,9 @@ The default pass ships **one** ticket and implements **one** ticket, deliberatel
 
 **Frontier filter — exactly two legs.** The implement leg and the ship leg select from the frontier (authorized + unblocked + unclaimed). The **triage leg ignores edges entirely** — speccing a dependency-blocked ticket is legal and useful. Explicit routes (`implement <id>`, `ship <id>`, or a bare id) **proceed regardless of edges** and report any open blockers loudly — a dependency edge is scheduling, never a veto ([[ticket-lifecycle]] section 8). Refusing a named, triggered ticket because of an edge is how a finished PR sits unmergeable forever.
 
-**The ship leg picks one target, in this order:** (1) a flagged died ship (`factory:agent-lost` — claim the flag and run Phase 9's takeover steps 1–4), then (2) a resumable ship from the sweep, then (3) the highest-priority **unblocked** ship-ready ticket. Never more than one in a pass. When the same ticket is both resumable and freshly triggered (a human re-applied the trigger on a stalled ship), that is one target, not two, and Phase 6 handles it through the trigger door.
+**The ship leg picks one target, in this order:** (1) a flagged died ship (`factory:agent-lost` — claim the flag and run Phase 9's takeover steps 1–4 in full), then (2) a resumable ship from the sweep, then (3) the highest-priority **unblocked** ship-ready ticket. Never more than one in a pass. When the same ticket is both resumable and freshly triggered (a human re-applied the trigger on a stalled ship), that is one target, not two, and Phase 6 handles it through the trigger door. **If takeover steps 1–4 walk away without shipping** (death re-verify failed, or the built-evidence check held — ticket is awaiting ship, not dead), that no-op does **not** consume the ship leg: continue to (2) or (3) in the same pass.
 
-**The implement leg** mirrors that order for builds: (1) a flagged died build (takeover → rebuild from the spec per Phase 9 step 4), then (2) the highest-priority **unblocked** implement-ready ticket.
+**The implement leg** mirrors that order for builds: (1) a flagged died build — run Phase 9's takeover steps **1–4 in full** (flag claim, death re-verify, takeover comment, then rebuild from the spec), then (2) the highest-priority **unblocked** implement-ready ticket. A no-op takeover (death re-verify failed or built-awaiting-ship) likewise does not consume the implement leg.
 
 To work several in parallel, run separate sessions — each claims its own ticket and builds in its own worktree.
 
