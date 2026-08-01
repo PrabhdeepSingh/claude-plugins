@@ -131,7 +131,7 @@ git remote | grep -q . && git push || echo "no remote — local claim only"
 
 **update body** — rewrite the body sections below the frontmatter with an editing tool, preserving the reporter's original text under `## Original report`, then commit with `tickets: spec NNNN`.
 
-**Never touch the `trigger:` line while doing it.** That field is the human's authorization, and the spec rewrite is the one moment where an agent has the whole file open and could set it — which would let the pass authorize its own next stage. Verify after every body edit:
+**Never touch the `trigger:` or `blocked_by:` lines while doing it.** `trigger:` is the human's authorization; `blocked_by:` is a scheduling edge that must go through *link blocker* (with read-back). The spec rewrite is the one moment where an agent has the whole file open and could set either — which would let the pass authorize its own next stage or park a ticket off the frontier without a verified edge. Verify after every body edit:
 
 ```bash
 ID=0001   # substitute
@@ -141,6 +141,8 @@ FILE=$(find .sonu/tickets -maxdepth 1 -name "$ID-*.md" | head -1)
 [ -n "$FILE" ] || { echo "STOP: no ticket $ID"; exit 1; }
 grep -q '^trigger: none$' "$FILE" \
   || { echo "STOP: trigger changed during a body edit — revert it; only a human sets a trigger"; exit 1; }
+# Capture blocked_by before the edit (or note absence); after the edit it must match.
+# Never introduce, remove, or rewrite blocked_by: during update body — use link blocker.
 ```
 
 **comment** — append a bullet under `## Discussion`, date-stamped from the real clock (`date +%Y-%m-%d`), then commit it with a `tickets:` message. Never rewrite or delete an existing bullet; the discussion is an append-only record.
@@ -187,7 +189,7 @@ git branch --merged "$BASE" | grep -qF "ticket/$ID-$SLUG" \
 
 **Status transitions**, so the field is never guessed at — one writer per transition: `open` on creation. The **triage pass** sets `spec-ready` when its spec awaits approval, `blocked` when it stops on questions, and back to `open` when it recommends rejection or could not reproduce. The **implement pass** sets `building` at its claim and `blocked` on any stop after it. The **sweep** sets `in-review` once it finds an open PR for the ticket's branch, `done` once that PR is merged (or the branch has landed), and corrects any marker that has drifted from those artifacts. `closed` is a human's edit, for a ticket closed without a merge. Each flip is one `tickets: ...` commit. Nothing else writes this field, and no workflow reads it to decide anything — a status somebody trusts but nobody owns is the stale bookkeeping the derived-status rule exists to avoid.
 
-**read blockers** — parse the `blocked_by:` line and report each id with whether its ticket file is still open (status not `done` or `closed`). A dangling id (no file) counts as open/blocking and is reported as such:
+**read blockers** — parse the `blocked_by:` line and report each token with whether its ticket file is still open (status not `done` or `closed`). A dangling id (no file) **and a malformed token** (not exactly four digits) both count as open/blocking and are reported — silently dropping typos would treat them as “(no blockers)” and defeat the edge:
 
 ```bash
 ID=0001   # substitute — the dependent
@@ -196,9 +198,13 @@ case "$ID" in [0-9][0-9][0-9][0-9]) : ;; *) echo "STOP: id must be four digits";
 FILE=$(find .sonu/tickets -maxdepth 1 -name "$ID-*.md" | head -1)
 [ -n "$FILE" ] || { echo "STOP: no ticket $ID"; exit 1; }
 LINE=$(grep -m1 '^blocked_by:' "$FILE" || true)
-IDS=$(printf '%s\n' "$LINE" | sed 's/^blocked_by:[[:space:]]*//' | tr ' ' '\n' | grep -E '^[0-9]{4}$' || true)
-[ -n "$IDS" ] || { echo "(no blockers)"; exit 0; }
-printf '%s\n' "$IDS" | while read -r BID; do
+TOKENS=$(printf '%s\n' "$LINE" | sed 's/^blocked_by:[[:space:]]*//' | tr ' ' '\n' | sed '/^$/d' || true)
+[ -n "$TOKENS" ] || { echo "(no blockers)"; exit 0; }
+printf '%s\n' "$TOKENS" | while read -r BID; do
+  case "$BID" in
+    [0-9][0-9][0-9][0-9]) : ;;
+    *) printf '%s\tdangling\t(malformed id — still blocking)\n' "$BID"; continue ;;
+  esac
   BF=$(find .sonu/tickets -maxdepth 1 -name "$BID-*.md" | head -1)
   if [ -z "$BF" ]; then
     printf '%s\tdangling\t(no ticket file)\n' "$BID"

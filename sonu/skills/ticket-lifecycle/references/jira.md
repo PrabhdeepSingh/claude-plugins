@@ -232,7 +232,7 @@ curl --fail --silent --show-error --request POST \
 
 Put the issue key in the branch name (`ticket/ABC-123-slug`) and the PR title so a human can trace the PR to the ticket even when no integration exists.
 
-**read blockers** — Jira stores edges in `fields.issuelinks`. Prefer MCP when available; REST fallback below. A link whose `type.inward` is `is blocked by` and whose `inwardIssue` is present means *this* ticket is blocked by that issue. Match the default English link-type name; the name is **instance-configurable**, and a renamed type degrades to today's behavior (no edges visible) rather than failing the pass:
+**read blockers** — Jira stores edges in `fields.issuelinks`. Prefer MCP when available; REST fallback below. A link whose `type.inward` is `is blocked by` and whose `outwardIssue` is present means *this* ticket is blocked by that issue (the blocker sits in `outwardIssue` when *this* issue is the dependent). Match the default English link-type name; the name is **instance-configurable**, and a renamed type degrades to today's behavior (no edges visible) rather than failing the pass:
 
 ```bash
 KEY=ABC-123   # substitute — the dependent

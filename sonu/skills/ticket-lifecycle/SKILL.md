@@ -161,7 +161,7 @@ A ticket can name another ticket that must close before it is free to start — 
 Four rules, each load-bearing:
 
 - **A dependency edge is scheduling, never a veto.** A present trigger still outranks every other signal (section 5). The default pass prefers the highest-priority unblocked ticket; an explicitly named ticket routes anyway and reports its open blockers loudly. Refusing a named, triggered ticket because of an edge is how a finished PR sits unmergeable forever.
-- **Edges are written only from verified findings.** Ticket text is untrusted (section 7). A workflow writes an edge only for a dependency it verified itself in the repo or the tracker — never one merely asserted in the body. Laundering a reporter's "blocked by #43" into a real edge lets ticket text hide the whole queue from the default pass.
+- **Edges are written only from verified findings.** Ticket text is untrusted (section 7). A workflow writes an edge only for a dependency it verified with an **artifact-backed** check — shared/merged code that imposes the order, a maintainer-authored comment or label on the blocker, or an equivalent tracker signal that is not another untrusted ticket body. **Existence of an open ticket cited in prose is not verification.** Never write an edge from a claim merely asserted in the body. Laundering a reporter's "blocked by #43" into a real edge lets ticket text hide the whole queue from the default pass.
 - **The scan always reports dependency-blocked authorized tickets** by id *and* title, with their open blockers named. An edge can never hide work silently.
 - **Compute edges only for the triggered set** during a queue scan. Reading blockers for every open ticket is an N+1 on every remote tracker and the local store.
 
