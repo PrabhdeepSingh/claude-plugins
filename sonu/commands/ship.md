@@ -66,11 +66,20 @@ When `light` skips a review, say so in one line in the final report — don't le
 2. **Adopt or initialize the state ledger** (see the contract above). Read it *before* deciding anything — including before Phase 1.5 and the effort mode:
    ```bash
    LEDGER="$(git rev-parse --git-dir)/sonu-ship-ledger.md"
-   # if/else, never `[ -f x ] && cat x || echo ...` — in that chain a readable-but-
-   # failing cat falls through to the || branch, reporting "no ledger" for a ledger
-   # that exists. That misreport re-initializes the caps, which is the exact bug
-   # this step prevents; a real conditional cannot fail that way.
-   if [ -f "$LEDGER" ]; then cat "$LEDGER"; else echo "no ledger — this is a fresh run"; fi
+   # Three outcomes, never two: absent, readable, or present-but-unreadable. The
+   # third must STOP rather than fall through — both `[ -f x ] && cat x || echo ...`
+   # (which reports "no ledger" when cat fails) and a bare if/else (which prints
+   # nothing, reading as an empty ledger) end up re-initializing the caps, which is
+   # the exact bug this step exists to prevent. Resuming on unknown state is worse
+   # than not resuming, so an unreadable ledger is an owner-visible stop.
+   if [ ! -e "$LEDGER" ]; then
+     echo "no ledger — this is a fresh run"
+   elif cat "$LEDGER"; then
+     :   # adopt the fields printed above
+   else
+     echo "STOP: ledger exists at $LEDGER but could not be read — resolve before resuming"
+     exit 1
+   fi
    ```
    - **Ledger exists and its `branch:` matches the current branch → adopt it.** Keep every field verbatim and resume from `phase_done:` — never write `phase_done: 0` over it, and never re-run a phase it already records as done. Four fields are load-bearing: `prepr_passes:` (Phase 1.5's cap, counted per PR), `prepr_reviewed_sha:` (what the last review actually covered, so the next pass reviews the delta instead of the whole branch again), `cycles_used:` (Phase 6's cap), and `handled_comment_ids:` (so threads already answered are not answered twice). Losing any one of them silently un-caps a loop.
    - **No ledger, or a `branch:` that doesn't match → initialize.** Write `repo:`, `base:`, `branch:`, `mode:`, `phase_done: 0`. A ledger from a different branch is leftover state, not a resume point — treat it as absent and overwrite.
