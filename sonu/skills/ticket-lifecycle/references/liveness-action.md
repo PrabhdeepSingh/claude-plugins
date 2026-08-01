@@ -7,6 +7,7 @@ The factory sweep checks liveness on every pass — but a sweep only runs when a
 ## When this file is read
 
 - `/sonu:factory init` on the `github` tracker offers to install it — write the template below to `.github/workflows/factory-liveness.yml` in the managed repo if the user says yes. Skipping costs only unattended detection.
+- Re-init on a repo where the workflow is already installed — compare the installed copy against the template below and offer the updated version when they differ, carrying over the repo's tuned values (`STALE_HOURS`, the cron cadence). Installed copies are pinned; this re-offer is how a criteria fix reaches them.
 - A user tuning the stale threshold or auditing what the Action can do.
 
 ## What it needs
@@ -16,7 +17,7 @@ The factory sweep checks liveness on every pass — but a sweep only runs when a
 
 ## The criteria (the sweep's, applied more conservatively)
 
-A ticket is flagged only when **all** hold: open, carrying `factory:building` or `factory:in-review` (never `blocked` — waiting on a human is not death, so blocked tickets are exempt entirely); no `factory-ready-*` trigger present (a trigger means queued, not claimed); a `factory heartbeat` comment exists and is older than the threshold (no heartbeat → skip: a pass from before heartbeats existed should never be flagged on absence of evidence — the one place this is stricter than the sweep, which may fall back to checkpoint ages); and no open PR on the ticket's branch has activity newer than the threshold (a ship loop legitimately sits silent while bots review — PR activity is life). Bias alive: a false "lost" costs duplicate work; a missed one only delays pickup.
+A ticket is flagged only when **all** hold: open, carrying `factory:building` or `factory:in-review` (never `blocked` — waiting on a human is not death, so blocked tickets are exempt entirely); no `factory-ready-*` trigger present (a trigger means queued, not claimed); a `factory heartbeat` comment exists and is older than the threshold (no heartbeat → skip: a pass from before heartbeats existed should never be flagged on absence of evidence — the one place this is stricter than the sweep, which may fall back to checkpoint ages); the heartbeat's body does not **end with** `stage: built` — matched at the end of the line, as the script's `case` pattern does; a mid-build heartbeat reads `stage: building — step k/N: …` and must stay flaggable (the hand-back writes `stage: built` when it parks a green build for the human's ship decision — built-awaiting-ship is waiting, exactly like `blocked`, and it is the flow's normal success path: flagging it would mark every unshipped green build dead); and no open PR on the ticket's branch has activity newer than the threshold (a ship loop legitimately sits silent while bots review — PR activity is life). Bias alive: a false "lost" costs duplicate work; a missed one only delays pickup.
 
 ## Template
 
@@ -67,11 +68,18 @@ jobs:
               echo "$labels" | jq -e 'map(select(startswith("factory-ready-"))) | length > 0' >/dev/null && continue
               # heartbeat age — no heartbeat means no evidence, and absence of evidence never flags
               # tail -n 1: --paginate emits one jq result PER PAGE, so a >100-comment
-              # ticket would otherwise make $last multi-line and break the date parse
-              last=$(gh api "repos/$REPO/issues/$n/comments" --paginate \
-                --jq '[.[] | select(.body | startswith("factory heartbeat"))] | last | .updated_at // empty' \
+              # ticket would otherwise make $hb multi-line and break the parse; @tsv
+              # keeps the record one line even if a heartbeat body ever grows a newline
+              hb=$(gh api "repos/$REPO/issues/$n/comments" --paginate \
+                --jq '[.[] | select(.body | startswith("factory heartbeat"))] | last | select(. != null) | [.updated_at, .body] | @tsv' \
                 | tail -n 1)
-              [ -n "$last" ] || continue
+              [ -n "$hb" ] || continue
+              # stage: built is the implement pass's hand-back — a green build parked for
+              # the human's ship decision. Waiting, exactly like blocked -> never flag.
+              # End-anchored on purpose: the stage is the line's last field, and a
+              # substring match would also exempt e.g. "stage: building" — a dead build
+              case "$hb" in *"stage: built") continue ;; esac
+              last=$(printf '%s\n' "$hb" | cut -f1)
               [ $(( now - $(date -u -d "$last" +%s) )) -gt "$stale_s" ] || continue
               # PR activity on the ticket branch counts as life (ship loops wait silently on bots)
               pr_last=$(gh pr list --repo "$REPO" --state open --limit 100 --json headRefName,updatedAt \
