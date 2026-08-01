@@ -63,7 +63,7 @@ Workflows are written against these operations and nothing else. This indirectio
 | **claim** | Confirm the trigger marker is **present**, clear it, then confirm it is **gone**. Must report failure; a failed claim aborts the pass. An already-absent marker is a lost race, never a successful claim — clearing something absent usually "succeeds," which is exactly how two sessions end up building one ticket. |
 | **update body** | Replace the ticket's description with a rewritten one, preserving the reporter's original text. This is how a spec reaches the ticket; a comment cannot serve, because the spec has to be the first thing the next reader sees, not the twelfth comment down. |
 | **comment** | Append a durable, attributed note to the ticket's discussion. |
-| **heartbeat** | Maintain the ticket's **single** liveness comment: adopt the existing `factory heartbeat` comment when one exists (a later pass on the same ticket inherits it), create it only when absent, and always timestamp-update **in place** — never a second comment. Machine-read by liveness detection; a mutable pulse beside the immutable checkpoints. |
+| **heartbeat** | Maintain the ticket's **single** liveness comment: adopt the existing `factory heartbeat` comment when one exists (a later pass on the same ticket inherits it), create it only when absent, and always timestamp-update **in place** — never a second comment. Machine-read by liveness detection; a mutable pulse beside the immutable checkpoints. Its `stage:` field is free description except one value: `stage: built`, written at the implement pass's hand-back as the end of the line (detectors match it there), marks a green build waiting on the human's ship decision — the state liveness exempts (section 6). During a build the field doubles as the live progress line (`building — step k/N: …`), edited in place at step boundaries. |
 | **classify** | Set exactly one type and one priority, removing conflicting values in that dimension. |
 | **mark status** | Set the ticket's at-a-glance status marker to exactly one of `spec-ready`, `building`, `in-review`, `blocked` — removing any other status marker — or clear it entirely. Status markers are a display cache for humans (section 6): workflows write them at defined seams and never read them to decide anything. |
 | **create** | Open a new ticket with a type and no trigger. |
@@ -129,9 +129,10 @@ There is no status field to maintain. With a human triggering every pass, stored
 | Trigger present | Queued — authorized, not yet claimed. |
 | `factory-ready-for-spec` gone, spec in the ticket | Spec awaiting human approval. |
 | `factory-ready-to-implement` gone, checkpoint comments accumulating, no PR yet | Build in flight — the implement pass's checkpoints (claimed → plan settled → built) say how far it got; a final comment naming a blocker means it stopped. |
+| `factory-ready-to-implement` gone, newest checkpoint *built*, heartbeat ending with `stage: built`, no PR yet | Built — handed back green, waiting on a human to review the diff and apply `factory-ready-to-ship`. Exempt from liveness: waiting is not death. |
 | `factory-ready-to-implement` gone, linked PR open | In review. |
 | Blocker comment with unanswered questions, no trigger | Waiting on a human — answer in the thread, then re-apply the stage's trigger to resume. Exempt from liveness: waiting is not death. |
-| Heartbeat comment stale on a claimed, unblocked ticket | Pass presumed dead — flagged `factory:agent-lost` for takeover (section 5's one exception). |
+| Heartbeat comment stale on a claimed ticket that is neither `blocked` nor built | Pass presumed dead — flagged `factory:agent-lost` for takeover (section 5's one exception). |
 | Linked PR merged | Done. |
 | Closed with no merged PR | Rejected, duplicate, invalid, or superseded — the closing comment carries which. |
 
