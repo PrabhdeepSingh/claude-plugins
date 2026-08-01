@@ -180,7 +180,7 @@ curl --fail --silent --show-error --request POST \
   https://api.linear.app/graphql
 ```
 
-Same `errors`-array check as every mutation, and never a second heartbeat — one edited comment is the unambiguous "last seen".
+Same `errors`-array check as every mutation, and never a second heartbeat — one edited comment is the unambiguous "last seen". Linear has **no comment-pinning API** — findability is the deterministic locator: match the leading `factory heartbeat —` prefix in the issue's comments (same match the adopt step already uses). Report once that pinning is unsupported; never abort the pass for it.
 
 **classify** — priority is a single field; the type label replaces its siblings, so pass the full intended label set (type label plus any unrelated labels the issue already carries, minus the other two type labels):
 
@@ -234,15 +234,60 @@ Apply the type label in a follow-up `issueUpdate`, and leave the triggers off �
 
 **close the loop** — native. `Fixes ENG-123` in the PR body moves the issue to Done on merge when the GitHub integration is enabled. If it is not enabled, the sweep reports the ticket for a manual move rather than pretending it closed.
 
+**read blockers** — Linear's only writeable relation type for this is `blocks` (`blocked_by` is not an API input). Direction: for `type: blocks`, **`issue` blocks `relatedIssue`** — so the blockers of ticket A live in A's **`inverseRelations`** (edges where A is the target). Prefer MCP; GraphQL fallback:
+
+```bash
+ID=ENG-123   # substitute — the dependent (identifier or UUID)
+QUERY='query($id:String!){issue(id:$id){identifier inverseRelations{nodes{type issue{identifier title state{type}}}}}}'
+curl --fail --silent --show-error --request POST \
+  --header "Authorization: $LINEAR_API_KEY" \
+  --header "Content-Type: application/json" \
+  --data "$(jq -n --arg q "$QUERY" --arg id "$ID" '{query:$q,variables:{id:$id}}')" \
+  https://api.linear.app/graphql \
+  | jq '[.data.issue.inverseRelations.nodes[]
+      | select(.type == "blocks")
+      | {identifier: .issue.identifier, title: .issue.title, state: .issue.state.type}]'
+```
+
+A blocker is still open when its `state.type` is not `completed` or `canceled`. Worked example: if `ENG-100` blocks `ENG-200`, then reading blockers of `ENG-200` returns `ENG-100` via `inverseRelations`; reading `relations` on `ENG-200` would be empty for this edge (that connection holds edges where `ENG-200` is the *source*). Getting this pair swapped is the most common Linear adapter bug — the read-back on *link blocker* exists to catch it.
+
+**link blocker** — record that A is blocked by B. Create with `issueId` = B (the blocker), `relatedIssueId` = A (the dependent), `type: blocks`, then read back A's `inverseRelations`:
+
+```bash
+A=ENG-200   # substitute — the dependent (cannot start yet)
+B=ENG-100   # substitute — the blocker that must close first
+QUERY='mutation($b:String!,$a:String!){issueRelationCreate(input:{issueId:$b,relatedIssueId:$a,type:blocks}){success issueRelation{id type issue{identifier} relatedIssue{identifier}}}}'
+curl --fail --silent --show-error --request POST \
+  --header "Authorization: $LINEAR_API_KEY" \
+  --header "Content-Type: application/json" \
+  --data "$(jq -n --arg q "$QUERY" --arg a "$A" --arg b "$B" \
+    '{query:$q,variables:{a:$a,b:$b}}')" \
+  https://api.linear.app/graphql
+# Same errors-array check as every mutation. Then read-back:
+QUERY='query($id:String!){issue(id:$id){inverseRelations{nodes{type issue{identifier}}}}}'
+curl --fail --silent --show-error --request POST \
+  --header "Authorization: $LINEAR_API_KEY" \
+  --header "Content-Type: application/json" \
+  --data "$(jq -n --arg q "$QUERY" --arg id "$A" '{query:$q,variables:{id:$id}}')" \
+  https://api.linear.app/graphql \
+  | jq --arg b "$B" '[.data.issue.inverseRelations.nodes[]
+      | select(.type == "blocks" and .issue.identifier == $b)] | length' \
+  | grep -qx 1 \
+  || { echo "STOP: read-back failed — $B not in $A's inverseRelations as blocks (direction may be inverted)"; exit 1; }
+echo "LINKED $A blocked-by $B"
+```
+
 ## Bootstrap
 
 Linear labels must exist before they can be attached, so create the eleven (three triggers, three types, four `factory:*` status markers, and `factory:agent-lost`) once in the team's label settings, or via `issueLabelCreate`. Give the status markers one muted colour, distinct from the triggers — they are machine-written record and should look it. Verify the team key in the config resolves to a real team; report and stop if it does not.
 
 ## Provenance and maintenance
 
-Last verified 2026-07:
+Last verified 2026-07 (dependency and pinning notes added 2026-08 — **doc-sourced**, no live Linear instance available this pass):
 
 - Personal API keys go in the `Authorization` header without a `Bearer` prefix; OAuth access tokens do use `Bearer`. Re-verify against Linear's API authentication docs.
 - Priority is an integer where 0 is none, 1 Urgent, 2 High, 3 Medium, 4 Low — confirm the ordering has not changed before trusting the P0-to-P3 mapping.
 - `issueUpdate` replaces `labelIds` wholesale rather than merging; always send the full intended set or labels will be silently dropped.
 - PR magic words (`Fixes`, `Closes`, `Resolves` plus the identifier) require the GitHub integration; without it nothing closes automatically.
+- **Issue relations (doc):** `issueRelationCreate` accepts `type: blocks` only for this purpose (`blocked_by` is not an API input). Direction: `issueId` blocks `relatedIssueId`. Read a ticket's blockers from `inverseRelations` filtered to `type == "blocks"`. Re-verify with a live pair of scratch issues and the read-back before the first production link.
+- **Comment pin:** unsupported on Linear — locator is the `factory heartbeat —` prefix.

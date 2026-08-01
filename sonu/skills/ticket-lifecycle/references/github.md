@@ -104,11 +104,18 @@ EOF
 gh issue comment "$ISSUE" --body "$BODY"
 ```
 
-**heartbeat** — one comment per **ticket**, edited in place. Adopt the existing `factory heartbeat` comment when one exists (find it below); create it only when absent, then update it via the REST comment endpoint (issue comments are addressed repo-wide by comment id, not per-issue):
+**heartbeat** — one comment per **ticket**, edited in place. Adopt the existing `factory heartbeat` comment when one exists (find it below); create it only when absent, then update it via the REST comment endpoint (issue comments are addressed repo-wide by comment id, not per-issue). Create via the REST endpoint (not `gh issue comment`) so the response carries the comment id needed to pin:
 
 ```bash
 ISSUE=123   # substitute — creation only happens once, at claim
-gh issue comment "$ISSUE" --body "factory heartbeat — last seen 2031-01-15T12:00:00Z — stage: claimed"
+REPO=$(gh repo view --json nameWithOwner -q .nameWithOwner)
+COMMENT_ID=$(gh api --method POST "repos/$REPO/issues/$ISSUE/comments" \
+  -f body="factory heartbeat — last seen 2031-01-15T12:00:00Z — stage: claimed" \
+  --jq .id)
+# Pin once, at creation — best-effort; a failure never aborts the pass.
+gh api --method PUT "repos/$REPO/issues/comments/$COMMENT_ID/pin" >/dev/null \
+  && echo "pinned heartbeat $COMMENT_ID" \
+  || echo "WARN: could not pin heartbeat $COMMENT_ID — pulse still live; findability degraded"
 ```
 
 ```bash
@@ -118,13 +125,16 @@ gh api --method PATCH "repos/$REPO/issues/comments/$COMMENT_ID" \
   -f body="factory heartbeat — last seen 2031-01-15T14:30:00Z — stage: built"
 ```
 
-Find an existing heartbeat by listing the issue's comments and matching the leading `factory heartbeat` prefix — and **never post a second one**: the single edited comment is what keeps liveness readable without notification noise, and two heartbeats make "last seen" ambiguous for every detector.
+Never pin on a pulse edit — pinning emits a timeline event, and a long build would spam it. GitHub holds **one pinned comment per issue** (`Issue.pinnedIssueComment` is singular); pinning a second comment displaces the first. The heartbeat owns that slot — nothing else in this flow pins a comment.
+
+Find an existing heartbeat by listing the issue's comments and matching the leading `factory heartbeat` prefix — and **never post a second one**: the single edited comment is what keeps liveness readable without notification noise, and two heartbeats make "last seen" ambiguous for every detector. When adopting, pin only if `.pin` is null:
 
 ```bash
 ISSUE=123   # substitute
 REPO=$(gh repo view --json nameWithOwner -q .nameWithOwner)
 gh api "repos/$REPO/issues/$ISSUE/comments" --paginate \
-  --jq '[.[] | select(.body | startswith("factory heartbeat"))] | last | {id, updated_at}'
+  --jq '[.[] | select(.body | startswith("factory heartbeat"))] | last | {id, updated_at, pinned:(.pin != null)}'
+# If pinned is false: gh api --method PUT "repos/$REPO/issues/comments/$COMMENT_ID/pin" >/dev/null || echo "WARN: pin failed"
 ```
 
 **classify** — set one type and one priority, removing conflicting values in the same dimension. Remove-then-add in one call so the issue is never briefly untyped:
@@ -178,6 +188,49 @@ gh issue create --title "$TITLE" --body "$BODY" --label bug
 
 **close the loop** — native. `Closes #N` in the PR body closes the issue when the PR merges into the default branch, so this adapter needs no explicit transition; the sweep only reports it.
 
+**read blockers** — list the issues blocking a ticket, with state. Everything goes through `gh api` (the `gh issue --blocked-by` flags and `--json` dependency fields need gh ≥2.94.0; this adapter stays version-independent):
+
+```bash
+ISSUE=123   # substitute — the dependent ticket
+REPO=$(gh repo view --json nameWithOwner -q .nameWithOwner)
+gh api "repos/$REPO/issues/$ISSUE/dependencies/blocked_by" \
+  --jq '[.[] | {number, state, title, id}]'
+```
+
+List-wide form for a queue scan — filter the triggered set with the `-is:blocked` search qualifier combined with a label. A ticket matching a trigger label and `-is:blocked` is on the frontier; one matching `is:blocked` is dependency-blocked:
+
+```bash
+TRIGGER=factory-ready-to-implement
+# On the frontier (authorized and not dependency-blocked):
+gh issue list --state open --search "label:$TRIGGER -is:blocked" \
+  --json number,title,labels,updatedAt --limit 50
+# Dependency-blocked but authorized (report these; do not auto-select):
+gh issue list --state open --search "label:$TRIGGER is:blocked" \
+  --json number,title,labels,updatedAt --limit 50
+```
+
+If the search qualifier ever fails or returns a nonsense set, fall back to: list the trigger queue, then for each ticket call the per-issue *read blockers* endpoint and subtract those with any open blocker.
+
+The list-wide form only answers membership (frontier vs dependency-blocked). The factory scan must still **name** each authorized-but-dependency-blocked ticket's open blockers — run the per-issue *read blockers* endpoint for that report, not only the search filter.
+
+**link blocker** — record that ticket A is blocked by ticket B, then read back. The POST body's `issue_id` is B's **database id, not its issue number** — and it must be sent as a JSON integer (`-F`, never `-f`, which stringifies and 422s):
+
+```bash
+A=123   # substitute — the dependent (the one that cannot start yet)
+B=45    # substitute — the blocker that must close first
+REPO=$(gh repo view --json nameWithOwner -q .nameWithOwner)
+B_ID=$(gh api "repos/$REPO/issues/$B" --jq .id)
+gh api --method POST "repos/$REPO/issues/$A/dependencies/blocked_by" \
+  -F issue_id="$B_ID" >/dev/null \
+  || { echo "STOP: link blocker failed for $A blocked-by $B"; exit 1; }
+# Read-back — part of the operation; an inverted edge gates the wrong ticket.
+gh api "repos/$REPO/issues/$A/dependencies/blocked_by" \
+  --jq --argjson b "$B" '[.[] | select(.number == $b)] | length' \
+  | grep -qx 1 \
+  || { echo "STOP: read-back failed — $B not in $A's blockers (direction may be inverted)"; exit 1; }
+echo "LINKED $A blocked-by $B"
+```
+
 ## Bootstrap
 
 One time per repo. `--force` keeps the trigger and status labels idempotent because this flow owns them; the type and priority labels use `|| true` because GitHub seeds several of these on new repos and their existing colours should not be clobbered. The four `factory:*` status labels share one muted colour on purpose — status is machine-written record, and it should look distinct from the vivid human-applied triggers:
@@ -204,10 +257,14 @@ The optional liveness Action (offered during init) is templated in `references/l
 
 ## Provenance and maintenance
 
-Last verified 2026-07:
+Last verified 2026-08 (live against this repo on scratch issues #26–#29, closed afterward):
 
+- **Issue dependencies (live):** `POST /repos/{owner}/{repo}/issues/{n}/dependencies/blocked_by` with `-F issue_id=<database id>` (integer). `-f` sends a string and 422s. Resolve the database id via `GET .../issues/{n}` → `.id`. Read back via `GET .../dependencies/blocked_by`.
+- **`is:blocked` / `-is:blocked` search (live):** both work alone and combined with `label:<name>` in `gh issue list --search`. Fallback if a future regression breaks negation: per-issue *read blockers* over the trigger queue.
+- **Comment pin (live):** `PUT /repos/{owner}/{repo}/issues/comments/{comment_id}/pin`. Response carries `.pin.pinned_at` / `.pin.pinned_by`. `Issue.pinnedIssueComment` is singular — pinning a second comment displaces the first; the heartbeat owns the slot. Adopt-time check: `.pin != null` on the comment object.
 - `gh label create --force` updates an existing label in place; without it the command exits non-zero when the label exists. Re-verify with `gh label create --help`.
 - Issue comments are edited via `PATCH /repos/{owner}/{repo}/issues/comments/{comment_id}` — the id is repo-scoped, not per-issue. Re-verify with `gh api --help` and the REST issues-comments docs.
 - `gh issue edit` accepts repeated `--add-label` / `--remove-label` flags in one call, and removing an absent label is a no-op. Re-verify with `gh issue edit --help`.
 - `gh issue view N --json closedByPullRequestsReferences` is the linked-PR lookup. The `linked:issue` search qualifier is deliberately not used: it is a boolean ("has any linked issue"), so `linked:issue-N` does not filter to issue N and returns unrelated PRs. Re-verify the JSON field with `gh issue view --json 2>&1 | head`.
 - `Closes #N` in a PR body auto-closes on merge to the default branch only — a PR merged into a release branch will not close the ticket.
+- Doc-only (not re-exercised this pass): `gh issue --blocked-by` flags need gh ≥2.94.0; this adapter deliberately uses `gh api` instead.

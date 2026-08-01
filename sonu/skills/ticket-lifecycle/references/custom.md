@@ -15,7 +15,7 @@ Commit the repo-local one so the team shares it. Keep the global one for a perso
 
 ## The interview — generating an adapter during init
 
-When the user's tool is not one of the shipped four, ask these eight questions, then write the adapter from the answers. Ask them in one batch; they are short, and a round trip per question wastes the user's time.
+When the user's tool is not one of the shipped four, ask these nine questions, then write the adapter from the answers. Ask them in one batch; they are short, and a round trip per question wastes the user's time.
 
 1. **What is the tool**, and what does it call a ticket (issue, work item, card, story)?
 2. **How does an agent reach it** — a CLI (which command, is it authenticated already), an MCP server (which tools), or an HTTP API (which base URL)?
@@ -25,6 +25,7 @@ When the user's tool is not one of the shipped four, ask these eight questions, 
 6. **How is a ticket marked done**, and does merging a PR do it automatically (magic words, an integration) or does the sweep have to do it explicitly?
 7. **How is a ticket identified** in a branch name and commit message, so the work traces back to it?
 8. **Can a comment be edited in place** (for the single heartbeat comment a claimed pass keeps updated)? If the tool cannot edit comments, say so — the adapter then omits *heartbeat* and liveness degrades to checkpoint ages.
+9. **Can one ticket name another as a blocker** (native dependencies, issue links, relations)? If yes, how is "A is blocked by B" written and read, and what does "still open" look like on a blocker? If no, omit *read blockers* and *link blocker* — the factory degrades to today's behavior (the whole triggered queue is the frontier). Also: can a comment be pinned so the heartbeat stays findable? Pinning is optional; if unsupported, document the deterministic locator (search for the `factory heartbeat —` prefix).
 
 Then write the adapter, echo the path, and tell the user to review it before the first pass — a generated adapter is a draft, and question 5's edge cases are where a wrong guess hides.
 
@@ -58,12 +59,20 @@ and the explicit stop condition when they are missing.
 **comment** — append to the discussion.
 **heartbeat** — create, then edit in place, the one liveness comment per claim.
 Omit (with a note) if the tool cannot edit comments; never post repeats instead.
+Where the tool can pin a comment, pin once at creation (and on unpinned adopt);
+never on pulse edits; pin failure is best-effort and never aborts the pass.
 **classify** — set one type and one priority.
 **mark status** — set the display-cache status marker to one of spec-ready,
 building, in-review, blocked (removing any other), or clear it. Written by
 passes, corrected by the sweep, never read by a workflow to decide.
 **create** — open a new ticket, no trigger.
 **close the loop** — mark done once the PR merges.
+**read blockers** — list tickets blocking this one and whether each is still open.
+Optional — omit (with a note) if the tool has no dependency edges; the factory
+then treats the whole triggered queue as the frontier.
+**link blocker** — record that A is blocked by B, then read back A's blockers
+and confirm B appears. Optional with the same degrade as *read blockers*.
+The read-back is mandatory when the operation is present — directions invert.
 
 ## Bootstrap
 Anything that must exist before the first pass (labels, states, fields), or
@@ -78,7 +87,7 @@ steps, since these are the facts most likely to rot.
 
 These are not style preferences — each one is a failure mode the shipped adapters already avoid:
 
-- **Every operation in the contract, each with a concrete mechanism.** A resolved adapter missing any operation is a **hard stop that names the gap**. Workflows must never improvise tracker mechanics: an improvised claim builds a ticket twice, and an improvised close strands finished work in flight forever.
+- **Every required operation in the contract, each with a concrete mechanism.** A resolved adapter missing a required operation is a **hard stop that names the gap**. The four optional operations — *mark status*, *heartbeat*, *read blockers*, *link blocker* — may be omitted with an explicit note; the factory degrades (no status markers, no pulse, whole triggered queue as the frontier). Workflows must never improvise tracker mechanics: an improvised claim builds a ticket twice, and an improvised close strands finished work in flight forever.
 - **Claim must be verifiable.** After clearing the trigger, re-read the ticket and confirm it is actually gone. An unverified claim is not a claim, and it is the only thing standing between two concurrent agents and the same ticket.
 - **Claim must be able to fail loudly.** If the mechanism cannot report failure, the adapter is not safe for parallel work; say so in the adapter, and the pass stops rather than proceeding on an unconfirmed claim.
 - **Credentials by environment variable only**, with an explicit stop when they are absent. Never a literal secret in the adapter, the config, or ticket text — those files get committed.
@@ -92,6 +101,7 @@ An adapter that has proven itself is a candidate to ship: it is already the same
 
 ## Provenance and maintenance
 
-Last verified 2026-07:
+Last verified 2026-07 (optional dependency ops and pin sub-behavior added 2026-08):
 
 - The operations contract lives in `SKILL.md` section 2 — if an operation is added or renamed there, this template and every adapter need the same edit. That single-home rule is why the contract is not restated in full here.
+- Interview question count is nine (was eight): question 9 covers dependency edges and comment pinning. Re-read the interview list when regenerating an adapter.

@@ -152,7 +152,7 @@ curl --fail --silent --show-error --request PUT \
   "https://$JIRA_SITE/rest/api/3/issue/$KEY/comment/$COMMENT_ID"
 ```
 
-Never post a second heartbeat — the single edited comment is the unambiguous "last seen" every liveness detector reads.
+Never post a second heartbeat — the single edited comment is the unambiguous "last seen" every liveness detector reads. Jira has **no comment-pinning API** — findability is the deterministic locator: search the comment stream for the leading `factory heartbeat —` prefix (same match the adopt step already uses). Report once that pinning is unsupported; never abort the pass for it.
 
 **classify** — type and priority are single-valued fields, so setting them removes the conflicting value inherently. Any `documentation` label for the docs type is a separate label edit:
 
@@ -232,16 +232,59 @@ curl --fail --silent --show-error --request POST \
 
 Put the issue key in the branch name (`ticket/ABC-123-slug`) and the PR title so a human can trace the PR to the ticket even when no integration exists.
 
+**read blockers** — Jira stores edges in `fields.issuelinks`. Prefer MCP when available; REST fallback below. A link whose `type.inward` is `is blocked by` and whose `outwardIssue` is present means *this* ticket is blocked by that issue (the blocker sits in `outwardIssue` when *this* issue is the dependent). Match the default English link-type name; the name is **instance-configurable**, and a renamed type degrades to today's behavior (no edges visible) rather than failing the pass:
+
+```bash
+KEY=ABC-123   # substitute — the dependent
+curl --fail --silent --show-error \
+  --user "$JIRA_EMAIL:$JIRA_API_TOKEN" \
+  "https://$JIRA_SITE/rest/api/3/issue/$KEY?fields=issuelinks" \
+  | jq '[.fields.issuelinks[]
+      | select(.type.inward == "is blocked by" and .outwardIssue != null)
+      | {key: .outwardIssue.key,
+         category: .outwardIssue.fields.status.statusCategory.key,
+         summary: .outwardIssue.fields.summary}]'
+```
+
+Direction, load-bearing: when *this* issue is the dependent (inward side of a `Blocks` link), the blocker appears in **`outwardIssue`**, not `inwardIssue`. Swapping those fields reads the wrong side of every edge. A blocker is still open when its `statusCategory.key` is not `done` — use the category, never the localized `status.name`. List-wide form: JQL `labels = "factory-ready-to-implement" AND issueLinkType = "is blocked by"` for the dependency-blocked authorized set, and the same without the link clause for the full trigger queue — subtract to get the frontier. If the link-type name has been renamed on the instance, skip the JQL form and fall back to per-issue *read blockers* over the trigger queue.
+
+**link blocker** — record that A is blocked by B (`Blocks` link: outward = blocker, inward = dependent), then read back. Prefer MCP; REST:
+
+```bash
+A=ABC-123   # substitute — the dependent (cannot start yet)
+B=ABC-45    # substitute — the blocker that must close first
+curl --fail --silent --show-error --request POST \
+  --user "$JIRA_EMAIL:$JIRA_API_TOKEN" \
+  --header "Content-Type: application/json" \
+  --data "$(jq -n --arg a "$A" --arg b "$B" \
+    '{type:{name:"Blocks"},inwardIssue:{key:$a},outwardIssue:{key:$b}}')" \
+  "https://$JIRA_SITE/rest/api/3/issueLink" \
+  || { echo "STOP: link blocker failed for $A blocked-by $B"; exit 1; }
+# Read-back — part of the operation. On A (the dependent), the blocker is outwardIssue.
+curl --fail --silent --show-error \
+  --user "$JIRA_EMAIL:$JIRA_API_TOKEN" \
+  "https://$JIRA_SITE/rest/api/3/issue/$A?fields=issuelinks" \
+  | jq --arg b "$B" '[.fields.issuelinks[]
+      | select(.type.inward == "is blocked by" and .outwardIssue.key == $b)] | length' \
+  | grep -qx 1 \
+  || { echo "STOP: read-back failed — $B not in $A's blockers (direction or link-type name may differ)"; exit 1; }
+echo "LINKED $A blocked-by $B"
+```
+
+Worked example: linking `ABC-200` blocked-by `ABC-100` means create with `outwardIssue` = `ABC-100` (blocker) and `inwardIssue` = `ABC-200` (dependent). Reading blockers of `ABC-200` then finds `ABC-100` in **`outwardIssue`**. Swapping create or read makes `ABC-200` appear to block `ABC-100` — which is why the read-back is mandatory.
+
 ## Bootstrap
 
 Jira labels are created implicitly on first use, so there is nothing to pre-create. Verify once instead: the configured project exists, its issue types cover the three type values (noting the Story-or-Task decision), and its priority scheme covers the four values. Also confirm the label field accepts the `factory:*` status names by setting and clearing one on a scratch issue — Jira rejects spaces in labels, and if a workspace's configuration rejects the colon too, fall back to `factory-status-*` names and record the substitution in the config's prose section. Report any gap — do not invent fields, types, or statuses.
 
 ## Provenance and maintenance
 
-Last verified 2026-07:
+Last verified 2026-07 (dependency and pinning notes added 2026-08 — **doc-sourced**, no live Jira instance available this pass):
 
 - REST v3 comment bodies require Atlassian Document Format; the v2 API accepted plain text. Re-verify against the current Jira Cloud REST reference before switching to plain strings.
 - The queue query is `POST /rest/api/3/search/jql`. The older `/rest/api/3/search` has been **removed** from Jira Cloud and returns `410 Gone` pointing at this replacement — if a snippet anywhere still targets it, that snippet is already broken. The replacement requires an explicit `fields` array and pages by `nextPageToken` (no `startAt`, no `total`). Re-verify against Atlassian's issue-search API group.
 - Transition IDs differ per project workflow — always resolve by name at runtime.
 - Basic auth with an API token is the documented Cloud mechanism; Jira Data Center or Server deployments differ and are out of scope for this adapter.
 - Jira Cloud labels reject spaces; colons in label names are accepted on standard configurations, but this is workspace-configurable — the Bootstrap's scratch-issue check is the re-verification, and `factory-status-*` is the recorded fallback naming.
+- **Issue links (doc):** `POST /rest/api/3/issueLink` with `type.name: "Blocks"`, `outwardIssue` = blocker, `inwardIssue` = dependent. Read via `fields.issuelinks` filtered on `type.inward == "is blocked by"`. The link-type display name is instance-configurable — a rename yields empty blocker lists (safe degrade), never a hard fail. Re-verify against a live project's issue-link types before the first production link.
+- **Comment pin:** unsupported on Jira Cloud — locator is the `factory heartbeat —` prefix.
