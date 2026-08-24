@@ -27,7 +27,7 @@ Handles everything from the current working-tree state through a clean, merged P
 LEDGER="$(git rev-parse --git-dir)/sonu-ship-ledger.md"
 ```
 
-- **Adopt it or create it in Phase 0** — never blindly create — and **rewrite it at the end of every phase** with the current facts, one per line: `repo:`, `base:`, `branch:`, `pr:`, `mode:`, `disposition:`, `phase_done:`, `prepr_passes:`, `prepr_reviewed_sha:`, `cycles_used:`, `last_fix_sha:`, `prev_at:`, `handled_comment_ids:` (comma-separated), `reviews_skipped:` (comma-separated; empty is a real value meaning "nothing skipped"), `open_items:` (anything mid-flight), and — stacked runs only (see Stacked PRs) — `own_commits:` (this PR's own commit SHAs, oldest first; recorded because after a parent squash-merges it can no longer be recomputed).
+- **Adopt it or create it in Phase 0** — never blindly create — and **rewrite it at the end of every phase** with the current facts, one per line: `repo:`, `base:`, `branch:`, `pr:`, `mode:`, `disposition:`, `phase_done:`, `prepr_passes:`, `prepr_reviewed_sha:`, `cycles_used:`, `last_fix_sha:`, `prev_at:`, `handled_comment_ids:` (comma-separated), `reviews_skipped:` (comma-separated; empty is a real value meaning "nothing skipped"), `delegated_fixes:` (count, incremented at each delegation — the final report reads it), `open_items:` (anything mid-flight), and — stacked runs only (see Stacked PRs) — `own_commits:` (this PR's own commit SHAs, oldest first; recorded because after a parent squash-merges it can no longer be recomputed).
 - **A surviving ledger means a previous run did not finish.** The merge deletes it (below), so its presence says exactly one thing: an earlier session on this branch stopped mid-flow. Adopt that ledger — read every field, resume from `phase_done:` — rather than writing a fresh one. Re-initializing looks harmless and is not: `prepr_passes:` and `cycles_used:` are the caps that bound the review loops, and **a cap that resets is not a cap.** A run re-invoked five times then gets five uncapped Phase 1.5 loops, each re-reviewing the whole branch and committing another round of fixes that becomes the next run's input — a treadmill that never converges on a merge. That has shipped; it is the reason this bullet exists.
 - **Whenever you are unsure of the current state** — after a context compaction, a long wait, or an interrupted turn — read the ledger *before* touching the PR, and resume from `phase_done`, not from memory. The ledger is the source of truth for literal values the snippets need (`PR`, `PREV_AT`, handled IDs).
 - **Delete it after the merge** (`rm -f "$LEDGER"`) as part of the final report — a stale ledger must never leak into the next run.
@@ -48,11 +48,13 @@ LEDGER="$(git rev-parse --git-dir)/sonu-ship-ledger.md"
 - **`--solo`** — nothing delegates; every fix applies in-session.
 - **neither** — `Skill(sonu:model-tiering)`'s own balanced judgment (the default).
 
-Record the parsed value in the ledger as `disposition:` (`orchestrate` / `solo` / `auto`) so a resumed run keeps the owner's choice.
+Record the parsed value in the ledger as `disposition:` (`orchestrate` / `solo` / `auto`). On a resumed run the precedence is: an explicit flag typed in *this* invocation wins and overwrites the field; no flag typed → adopt the ledger's non-empty `disposition:` rather than re-deriving (that is what makes the owner's choice survive); a legacy ledger without the field → parse fresh from `$ARGUMENTS` and add it.
 
 ### Delegation disposition — route the typing, keep the judgment
 
 What may delegate: **applying a `FIX` item** that clears model-tiering's four criteria — doc and comment updates, renames, enumerated test edits, a stated pattern across listed files. What never delegates, regardless of flag: triage, anything security-touching, thread replies and resolves, running the test suite, **verifying a delegated fix**, and the merge — these are model-tiering's Section 4 categories, and they are the judgment this command exists to keep in-session. Invoke `Skill(sonu:model-tiering)` at the first fix-apply point to locate the session's tier; after a delegated fix returns, run its check yourself — a delegated fix that fails its check is taken over inline, never looped back to the subagent. On a harness without subagents, everything runs inline unchanged — the disposition only decides who types.
+
+**Dispatch mechanics — treat each qualifying `FIX` item as a one-step plan.** Grade it against model-tiering's Sections 3–4 exactly as a plan step would be graded (transcription-grade → `[delegate]`, substantive-but-settled → `[delegate-heavy]`), map the grade to a tier per its Section 2, and dispatch per its Section 5: the subagent's prompt is the finding verbatim plus the exact file paths and the settled fix decision — never conversation context — and the check you run yourself afterwards is the item's own verification plus the suite. Increment `delegated_fixes:` in the ledger at the moment of each dispatch. An item you cannot make self-contained in one prompt was not delegable — apply it inline.
 
 The mode scales **only the reviews you pay for** — your own `/code-review` and `/security-review`. It does **not** change the external AI bots: those are configured on the repo/org and auto-trigger when the PR opens, so they cost the same whether you wait for them or not. Always collect whatever they post.
 
@@ -71,12 +73,12 @@ Whenever a review is skipped — `light`'s skips and `auto`'s trivial-diff skips
 A PR whose base is not `$BASE` is **stacked**: it merges into another PR's branch, not the default branch. Phase 0 step 5 detects this (`gh pr view $PR --json baseRefName -q .baseRefName` ≠ `$BASE`). Report it to the owner in one line and carry on — never retarget the *current* PR yourself; whether the stack is intentional is the owner's call. Four realities change on a stacked PR; everything else in this flow runs as written:
 
 1. **Usually no CI and no bots — verify, never assume.** Workflows typically trigger on `pull_request: branches: [<default>]`, so a PR targeting a feature branch usually matches nothing, and reviewer bots commonly skip non-default bases outright. Cap the Phase 2C wait at ~2 minutes — run the 2C settle loop with `seq 1 4` in place of `seq 1 20` — instead of the full window. Then **verify the premise before treating emptiness as structural**: if `gh pr checks $PR` still lists zero checks after that wait, nothing is going to run — that emptiness is *structural*, not the "Actions haven't registered yet" case Phase 7 guards against, and your own 2A/2B reviews plus the green local suite are the gates (the final report must say so — a stacked merge must never read as "passed checks"). But a repo whose workflows carry no branch filter *does* run CI on stacked PRs: any check that appears is a safety check like any other, and Phase 7 gates on it normally — "stacked" never waives a check that actually exists.
-2. **Record which commits are yours before any parent merges.** Write `own_commits:` into the ledger: `git log --reverse --format=%h <parent-branch>..HEAD` (the parent branch is the `baseRefName` from detection) — `--reverse` puts them oldest first, which is exactly the order the rebuild's cherry-pick consumes, so the ledger list is used verbatim, never mentally reversed. After the parent squash-merges, `git log parent..child` stops being trustworthy — the record is unrecoverable if you wait.
+2. **Record which commits are yours before any parent merges.** Write `own_commits:` into the ledger: `git fetch origin <parent-branch>` then `git log --reverse --format=%H origin/<parent-branch>..HEAD` (the parent branch is the `baseRefName` from detection). The details are load-bearing: fetch first and diff against `origin/<parent>` because the parent may not exist as a local ref in this checkout; record **full** hashes (`%H`) because abbreviations can turn ambiguous by the time the rebuild cherry-picks them; `--reverse` puts them oldest first, which is exactly the order the rebuild consumes, so the list is used verbatim. **Re-derive this list at every end-of-phase ledger rewrite while the PR is stacked** — Phase 1.5 and Phase 4 add commits after detection, and a list frozen at detection loses them. After the parent squash-merges, `git log parent..child` stops being trustworthy — the record is unrecoverable if you wait.
 3. **Merging a parent requires retargeting its children first** — the Phase 7 pre-merge step. `--delete-branch` on a branch that is an open PR's base makes GitHub **close** that child PR, and recovery is nasty: a closed PR can't be retargeted, and can't be reopened while its base branch is gone, so you'd have to push the deleted branch back from a local SHA, reopen, then retarget.
 4. **Never rebase a child across its parent's squash-merge** — the child still carries the parent's *original* commits, so `git rebase origin/$BASE` conflicts on every one of them. Rebuild instead, from the ledger's `own_commits:` list (substitute the literal values):
    ```bash
    BRANCH=$(git branch --show-current)
-   BASE=<base from the ledger>
+   BASE=<the ledger's base: field — the DEFAULT branch, not the (now-deleted) parent>
    git fetch origin "$BASE"
    git checkout -B "$BRANCH" "origin/$BASE"
    git cherry-pick <own_commits from the ledger, in ledger order, space-separated>
@@ -123,7 +125,7 @@ A PR whose base is not `$BASE` is **stacked**: it merges into another PR's branc
 3. `git status` and `git diff --stat` — understand what changed. Use the line count + file types to pick the effort mode (above).
 4. If on the default branch (`$BASE`), branch: `git checkout -b <kebab-name-matching-task>`.
 5. Existing PR on this branch? `gh pr list --head "$(git branch --show-current)" --json number,url`. If one exists, record its number as `PR` and skip **only the `gh pr create` call (Phase 1 step 5)** — then immediately do two things that call would have done or checked:
-   - **Request Copilot now.** The `--reviewer "@copilot"` request lives *inside* the skipped `gh pr create` call, so on this path it has never happened: run `gh pr edit $PR --add-reviewer "@copilot"` (idempotent if already requested), and verify per the Phase 1 note. Skipping this once let five PRs merge with only CodeRabbit reviewing — and when Copilot was finally requested, it found two real issues CodeRabbit had missed on the same diff, so the missing request is a silent loss of a whole review source (and Phase 2C's `copilot_done` wait can never satisfy without it).
+   - **Request Copilot now.** The `--reviewer "@copilot"` request lives *inside* the skipped `gh pr create` call, so on this path it has never happened: run `gh pr edit $PR --add-reviewer "@copilot"` (idempotent if already requested), and verify per the Phase 1 note. Skipping this once let five PRs merge with only CodeRabbit reviewing — and when Copilot was finally requested, it found two real issues CodeRabbit had missed on the same diff, so the missing request is a silent loss of a whole review source (and Phase 2C's `copilot_done` wait can never satisfy without it). One timing rule on this path: an existing PR may carry Copilot reviews of *old* commits, which satisfy 2C's naive `copilot_done ≥ 1` before Copilot has seen anything new — so after Phase 1's push, capture `PREV_AT` (Phase 6 step 1's command) and run the wait requiring a review **newer** than it, exactly as Phase 6 step 2 does; re-request Copilot after the push if the request predated it.
    - **Check the base.** `gh pr view $PR --json baseRefName -q .baseRefName` — if it isn't `$BASE`, this is a stacked PR: apply the Stacked PRs section above (report it, record `own_commits:`, adjust the 2C wait and Phase 7 expectations).
 
    What else runs is decided by the ledger from step 2, not by this step:
@@ -393,33 +395,56 @@ Cycles are counted **per PR over its lifetime**, not per invocation — `cycles_
 
 **You are the merge gate.** The safety checks (everything except deploy-preview checks like Vercel / Netlify / Cloudflare Pages) must all be **passing** before you merge. Never merge while a safety check is pending or failing.
 
-First, figure out which checks are required and whether the branch is protected. Check **both** protection systems — classic branch protection AND repository rulesets (the modern default; a rulesets-protected branch 404s on the classic endpoint and would otherwise be misclassified as unprotected). On a stacked PR, substitute the PR's **actual base branch** for `$BASE` in these lookups — protection on the default branch says nothing about the branch this PR merges into:
+First, figure out which checks are required and whether the branch is protected. Check **both** protection systems — classic branch protection AND repository rulesets (the modern default; a rulesets-protected branch 404s on the classic endpoint and would otherwise be misclassified as unprotected). Phase 7 needs **two distinct branch names — never overload one variable with both**: `$BASE` is always the repository default branch (retarget destination fallback, stacked comparison), and `$PR_BASE` is the branch this PR actually merges into — protection lives on `$PR_BASE`, and the two differ exactly when the PR is stacked:
 ```bash
 REPO=$(gh repo view --json nameWithOwner -q .nameWithOwner)
 BASE=$(gh repo view --json defaultBranchRef -q .defaultBranchRef.name)
+PR=<PR number from Phase 1>
+PR_BASE=$(gh pr view $PR --json baseRefName -q .baseRefName)   # equals $BASE unless stacked
 # Classic branch protection (errors if not classic-protected):
-gh api "repos/$REPO/branches/$BASE/protection/required_status_checks" --jq '.contexts // .checks' 2>/dev/null
+gh api "repos/$REPO/branches/$PR_BASE/protection/required_status_checks" --jq '.contexts // .checks' 2>/dev/null
 # Repository rulesets (empty array [] if none apply to this branch):
-gh api "repos/$REPO/rules/branches/$BASE" --jq '[.[] | select(.type == "required_status_checks")]' 2>/dev/null
+gh api "repos/$REPO/rules/branches/$PR_BASE" --jq '[.[] | select(.type == "required_status_checks")]' 2>/dev/null
 ```
 
-- **If either call shows required checks:** prefer `gh pr merge $PR --auto --squash --delete-branch`. With required checks present, `--auto` genuinely gates — it merges only once they pass. You may still poll (below) to report status, but the gating is real.
+**Retarget stacked children BEFORE arming any merge — `--auto` included.** `--delete-branch` on a branch that is an open PR's base makes GitHub **close** that child PR, and recovery is nasty (push the deleted branch back from a local SHA, reopen, retarget — a closed PR can't be retargeted; a PR whose base is gone can't be reopened). An armed `--auto` can fire the moment its gates pass, *while you are still polling* — so the child scan below must complete before `--auto` is armed, and be re-run immediately before any manual merge:
+```bash
+BRANCH=$(git branch --show-current)
+PR=<PR number from Phase 1>
+# Children are retargeted to THIS PR's own base — in a nested stack, retargeting a
+# grandchild to the default branch would skip its unmerged ancestor:
+PR_BASE=$(gh pr view $PR --json baseRefName -q .baseRefName)
+# Open PRs whose base is this branch — each would be CLOSED by the branch deletion at merge.
+# --limit is explicit: the default result cap could silently omit a child in a busy repo.
+gh pr list --limit 200 --json number,baseRefName --jq ".[] | select(.baseRefName==\"$BRANCH\") | .number"
+# For each number printed (its branch name: gh pr view <number> --json headRefName):
+#   1. Preserve what the child's later rebuild needs — after retargeting, its stacked
+#      detection no longer fires, and the parent squash makes the list unrecoverable:
+#        git fetch origin <child-branch>
+#        git log --reverse --format=%H "$BRANCH..origin/<child-branch>"
+#      Post that list as a comment on the child PR: "own commits, oldest first: <list>".
+#   2. Retarget:  gh pr edit <number> --base "$PR_BASE"
+# Re-run the list; arm or execute a merge only when it prints nothing.
+```
+A retargeted child shows this PR's commits in its diff until this merge lands, and afterwards follows the Stacked PRs rebuild (cherry-pick its own commits — never rebase).
+
+- **If either call shows required checks:** run the child scan above first, then prefer `gh pr merge $PR --auto --squash --delete-branch`. With required checks present, `--auto` genuinely gates — it merges only once they pass. You may still poll (below) to report status, but the gating is real.
 - **If both come back empty/error** (truly unprotected): `--auto` does NOT gate — it merges immediately. So **you** poll and gate manually.
 
 **Required *reviews* are a separate gate from required *checks* — check them too.** A repo can require approving reviews, and a lingering `CHANGES_REQUESTED` then blocks the merge even with every thread resolved and every check green:
 ```bash
 REPO=$(gh repo view --json nameWithOwner -q .nameWithOwner)
-BASE=$(gh repo view --json defaultBranchRef -q .defaultBranchRef.name)   # substitute the PR's actual base if stacked
 PR=<PR number from Phase 1>
+PR_BASE=$(gh pr view $PR --json baseRefName -q .baseRefName)   # the branch this PR merges into
 # Classic protection (errors if not classic-protected — that's the "no requirement" answer, not a failure):
-gh api "repos/$REPO/branches/$BASE/protection/required_pull_request_reviews" --jq '.required_approving_review_count // 0' 2>/dev/null
+gh api "repos/$REPO/branches/$PR_BASE/protection/required_pull_request_reviews" --jq '.required_approving_review_count // 0' 2>/dev/null
 # Rulesets:
-gh api "repos/$REPO/rules/branches/$BASE" --jq '[.[] | select(.type == "pull_request")] | map(.parameters.required_approving_review_count // 0) | max // 0' 2>/dev/null
+gh api "repos/$REPO/rules/branches/$PR_BASE" --jq '[.[] | select(.type == "pull_request")] | map(.parameters.required_approving_review_count // 0) | max // 0' 2>/dev/null
 gh pr view $PR --json reviewDecision -q .reviewDecision
 ```
 When either count is ≥ 1, merging additionally requires `reviewDecision` = `APPROVED`. If a stale `CHANGES_REQUESTED` is blocking, `gh pr merge`'s error will suggest `--admin` — **that is exactly the wrong reflex: `--admin` bypasses a real gate and is banned in this flow, always** (and if the harness denies the merge command itself, that is the autonomy contract's stop (d), never a cue to find a bypass). The remedy is a fresh verdict that supersedes the stale one: `gh pr comment $PR --body "@coderabbitai review"` (or re-request the human who left it), wait for the new review, then re-check `reviewDecision`.
 
-Poll the **non-deploy-preview** checks only — `gh pr checks --watch` would block on slow deploy previews. Run this as a background until-loop (don't foreground-sleep). Require the safety-check set to be **non-empty** before breaking — right after PR creation GitHub can return an empty list before Actions register, and `jq all([])` is vacuously `true`, which would otherwise fall through to merge before any check ran. That guard covers the just-created case only: on a **stacked PR** (base ≠ `$BASE`) whose shortened 2C wait ended with `gh pr checks $PR` listing zero checks (the Stacked PRs section's verified-structural case), don't sit through 30 polls waiting for checks that will never appear — the gate there is the already-green local suite, and the final report says so. Any check that *did* appear on a stacked PR gates normally through this poll like any other safety check.
+Poll the **non-deploy-preview** checks only — `gh pr checks --watch` would block on slow deploy previews. Run this as a background until-loop (don't foreground-sleep). Require the safety-check set to be **non-empty** before breaking — right after PR creation GitHub can return an empty list before Actions register, and `jq all([])` is vacuously `true`, which would otherwise fall through to merge before any check ran. That guard covers the just-created case only: on a **stacked PR** (base ≠ `$BASE`) whose shortened 2C wait ended with `gh pr checks $PR` listing zero checks (the Stacked PRs section's verified-structural case), **do not run this poll loop at all** — with zero checks it can never reach `SAFETY_GREEN`, and its timeout branch would have you waiting forever for checks that will never register. The merge gate in that case is: local suite green (Phase 1.5), the required-reviews gate above, and `mergeStateStatus` CLEAN — and the final report says the local suite stood in for CI. Any check that *did* appear on a stacked PR gates normally through this poll like any other safety check.
 
 **jq boolean pattern warning:** Do NOT write `done=$(jq -e '...' && echo "yes" || echo "no")`. `jq -e` always prints `true`/`false` to stdout before `&&` runs, so `$()` captures `"true\nyes"` — a multi-line string that never equals `"yes"` and the loop never breaks. The pattern below pipes through `>/dev/null 2>&1` to discard jq's output and uses only its exit code to drive `break` — copy it exactly, don't adapt it.
 
@@ -438,36 +463,27 @@ gh pr view $PR --json mergeStateStatus,mergeable --jq '{mergeStateStatus, mergea
 ```
 - **`SAFETY_RED` (any safety check failing or cancelled)** → stop, fix it (loop back to Phase 4) or hand to the owner. Never merge red or cancelled CI.
 - **Loop timed out with checks still pending** → keep waiting; do not merge yet.
-- **All safety checks pass** (deploy preview may still be running) → retarget any stacked children, then merge and delete the branch. **The retarget is mandatory before every merge**, because `--delete-branch` on a branch that is an open PR's base makes GitHub **close** that child PR — and recovery means pushing the deleted branch back from a local SHA, reopening, then retargeting (a closed PR can't be retargeted; a PR whose base is gone can't be reopened):
-  ```bash
-  BRANCH=$(git branch --show-current)
-  BASE=$(gh repo view --json defaultBranchRef -q .defaultBranchRef.name)
-  # Open PRs whose base is this branch — each one would be CLOSED by the branch deletion below:
-  gh pr list --json number,baseRefName --jq ".[] | select(.baseRefName==\"$BRANCH\") | .number"
-  # For each number printed:  gh pr edit <number> --base "$BASE"
-  # Re-run the list; merge only when it prints nothing.
-  ```
-  A retargeted child now shows the parent's commits in its diff until this merge lands, and afterwards it follows the Stacked PRs rebuild (cherry-pick its `own_commits:` — never rebase). Then:
+- **All safety checks pass** (deploy preview may still be running) **and the required-reviews gate above is satisfied** (`reviewDecision` is `APPROVED` wherever a required count ≥ 1 applies — a non-approved state goes back to the re-request remedy above, never onward to the merge command) → re-run the child scan above one last time, and only when it prints nothing, merge and delete the branch:
   ```bash
   gh pr merge $PR --squash --delete-branch
   ```
 - `--delete-branch` also switches your local checkout back to `$BASE`. After it runs, `git checkout $BASE` is a no-op and a separate `git branch -D` will report "not found" — that's expected, not an error.
 
-Delete the state ledger — the run is over and a stale ledger must not leak into the next one:
-```bash
-rm -f "$(git rev-parse --git-dir)/sonu-ship-ledger.md"
-```
-
-Final report to the owner:
+Final report to the owner — **compose it before touching the ledger**; three of its bullets are read from ledger fields, and a deleted ledger cannot be read:
 - PR number + URL
-- Effort mode used, and any review deliberately skipped — read from the ledger's `reviews_skipped:` before deleting it (so a skip never reads as "clean", even across a compaction)
-- Delegation disposition used, and how many fixes were delegated (or "none")
+- Effort mode used, and any review deliberately skipped — read from the ledger's `reviews_skipped:` (so a skip never reads as "clean", even across a compaction)
+- Delegation disposition used (`disposition:`) and how many fixes were delegated — read from `delegated_fixes:` (or "none")
 - AI reviewers that participated (e.g. Copilot, CodeRabbit) + any expected-but-absent
 - **Risk / reviewer attention** — the 3–5 items from the self-review (same list as in the PR body)
 - **Fixed** (brief bullets)
 - **Justified** (bullets + the reasoning given to the bots)
 - **Human threads replied to** — N comments answered; none auto-resolved (resolution left to the reviewer)
 - Merge state: auto-merge enabled / merged / awaiting checks
+
+Then — with the report composed — delete the state ledger; the run is over and a stale ledger must not leak into the next one:
+```bash
+rm -f "$(git rev-parse --git-dir)/sonu-ship-ledger.md"
+```
 
 ---
 
