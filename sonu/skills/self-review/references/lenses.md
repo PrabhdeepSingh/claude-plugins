@@ -42,6 +42,13 @@ off-by-ones, inverted comparisons, unhandled edge cases (empty, zero, nil,
 boundary), broken invariants, error paths that swallow or misroute failures,
 concurrency hazards. Trace each suspect path far enough to name the input
 that breaks it.
+Also hunt DUPLICATED JUDGMENT: two places independently deciding the
+same thing — a guard and the code it guards, a filter and the transform
+whose output it protects, a validator and a parser, a cap and the
+accumulator it bounds. Ask whether the pair can disagree (different
+inputs judged, different definitions of what counts, different handling
+of separators or defaults) and report the pair plus the input on which
+they diverge — flag pairs, not instances.
 ```
 
 **2. Security surfaces**
