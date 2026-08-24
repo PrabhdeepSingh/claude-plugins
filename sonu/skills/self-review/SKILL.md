@@ -61,6 +61,7 @@ Identify the 3–5 riskiest spots yourself. Focus on the things that, if wrong, 
 - **Broad blast radius** — a change to a shared utility, a base class, a widely-imported module, or a config that silently affects many call sites. If the diff changes a data shape other components consume and [[blast-radius]] was not run, that is automatically a top-listed risk.
 - **Untested edges** — behavior that the new tests don't cover and that could break in production.
 - **Silent behavior change** — the code "works" but now does something subtly different from before, in a way callers may depend on — especially a consumer that catches failures and returns a default, where the break produces no error at all.
+- **Duplicated judgment** — two expressions that independently decide the same thing (a filter and the transform it protects, a cap and the accumulator it bounds) and can drift apart; the failure ships as records that pass one and fail the other, with no error anywhere.
 - **Interface regressions** — *only when the diff touches user-facing interface files* (components, screens, templates, stylesheets, or interface copy): a keyboard or screen-reader path that no longer completes, a layout that breaks at a supported viewport, or copy that now misstates a consequence. These are risks a reviewer cannot see by reading the diff text, which is exactly why they belong on the list. Apply [[interface-review]]'s domains for the judgment.
 
 Then go to step 6.

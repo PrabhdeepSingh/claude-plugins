@@ -78,6 +78,8 @@ The change's review depth scales to the diff. You can force it:
 
 Mode words are parsed forgivingly — `quick`/`fast`/`lite` → `light`, and `thorough`/`deep`/`max` (typos included) → `full`. The mode only scales *Claude's own* reviews; the external bots auto-run on the repo regardless, so they cost the same whether the babysitter waits for them or not.
 
+Ship can also route the mechanical parts of its fix loop to cheaper model tiers: `/sonu:ship --orchestrate` pre-authorizes delegating review fixes that clear the model-tiering bar (doc updates, renames, enumerated test edits) to subagents, `--solo` keeps everything in-session, and with no flag the model-tiering skill decides — including doing nothing at all on a session with no cheaper trustworthy tier below it. Triage, security-touching fixes, thread replies, verification of delegated work, and the merge never delegate. Flags combine with a mode: `/sonu:ship full --orchestrate`.
+
 ### `/sonu:factory` — the ticket queue, without a daemon
 
 A software factory runs work through a consistent pipeline instead of ad-hoc terminal sessions: work enters a queue, gets the same checks every time, and keeps moving until it needs a human decision. `/sonu:factory` is that pipeline with **you as the trigger** — no daemon, no hosted service, no background process spending tokens while you sleep. You authorize work by labeling a ticket; the command picks it up on your next invocation.

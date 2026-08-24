@@ -148,6 +148,7 @@ Every open inline thread deserves a reply that closes the loop. Pick the wording
 | **Justified / keeping as-is** | `Keeping as-is — <reason referencing the convention, constraint, or trade-off>.` |
 | **False positive** | `I think this is a false positive — <why>; left a \`// TODO(review): <note>\` in the code marking it safe.` |
 | **Partially addressed** | `Addressed <X> in <SHA>; deferring <Y> because <reason>.` |
+| **Batched finding (one thread naming N locations)** | One reply for the whole thread, enumerating each location: `Fixed in <SHA> — line 87: <what>, line 162: <what>, line 203: <what>.` Never one reply per location, and never a reply covering fewer locations than the finding names — the resolve applies to the thread, so the reply must account for all of it. |
 | **Human question / need-info** | Answer directly. Offer the alternative if relevant, or ask the clarifying question back. |
 
 No AI attribution in any reply. Bot replies: one or two lines. Human replies: slightly more explanatory on the justification "why."
