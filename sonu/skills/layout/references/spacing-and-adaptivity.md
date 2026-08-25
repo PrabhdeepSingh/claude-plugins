@@ -74,16 +74,20 @@ The peeking-scroller recipe: the container's padding creates the peek, and snap 
   scroll-snap-type: x mandatory;
 }
 .scroller > * {
-  flex: 0 0 calc(100% - 48px - 24px); /* container minus margins minus peek */
+  /* 100% here is the PADDED content box (container minus the 48px inline padding).
+     Subtracting only the gap makes the next item start one gap short of the far
+     edge, so the trailing 24px padding shows it — a 24px peek, inside the 16–32px rule. */
+  flex: 0 0 calc(100% - 12px);
   scroll-snap-align: start;
 }
 ```
 
 ```html
-<!-- Tailwind: the 80% width keeps the next card's leading 16-32px visible -->
+<!-- Tailwind, same arithmetic: item = 100% (padded content box) minus the gap-3 (0.75rem),
+     so the px-6 trailing padding reveals a 24px peek of the next card -->
 <div class="flex gap-3 overflow-x-auto px-6 [scroll-padding-inline:1.5rem] snap-x snap-mandatory">
-  <div class="w-[80%] shrink-0 snap-start">…</div>
-  <div class="w-[80%] shrink-0 snap-start">…</div>
+  <div class="w-[calc(100%-0.75rem)] shrink-0 snap-start">…</div>
+  <div class="w-[calc(100%-0.75rem)] shrink-0 snap-start">…</div>
 </div>
 ```
 

@@ -46,15 +46,15 @@ Use a small fixed `translateY` instead of full height. Exits should be softer th
 
 ### 7. Contextual Icon Animations
 
-Animate icons with `opacity`, `scale`, and `blur` instead of toggling visibility. Use exactly these values: scale from `0.25` to `1`, opacity from `0` to `1`, blur from `4px` to `0px`. If the project has `motion` or `framer-motion` in `package.json`, match that package's import path (or the established nearby imports when both exist) and use `transition: { type: "spring", duration: 0.3, bounce: 0 }`; bounce must always be `0`. If no motion library is installed, keep both icons in the DOM (one absolute-positioned) and cross-fade with CSS transitions using `cubic-bezier(0.2, 0, 0, 1)`; this gives both enter and exit animations without any dependency.
+Animate icons with `opacity`, `scale`, and `blur` instead of toggling visibility. Use exactly these values: scale from `0.25` to `1`, opacity from `0` to `1`, blur from `4px` to `0px`. Under `prefers-reduced-motion`, [[accessibility]]'s rule wins over these values: replace the scale/blur entrance with an opacity-only crossfade — the exact values govern the full-motion variant only. If the project has `motion` or `framer-motion` in `package.json`, match that package's import path (or the established nearby imports when both exist) and use `transition: { type: "spring", duration: 0.3, bounce: 0 }`; bounce must always be `0`. If no motion library is installed, keep both icons in the DOM (one absolute-positioned) and cross-fade with CSS transitions using `cubic-bezier(0.2, 0, 0, 1)`; this gives both enter and exit animations without any dependency.
 
 ### 8. Image Outlines
 
-Add a subtle `1px` outline with low opacity to images for consistent depth. The color must be pure black in light mode (`oklch(0 0 0 / 0.1)`) and pure white in dark mode (`oklch(1 0 0 / 0.1)`), never a near-black like slate, zinc, or any tinted neutral. A tinted outline picks up the surface color underneath it and reads as dirt on the image edge.
+Add a subtle `1px` outline with low opacity to images for consistent depth. The color must be pure black in light mode (`oklch(0 0 0 / 0.1)`) and pure white in dark mode (`oklch(1 0 0 / 0.1)`), never a near-black like slate, zinc, or any tinted neutral. A tinted outline picks up the surface color underneath it and reads as dirt on the image edge. The *pure-black/white at low alpha* is the non-negotiable part, not the literal notation: in a project with a semantic token system, express the value through a token in the project's existing notation ([[colors]]' rule) rather than pasting a raw `oklch()` string.
 
 ### 9. Scale on Press
 
-A subtle `scale(0.96)` on click gives buttons tactile feedback. Always use `0.96`. Never use a value smaller than `0.95`: anything below feels exaggerated. Add a `static` prop to disable it when motion would be distracting.
+A subtle `scale(0.96)` on click gives buttons tactile feedback. Default to `0.96`; honor an established project value down to `0.95`, and never go below `0.95` — anything smaller feels exaggerated. Add a `static` prop to disable it when motion would be distracting.
 
 ### 10. Skip Animation on Page Load
 
@@ -135,7 +135,7 @@ Consolidate a repeated systemic issue into one row and list every affected locat
 
 After the findings:
 
-1. **Verification**: list the exact checks run and their observed results. Walk every relevant state and inspect motion at 10% speed when animation is involved. If a check was not run, state what still needs verification.
+1. **Verification**: list the exact checks run and their observed results. Walk every relevant state, and inspect motion at 10% speed in the browser's Animations panel when animation is involved — when no browser is available to you, verify the motion values from source and name the slowed-replay inspection as still needing a human or a rendered preview. If a check was not run, state what still needs verification.
 2. **Verdict**: `Block` if any `HIGH` finding remains, `Needs changes` if only `MEDIUM` or `LOW` findings remain, and `Approve` only when no actionable findings remain.
 
 When there are no findings, omit the tables, state "No actionable UI-polish findings", report verification, and end with `Approve`.

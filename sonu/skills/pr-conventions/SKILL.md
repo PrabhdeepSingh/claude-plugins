@@ -107,10 +107,10 @@ TRACKER_KEY=$(echo "$BRANCH $LOG_CLEAN" | grep -oE '\b[A-Z]{2,10}-[0-9]+\b' \
 | Found | Formatted link |
 |-------|----------------|
 | High-confidence GitHub issue (`$GH_ISSUE`) | `Closes #123` — GitHub closes the issue automatically on merge |
-| Weak GitHub reference only (`$GH_ISSUE_WEAK`, no closing keyword) | `Related to #123` — never `Closes` on a guess; a bare `#N` may be a PR reference, and auto-closing the wrong item is worse than a soft link |
 | Shortcut `sc-123` / `ch123` (`$SC_KEY`) | `[sc-123](https://app.shortcut.com/<workspace>/story/123)` — fill workspace from `SHORTCUT_WORKSPACE` env var if set |
 | JIRA/Linear key `ABC-123` (`$TRACKER_KEY`) | JIRA: `[ABC-123](https://<org>.atlassian.net/browse/ABC-123)` — fill org from `JIRA_URL` env var if set; Linear: `[LIN-123](https://linear.app/<workspace>/issue/LIN-123)` — fill workspace from `LINEAR_WORKSPACE` env var if set |
 | Key found, org/workspace unknown | Use `Fixes ABC-123` as plain text — better than a broken link |
+| Weak GitHub reference only (`$GH_ISSUE_WEAK`, no closing keyword, no tracker key) | `Related to #123` — never `Closes` on a guess; a bare `#N` may be a PR reference, and auto-closing the wrong item is worse than a soft link. Checked **last**: a real tracker key always outranks a keywordless `#N` guess |
 | Nothing found | Omit the issue line entirely — don't invent a reference |
 
 **Where to embed it:** add the formatted issue link as the **last bullet of `## Summary`** in whatever template is being filled (built-in or team), e.g. `- Closes #123` or `- Fixes [ABC-123](url)`. If the team template already has an issue-link placeholder, fill that instead.
@@ -127,12 +127,23 @@ Fill the matching template from `references/templates.md`. Drop any section that
 
 Re-render the PR body in place after each fix pass and each re-review round. **Never duplicate sections.**
 
+When invoked standalone, derive the PR number first — `PR=$(gh pr view --json number -q .number)` (inside `/sonu:ship`, use the ledger's recorded number). Every fence below is a fresh shell: redeclare `PR` in each, never assume it survived.
+
 1. Fetch the current body: `gh pr view $PR --json body -q .body`.
 2. Update **Summary / Changes / Fix** bullets to reflect what the latest commits actually changed — not what was planned, what landed.
 3. If the fix surface touched non-trivial logic: run `Skill(sonu:self-review)` on the latest diff and replace the **Risk / reviewer attention** section with the new output.
 4. Preserve everything else verbatim — team-template checklists, breaking-change notes, screenshots, migration sections.
 5. **Dedup guard**: if `## Risk / reviewer attention` already exists in the body, replace it in-place. Never append a second copy.
-6. Write back: `gh pr edit $PR --body "$UPDATED_BODY"`.
+6. Write back — **capture the composed text into a variable explicitly, in the same fence that writes it**; passing an unset variable to `--body` silently blanks the live PR description:
+   ```bash
+   PR=$(gh pr view --json number -q .number)
+   # Compose this at column 0 — a heredoc terminator (PREOF) must start the line, unindented.
+   BODY=$(cat <<'PREOF'
+   <the updated body text from steps 2–5 — replace this entire block>
+   PREOF
+   )
+   gh pr edit "$PR" --body "$BODY"
+   ```
 
 ---
 
@@ -165,17 +176,20 @@ gh api "/repos/$REPO/pulls/$PR/comments" --paginate \
   --jq '[.[] | {id: .id, login: .user.login, path: .path, line: .line, body: .body}]'
 ```
 
-Then reply to a specific comment:
+Then reply to a specific comment (fresh shell — the leading declarations are required, per the shell discipline `/sonu:ship` states):
 
 ```bash
+REPO=$(gh repo view --json nameWithOwner -q .nameWithOwner)
+PR=$(gh pr view --json number -q .number)
+COMMENT_ID=<id from the listing above — substitute the literal number>
 gh api -X POST "/repos/$REPO/pulls/$PR/comments/$COMMENT_ID/replies" \
   -f body="<reply text from table above>"
 ```
 
 ### Tone + resolution policy
 
-**Bot threads** (any login matching the AI-reviewer registry — the **canonical registry lives in `/sonu:ship` Phase 2**; consult it there rather than relying on a copy here, so a registry update never strands this skill):
-- Terse. Reply, then **resolve the thread** via the GraphQL `resolveReviewThread` mutation (the exact call is in `/sonu:ship` Phase 5).
+**Bot threads** (inside `/sonu:ship`, any login matching that command's Phase 2 AI-reviewer registry — the canonical home; standalone, where that registry isn't loaded, classify mechanically: a commenter whose API `user.type` is `"Bot"`, or the literal login `Copilot`, is a bot):
+- Terse. Reply, then **resolve the thread**. Inside `/sonu:ship`, Phase 5 carries the exact calls. Standalone: fetch thread ids with a GraphQL `reviewThreads` query on the PR (each thread's first comment `databaseId` matches the comment id you replied to), then resolve each with the `resolveReviewThread` mutation — `gh api graphql -f query='mutation($id:ID!){ resolveReviewThread(input:{threadId:$id}){ thread{ isResolved } } }' -f id=<thread id>`.
 
 **Human threads** (all other logins):
 - Warmer; explain the "why" more fully in justified replies.

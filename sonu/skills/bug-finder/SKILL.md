@@ -56,7 +56,7 @@ Search open and closed tickets, and open PRs, for the same root cause before cre
 
 If existing work covers it, **leave that work alone and keep hunting**. Do not comment "I found this too" on a ticket that already says it; that adds noise to a ticket somebody is already working. A closed ticket matters just as much: it may carry a deliberate decision that this behavior is acceptable, in which case re-filing relitigates a settled call.
 
-## 4. File exactly one ticket
+## 4. File at most one ticket
 
 When one real, new defect has cleared sections 2 and 3, create a single ticket through the lifecycle skill's create operation:
 

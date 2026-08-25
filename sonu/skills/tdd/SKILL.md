@@ -3,7 +3,7 @@ name: tdd
 description: >-
   Test-driven development — the red-green-refactor discipline for code that's correct by design, not by accident. INVOKE PROACTIVELY whenever writing or changing code, fixing a bug, adding or structuring tests, or choosing what to mock — even when nobody says "TDD" or "tests". (Tests are code held to [[code-standards]]'s bar.)
 argument-hint: "[feature, bug, or behavior to drive with tests]"
-allowed-tools: Skill, Read, Write, Edit
+allowed-tools: Skill, Read, Write, Edit, Bash
 ---
 
 # TDD — test-first, every time
@@ -44,13 +44,13 @@ Everything else ships test-first — bug fixes, new features, refactors that cha
 
 A test that reaches into private internals couples itself to *how* the code works, not *what* it does — every refactor breaks it. Write tests that assert observable outcomes, so you can freely improve the implementation underneath without touching the tests. If a refactor makes a test break without changing observable behavior, the test was wrong — not the refactor.
 
-→ `references/examples.md` §3 — private-internals vs. observable-outcome example.
+→ `references/examples.md` §3 — private-internals vs. observable-outcome example — read when a test wants to reach into internals.
 
 ## 4. Arrange-Act-Assert
 
 Every test has three phases, in order: set up the starting state, perform the one action under test, assert the outcome. One behavior per test; one reason to fail. If a test needs more than one Act-Assert pair to make a point, split it into two tests.
 
-→ `references/examples.md` §4 — interleaved-vs-phased example.
+→ `references/examples.md` §4 — interleaved-vs-phased example — read when a test interleaves its phases.
 
 ## 5. Name tests as spec sentences
 
@@ -77,13 +77,13 @@ Non-negotiable — a test suite without these isn't a safety net, it's noise you
 - **Deterministic.** No real clock, random numbers, or file system in the unit core — inject dependencies so tests control them. A test that sometimes passes and sometimes fails trains you to ignore red.
 - **Self-validating.** The test itself asserts pass or fail — no human reads output to decide.
 
-→ `references/examples.md` §6 — injecting a frozen clock instead of depending on real time.
+→ `references/examples.md` §6 — injecting a frozen clock instead of depending on real time — read when a test depends on time, randomness, or I/O.
 
 ## 7. Test doubles — mock only at the seams
 
 A test double is a stand-in for a real collaborator: **stubs** return canned data, **mocks** assert call behavior, **fakes** are working lightweight implementations, **spies** record what was called. **Mock only at architectural seams** — things that cross a process boundary: a real database, a payment gateway, the network, the clock. These are slow, unreliable, or have real-world consequences you don't want tests to trigger. **Don't mock your own domain objects** — a test that mocks the unit under test or its value objects tests nothing. The rule of thumb: the more you mock, the less you're testing.
 
-→ `references/examples.md` §7 — over-mocked vs. seam-only example.
+→ `references/examples.md` §7 — over-mocked vs. seam-only example — read when choosing what to mock.
 
 ## 8. The testing pyramid
 
@@ -93,7 +93,7 @@ Tests live at three layers: **unit** (base, most — one unit in isolation, real
 
 Coverage tells you which lines ran, not whether the behavior was verified. A test that calls a function without asserting anything meaningful moves the number but catches no bugs — negative value: maintenance cost with no protection. Don't chase 100%; use coverage to find gaps in behavior, not to hit a number.
 
-→ `references/examples.md` §9 — coverage-theater vs. a real assertion.
+→ `references/examples.md` §9 — coverage-theater vs. a real assertion — read when tempted to chase a coverage number.
 
 ## 10. What to test — and the bug-fix reflex
 
@@ -105,7 +105,7 @@ Test **behavior** (what happens when things go right), **boundaries** (empty, ma
 
 **Thresholds must trip in the test.** When code enforces a limit — a rate limit, quota, timeout, retry cap, buffer size, pagination bound — configure the test with a value small enough to actually reach (a limit of 2–3, a timeout of milliseconds) and assert **both sides of the boundary**: within the threshold passes, the first case beyond it fails. Why: testing with production-scale thresholds means the enforcement branch never executes — the feature reads as covered while the code path that actually limits has never run once. A limit that has never tripped in a test is untested, whatever the coverage report says. This forces the threshold to be injectable rather than hardcoded — which is exactly the design pressure the test is supposed to apply.
 
-→ `references/examples.md` §10 — reproduce-before-fix and trip-the-threshold examples.
+→ `references/examples.md` §10 — reproduce-before-fix and trip-the-threshold examples — read when fixing a bug or testing a threshold.
 
 ## 11. When a test fails, the test is innocent
 
@@ -122,7 +122,7 @@ These moves are banned as a *first response* to a red test:
 
 A test change is legitimate in exactly two cases, and both require saying so out loud: (1) **the specification actually changed** — point to where that decision came from; or (2) **the test violated section 3** — it asserted implementation details, and a refactor broke it without changing observable behavior. If you can't articulate which case applies, the code is wrong — go fix it.
 
-→ `references/examples.md` §11 — the "fixing the test to match the bug" anti-pattern.
+→ `references/examples.md` §11 — the "fixing the test to match the bug" anti-pattern — read when a red test tempts you to edit the test.
 
 ## 12. Tests are first-class code
 
@@ -134,7 +134,7 @@ A test suite that's hard to read is a test suite nobody trusts. Apply [[code-sta
 
 Run this against your own diff. Fix any "no" before finishing:
 
-- Did you write the failing test *before* the production code, or discard and rebuild a spike test-first?
+- Did you write the failing test *before* the production code (or discard and rebuild a spike test-first) — and did you see each new test actually fail before the implementation and pass after?
 - Does every new or changed behavior have a test that would fail if you deleted the implementation?
 - Are you asserting observable outcomes — not private state, not internal call sequences?
 - Does each test have a clear Arrange-Act-Assert structure, one behavior, one reason to fail?
@@ -144,7 +144,6 @@ Run this against your own diff. Fix any "no" before finishing:
 - If this was a bug fix, did you write a failing test that reproduced the bug *before* fixing it?
 - If the change enforces a threshold (limit, quota, timeout, cap): does a test configure a value small enough to trip, and assert both sides of the boundary — within the threshold passes, beyond it fails?
 - If the change alters visible or interactive behavior: did you exercise the real flow and capture evidence — or state plainly what the environment left unverified, instead of letting a green suite stand in for proof?
-- Does each new test actually fail before the implementation and pass after?
 - If any existing test changed: can you name which legitimate case applies (spec change or implementation-detail cleanup), with zero weakening (no updated-to-actual expectations, no skips, no broadened assertions, no sleeps, no try/catch around the failure)?
 - Is the test code held to the same naming, clarity, and structure bar as [[code-standards]]?
 

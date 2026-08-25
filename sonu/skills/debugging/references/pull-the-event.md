@@ -7,7 +7,7 @@ Depth for the debugging skill's section 2. Read this when a production bug repor
 | Signals in the repo | Platform |
 |---|---|
 | `@sentry/*` / `sentry-sdk` deps, `SENTRY_DSN` env, `sentry.properties` | Sentry |
-| `dd-trace` / `datadog-*` deps, `DD_API_KEY` / `DD_SITE` env | Datadog |
+| `dd-trace` / `datadog-*` deps, `DD_API_KEY` / `DD_APP_KEY` / `DD_SITE` env | Datadog |
 | `applicationinsights` dep, `APPLICATIONINSIGHTS_CONNECTION_STRING` | Azure Application Insights |
 | `newrelic` / `rollbar` / `bugsnag` / `honeybadger` deps | those respective services |
 | AWS deploy configs with no APM dep | CloudWatch Logs |
@@ -17,17 +17,19 @@ New platforms appear and SDK package names change; extend the table when you mee
 
 ## Command shapes
 
-Starting points, not gospel — verify flags against the platform's current API docs before leaning on an exact invocation (verification date: the skill's Provenance section, one home):
+Starting points, not gospel — verify flags against the platform's current API docs before leaning on an exact invocation (verification date: the skill's Provenance section, one home). **Fill the `<org>`/`<project>`/`<issue-id>`/`<app-id>` placeholders before running anything** — they come from the repo's platform config, not from guessing. The token guards and `-f` are load-bearing: with `-s` alone, an unset token returns the platform's auth-error JSON with exit status 0, and handing that error payload back as "the event" is exactly the debug-a-paraphrase failure this file exists to prevent.
 
 ```bash
 # Sentry: recent unresolved issues, then the latest event for one of them
-curl -sH "Authorization: Bearer $SENTRY_AUTH_TOKEN" \
+[ -n "$SENTRY_AUTH_TOKEN" ] || { echo "SENTRY_AUTH_TOKEN unset — ask for access, don't improvise"; exit 1; }
+curl -sfH "Authorization: Bearer $SENTRY_AUTH_TOKEN" \
   "https://sentry.io/api/0/projects/<org>/<project>/issues/?query=is:unresolved&sort=freq"
-curl -sH "Authorization: Bearer $SENTRY_AUTH_TOKEN" \
+curl -sfH "Authorization: Bearer $SENTRY_AUTH_TOKEN" \
   "https://sentry.io/api/0/organizations/<org>/issues/<issue-id>/events/latest/"
 
 # Datadog: search recent error logs
-curl -s -X POST "https://api.${DD_SITE:-datadoghq.com}/api/v2/logs/events/search" \
+[ -n "$DD_API_KEY" ] && [ -n "$DD_APP_KEY" ] || { echo "DD_API_KEY / DD_APP_KEY unset — ask for access, don't improvise"; exit 1; }
+curl -sf -X POST "https://api.${DD_SITE:-datadoghq.com}/api/v2/logs/events/search" \
   -H "DD-API-KEY: $DD_API_KEY" -H "DD-APPLICATION-KEY: $DD_APP_KEY" \
   -H "Content-Type: application/json" \
   -d '{"filter":{"query":"status:error","from":"now-1h"},"page":{"limit":20}}'

@@ -95,7 +95,7 @@ Delegation changes who does the typing, not the bars the build is under. Any dis
 
 If the check fails: fix the specification if the failure was a specification gap and re-delegate **once** (a failing `[delegate]` step may re-delegate at the heavier grade); otherwise take the step over inline. Never loop a subagent against a failing check.
 
-**Degrade gracefully.** Tagging and honoring are independent: a plan authored in one harness may be executed in another. If the executing harness has no facility for spawning a subagent on a chosen model (Cursor has no equivalent of Claude Code's Agent tool with a model override; restricted sessions may lack it too), tags are advisory: execute every step inline, in order — the plan needs no rewriting, because untagged and inline are the same behavior. A tag marks what *may* be delegated, never what must be.
+**Degrade gracefully.** Tagging and honoring are independent: a plan authored in one harness may be executed in another. If the executing harness has no facility for spawning a subagent on a chosen model (Cursor has no equivalent of Claude Code's Agent tool with a model override; restricted sessions may lack it too), tags are advisory: execute every step inline, in order — the plan needs no rewriting, because untagged and inline are the same behavior. A harness that *has* the tool but rejects the mapped model value degrades the same way: run that step inline rather than substituting a different tier. A tag marks what *may* be delegated, never what must be.
 
 ## Self-check before the plan goes to the gate
 

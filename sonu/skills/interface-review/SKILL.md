@@ -31,7 +31,7 @@ Identify the framework, styling system, component library, design tokens, suppor
 
 ### 3. Use Domain Skills as the Sources of Truth
 
-Before reviewing, confirm that all six owning skills below are available. Load and apply every available owner. In `quick` mode, inspect all six domains but spend depth only where the primary flow has evidence. In `full` mode, complete each available domain review before consolidation.
+Availability is discovered by attempting the load — there is no way to enumerate installed skills without trying: invoke each `Skill(sonu:<name>)` below, and a load that fails marks that domain `Not reviewed`. Load and apply every owner that loads. In `quick` mode, inspect all six domains but spend depth only where the primary flow has evidence. In `full` mode, complete each available domain review before consolidation.
 
 Review in this order so foundational failures are not hidden by polish:
 
@@ -89,7 +89,7 @@ Treat a review request as read-only. Do not edit source code unless the user als
 | Unlimited low-impact polish | Respect the mode cap; omit `LOW` findings in `quick` |
 | Silent gaps in coverage | Show which domains and states were actually inspected |
 | Missing owning skill silently treated as covered | Mark the domain `Not reviewed` and name the unavailable skill |
-| No rejected candidates | Include the required considered-but-rejected table |
+| Rejected candidates invented to fill the table | List only candidates genuinely inspected; zero is a legal count — say so |
 | Review silently edits code | Stay read-only unless implementation was requested |
 | “Approve” with pending actionable findings | Use `Needs changes` or `Block` |
 
@@ -119,7 +119,7 @@ Each row is one root cause. The **Domain** value names the owning domain: `Acces
 
 ### Considered but Rejected
 
-Include 1–3 candidates in `quick` mode and 2–5 in `full` mode:
+Include up to 3 candidates in `quick` mode and up to 5 in `full` mode. Zero is a legal count: when nothing borderline was genuinely inspected, write "none — nothing borderline was inspected" instead of the table. Never invent a candidate to fill it:
 
 | Location | Candidate | Rejected because |
 | --- | --- | --- |

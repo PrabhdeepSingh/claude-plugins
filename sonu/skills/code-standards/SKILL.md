@@ -101,7 +101,7 @@ function getDiscount(user) {
 }
 ```
 
-Comments explain **why**, not **what** — the code already says what, and a comment restating the line below it is noise that drifts out of date. Keep `TODO`s actionable and attributed, with enough context that someone could actually act on them. Delete dead code instead of commenting it out; that's what version control is for.
+Comments explain **why**, not **what** — the code already says what, and a comment restating the line below it is noise that drifts out of date. (Structural test-phase markers — `// Arrange` / `// Act` / `// Assert` — are convention labels, not restatements; [[tdd]]'s AAA structure is legal under this rule.) Keep `TODO`s actionable and attributed, with enough context that someone could actually act on them. Delete dead code instead of commenting it out; that's what version control is for.
 
 ## 4. Small, single-purpose, modular pieces
 
@@ -213,19 +213,29 @@ The criterion for which corollary applies: **would running with this thing off b
 
 Run this against your own diff. If any answer is "no," fix it before finishing:
 
-- Assumptions surfaced up front (not silently guessed), and is this the minimum that solves the problem?
-- Every changed line traces to the request — no unrequested refactors, no fossils of abandoned attempts, no debugging debris (`console.log`/`print`, `debugger`, temp scripts, commented-out experiments)?
-- Zero new bare suppressions (narrowest scope + justifying comment on any that remain), and every claim in your report something you actually observed this session?
+- Assumptions surfaced up front, not silently guessed?
+- Is this the minimum that solves the problem?
+- Does every changed line trace to the request — no unrequested refactors, no fossils of abandoned attempts?
+- Zero debugging debris (`console.log`/`print`, `debugger`, temp scripts, commented-out experiments)?
+- Zero new bare suppressions — narrowest scope plus a justifying comment on any that remain?
+- Is every claim in your report something you actually observed this session?
 - Searched the codebase, stdlib, and existing dependencies before writing any new helper or algorithm?
-- Could a new teammate guess every name's meaning — no generic `data`/`temp`/`Manager` survivors — and do schema/API names follow convention (`snake_case`, UUID ids, UTC `created_date`/`*_at`, first/last name split)?
-- Every function does one thing at one abstraction level (past the ~30–40-line tripwire → split or justified), with the happy path flat via guard clauses, not nested `if`s?
-- Every query selects only needed columns and bounds its result set — filtering/counting in the DB, no N+1?
-- Every external input validated against a schema at the boundary — server-side, allow-lists over deny-lists, client checks treated as UX only; all SQL parameterized (never concatenated); shell/`eval`/path/HTML sanitized or encoded?
-- Errors handled with context, never silently swallowed or defaulted — every parse failure at a data boundary produces a signal (error log, metric, or rethrow), never a bare default; API failures return a generic message (detail logged internally); auth/lookup responses avoid revealing existence?
-- Every behavior-gating config/env/flag resolves to the safe state when missing or malformed — feature gates off, protective controls failing fast, any `true` default an explicit commented decision — and resolved flags are logged once at startup?
+- Could a new teammate guess every name's meaning — no generic `data`/`temp`/`Manager` survivors?
+- Do schema/API names follow convention (`snake_case`, UUID ids, UTC `created_date`/`*_at`, first/last name split)?
+- Does every function do one thing at one abstraction level (past the ~30–40-line tripwire → split or justified)?
+- Is the happy path flat via guard clauses, not nested `if`s?
+- Does every query select only needed columns and bound its result set — filtering/counting in the DB, no N+1?
+- Is every external input validated against a schema at the boundary — server-side, allow-lists over deny-lists, client checks treated as UX only?
+- All SQL parameterized (never concatenated), and shell/`eval`/path/HTML sanitized or encoded?
+- Errors handled with context, never silently swallowed or defaulted?
+- Does every parse failure at a data boundary produce a signal (error log, metric, or rethrow) — never a bare default?
+- Do API failures return a generic message (detail logged internally), and do auth/lookup responses avoid revealing existence?
+- Does every behavior-gating config/env/flag resolve to the safe state when missing or malformed — feature gates off, protective controls failing fast, any `true` default an explicit commented decision?
+- Are resolved flag values logged once at startup?
 - Every API response built from an explicit allowlist, with honest status codes, one error shape, and pagination on lists?
 - Logging through the shared logger — right level, stable scannable message, structured context, correlation id, zero secrets/PII?
-- Presentation, logic, and data access separated (zero inline styles, zero magic numbers/strings); comments explain *why* only (no commented-out code, no restating the line below); and the change matches the file's existing conventions?
+- Presentation, logic, and data access separated — zero inline styles, zero magic numbers/strings?
+- Comments explain *why* only (no commented-out code, no restating the line below), and does the change match the file's existing conventions?
 
 These aren't bureaucracy — each one is a thing that bites the next person to open the file. Leave the code so the next reader thanks you.
 

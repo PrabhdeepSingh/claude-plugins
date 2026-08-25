@@ -8,7 +8,7 @@ description: >-
 
 Good typography is mostly restraint. A sensible scale, comfortable spacing and enough contrast beat any clever effect. A label, a table cell, a marketing headline and an article paragraph should not share one set of rules. Apply these principles when building or reviewing anything with text in it.
 
-When reviewing, read the page instead of scanning the code: squint to check the hierarchy holds, read one full paragraph for comfort, and resize the viewport to catch bad wrapping, widows and truncation at real content lengths.
+When reviewing, read the page instead of scanning the code: squint to check the hierarchy holds, read one full paragraph for comfort, and resize the viewport to catch bad wrapping, widows and truncation at real content lengths. When no rendered page is available to you, verify what the source can prove — scale ratios, line-height, measure, wrapping properties — and name the squint/read/resize checks as still needing a human or a rendered preview; never report them as done.
 
 The words themselves (button labels, error messages, empty states) are covered by [[ux-writing]]; semantic heading structure by [[accessibility]]; spatial RTL layout and logical CSS properties by [[layout]]; rendered-pair contrast measurement and color remediation by [[colors]]. This skill owns how text renders, wraps, and behaves in mixed-direction content.
 
@@ -185,4 +185,4 @@ When there are no findings, omit the tables, state "No actionable typography fin
 
 ## Provenance and maintenance
 
-Last verified 2026-07. The volatile claims here are browser- and platform-behavior claims, not methodology: `.woff2` support breadth (§1), font-synthesis behavior (§3), `text-wrap: balance` / `pretty` support and their line limits (§10), `from-font` underline metrics support (§14), the iOS Safari input-zoom threshold and `maximum-scale` handling (§15), and the macOS font-smoothing properties (§17), plus the Tailwind utility names used throughout and in `references/css-cheat-sheet.md`. Re-verify against current browser-support tables and the project's Tailwind version before relying on a specific support or utility claim.
+Last verified 2026-07. The volatile claims here are browser- and platform-behavior claims, not methodology: `.woff2` support breadth (§1), font-synthesis behavior (§3), `text-wrap: balance` / `pretty` support and their line limits (§10), `from-font` underline metrics support (§14), the iOS Safari input-zoom threshold and `maximum-scale` handling (§15), the macOS font-smoothing properties (§17), and the `text-box` browser-support versions in `references/spacing-and-sizing.md`, plus the Tailwind utility names used throughout and in `references/css-cheat-sheet.md`. Re-verify against current browser-support tables and the project's Tailwind version before relying on a specific support or utility claim.

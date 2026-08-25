@@ -111,6 +111,10 @@ After the findings:
 
 When there are no findings, omit the tables, state "No actionable layout findings", report verification, and end with `Approve`.
 
+## Provenance and maintenance
+
+Volatile facts in this skill and its references, last verified 2026-08: platform support claims (`env(safe-area-inset-*)`, container queries preferred over media queries, logical-property behavior) — re-verify against current browser-support data when a finding hinges on one; the numeric thresholds (12/16/24px spacing tiers, the 16–32px peek) are this skill's own conventions, not external facts — change them only as a deliberate decision here.
+
 ## Reference files
 
 | File | What it answers |

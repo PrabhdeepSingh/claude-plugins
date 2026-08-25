@@ -71,7 +71,7 @@ Externalize and minify non-critical CSS — no inline `<style>` for anything non
 ## 11. Indexation and crawl controls
 
 - `robots.txt` editable by the SEO team outside release cycles.
-- Internal search results, filter/facet URLs beyond the canonical sub-category, and sort/parameter URLs: `META NOINDEX, FOLLOW`. Know the limit: a page that stays `noindex` long-term is eventually treated as `noindex, nofollow` too — its links stop being followed — so this keeps junk out of the index but isn't a durable way to route link equity; keep everything important reachable through indexable navigation too.
+- Internal search results, filter/facet URLs beyond the canonical sub-category, and sort/parameter URLs: `<meta name="robots" content="noindex, follow">`. Know the limit: a page that stays `noindex` long-term is eventually treated as `noindex, nofollow` too — its links stop being followed — so this keeps junk out of the index but isn't a durable way to route link equity; keep everything important reachable through indexable navigation too.
 - Dev/staging/test environments: login-gated **and** blocked by `robots.txt` — the staging `robots.txt` must never be promoted to production.
 - Maintenance/downtime: serve `503` (not `404`). Beta/preview releases: a known path on the main domain (e.g. `/beta/`), blocked from indexing — not a separate hostname.
 
@@ -91,18 +91,18 @@ Any CMS must provide per-page manual control of `<title>` (with template default
 
 ## Self-check before shipping any web change
 
-Run this against your diff or template. Fix any "no" before finishing:
+Run this against your diff or template. Fix any "no" before finishing. Items unverifiable from the diff alone — site-wide uniqueness, redirect chains, staging gating — get an explicit "not verified: <what>" line in the hand-off, never an assumed "yes":
 
-- Exactly one `<h1>` per page, tied to the focus keyword, not used in nav?
-- `rel="canonical"` on every URL, absolute `https://`, pointing to itself?
+- Exactly one `<h1>` per page, tied to the focus keyword, not used in nav? (An SEO convention — [[accessibility]] deliberately does not treat multiple `<h1>`s as a failure; report violations as SEO findings.)
+- `rel="canonical"` on every URL, absolute `https://`, pointing to its own parameter-free canonical form (§4) — never self-canonicalizing a tracked or faceted variant?
 - `<title>` unique, 50–60 chars, present exactly once? Meta description unique, ~150–160 chars?
 - URLs lowercase, one consistent trailing-slash convention, parameter-free, no extraneous folders?
 - Every permanent move a `301` (not `302`/`307`), pointing directly to the final URL, no chains?
 - Every anchor descriptive (no "read more") and pointing to a canonical URL, without redundant duplicate links?
 - All indexable body content in the initial HTML response, not JS-rendered?
 - Schema.org JSON-LD present for every applicable element?
-- Non-critical JS/CSS externalized and minified; no inline styles; rendered HTML free of whitespace/comments?
-- Filter/facet/sort URLs carrying `META NOINDEX, FOLLOW`?
+- Non-critical JS/CSS externalized and minified — no non-dynamic inline `<style>` blocks (§9's inlined critical CSS is the sanctioned exception) — and the rendered output free of whitespace/comments (a build-output property; never hand-strip source templates)?
+- Filter/facet/sort URLs carrying `<meta name="robots" content="noindex, follow">`?
 - `404` pages serve status `404` with helpful links; deprecated unreplaceable URLs return `410` (or a correct `404`) — never `200` or a `301` to an irrelevant page?
 - Staging login-gated and blocked in `robots.txt`, with its own `robots.txt` never promoted to production?
 

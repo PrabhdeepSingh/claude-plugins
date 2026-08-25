@@ -26,7 +26,7 @@ A bug report that arrives as words — "checkout is broken for some users" — i
 
 **Discover what the project uses** — read the repo (deps, env vars, deploy config), never your assumptions. **Then pull the event**: prefer a connected MCP server for the platform if the session has one (check the available tools); otherwise use the API/CLI with credentials already in the environment. → `references/pull-the-event.md` — the platform-detection signals table and per-platform command shapes, read when you're actually about to pull one.
 
-**No access? Ask — never improvise.** No credentials, no MCP server, no dashboard reachable → ask the user to grant access or paste the full event JSON, and say why: debugging from a paraphrase when the real event exists is choosing to work blind. Do not fabricate an error shape from the description and proceed as if you'd read it.
+**No access? Ask — never improvise.** No credentials, no MCP server, no dashboard reachable → ask the user to grant access or paste the full event JSON, and say why: debugging from a paraphrase when the real event exists is choosing to work blind. Do not fabricate an error shape from the description and proceed as if you'd read it. In a non-interactive run — a factory pass, a subagent, a headless session — "ask" means write the precise access gap into the hand-off (the blocker comment or the report) and stop the diagnosis there; nobody is at the terminal, and proceeding on an invented event is the same blindness with extra confidence.
 
 **What to extract from the event:**
 
