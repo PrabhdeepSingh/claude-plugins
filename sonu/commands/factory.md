@@ -123,13 +123,24 @@ MERGED=$(gh pr list --head "$BRANCH" --state merged --json number --jq 'length' 
 MAIN=$(git worktree list --porcelain | head -1 | cut -d' ' -f2)
 WT=$(git worktree list --porcelain | grep -B2 -F -x "branch refs/heads/$BRANCH" | head -1 | cut -d' ' -f2)
 if [ -n "$WT" ] && [ "$WT" != "$MAIN" ]; then
-  rm -f "$WT/.sonu-ship-ledger.md"   # a died ship's leftover ledger — the merge normally deletes it
+  # The ledger goes first BECAUSE it would make `git worktree remove` refuse
+  # (untracked file = not clean) — and this fence only runs post-merge, where
+  # the ledger is spent state the merge would have deleted anyway.
+  rm -f "$WT/.sonu-ship-ledger.md"
   git worktree remove "$WT" && echo "removed worktree $WT" \
     || echo "worktree $WT has leftover files (untracked config like .env?) — inspect and remove by hand; not forcing"
 else
   echo "no separate worktree for $BRANCH — nothing to remove"
 fi
-git branch -D "$BRANCH" 2>/dev/null || echo "branch $BRANCH already gone"
+# Distinguish "already gone" from "delete refused" — git refuses to delete a
+# branch checked out in a surviving worktree, and reporting that as gone would
+# hide that the whole cleanup is still pending:
+if git show-ref --verify --quiet "refs/heads/$BRANCH"; then
+  git branch -D "$BRANCH" && echo "deleted branch $BRANCH" \
+    || echo "could not delete $BRANCH — still checked out in a surviving worktree; remove that worktree first"
+else
+  echo "branch $BRANCH already gone"
+fi
 ```
 
 Four guards, and none of them are optional. The `case` check refuses to run on an empty or non-`ticket/` value — an unsubstituted `BRANCH` would make the grep match `branch refs/heads/` generally, whose first hit is the **main checkout**, and `git worktree remove` would then target the repo you are working in. `-x` makes the match whole-line and `-F` makes it literal, so `ticket/0001-fix` cannot match `ticket/0001-fix-more`, and a `.` in a branch name stays a dot instead of becoming a regex wildcard that matches a neighbouring ticket's worktree. The `$WT != $MAIN` comparison is the last line of defense against removing the primary worktree. And every destructive step is safe only because the fence's own leading merged-PR check gates them all — that in-fence re-verification stands in for `-d`'s ancestry guard, which a squash merge defeats. This fence is for **merged** tickets only — never remove the worktree of an unmerged ticket branch (it may hold ship's resume ledger and even uncommitted built work).
