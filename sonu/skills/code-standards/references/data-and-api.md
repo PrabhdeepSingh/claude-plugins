@@ -29,7 +29,7 @@ Field-naming rules in one example: `snake_case`, UUID ids, separate first/last n
 SELECT * FROM orders;
 
 -- Prefer: only the fields used, filtered and bounded
-SELECT id, customer_id, total_amount, created_date
+SELECT id, customer_id, total_amount_cents, created_date
 FROM orders
 WHERE status = 'open'
 ORDER BY created_date DESC

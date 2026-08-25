@@ -33,13 +33,13 @@ Before writing a word, know the **single search intent** the page serves and the
 
 The title is the single highest-leverage on-page element. **~50–60 characters** (pixel-width limited, so front-load what matters), **primary keyword at or near the front**, **brand at the end** (`Primary Keyword — Brand`), **accurate and matching the `<h1>`** (Google rewrites titles that are too long, stuffed, or inconsistent), and **earn the click** with specificity — never clickbait the page can't deliver.
 
-→ `references/examples.md` §2 — before/after title examples.
+→ `references/examples.md` §2 — before/after title examples — read when writing or fixing a title.
 
 ## 3. Meta descriptions
 
 Not a ranking factor, but it's your ad copy in the results — a stronger one wins more clicks from the same position (don't mistake CTR itself for a ranking lever, though). **150–160 characters** (~120 shows on mobile), **address the intent directly** with the primary keyword used naturally and a soft CTA, **unique per page** — never duplicate or template across pages.
 
-→ `references/examples.md` §3 — before/after meta description examples.
+→ `references/examples.md` §3 — before/after meta description examples — read when writing a meta description.
 
 ## 4. Heading structure
 
@@ -59,15 +59,15 @@ What actually ranks is **topical completeness** — covering the question, its s
 
 ## 8. Image SEO
 
-**Alt text: descriptive, ≤125 characters, keyword used naturally** — describe what the image shows; empty `alt=""` for purely decorative images. **File names: lowercase, hyphen-separated, descriptive.** **Captions** get read more than body copy — use them for genuine context.
+**Alt text: descriptive, ≤125 characters, keyword used naturally** — describe what the image shows; empty `alt=""` for purely decorative images. This applies to genuinely descriptive **content images** only: functional and decorative images follow [[accessibility]]'s purpose rules (name the function, or stay empty), and a keyword never overrides that — "project management dashboard icon" on a Settings button is a screen-reader regression, not SEO. **File names: lowercase, hyphen-separated, descriptive.** **Captions** get read more than body copy — use them for genuine context.
 
-→ `references/examples.md` §8 — before/after alt-text examples.
+→ `references/examples.md` §8 — before/after alt-text examples — read when writing alt text.
 
 ## 9. URL slugs
 
 **Short — 3–5 words, under ~60 characters. Lowercase, hyphens, primary keyword front-loaded.** Don't cram multiple keywords or bake in dates unless the content is genuinely date-specific.
 
-→ `references/examples.md` §9 — before/after slug examples.
+→ `references/examples.md` §9 — before/after slug examples — read when choosing a slug.
 
 ## 10. Write for extraction — snippets and AI citations
 
@@ -97,7 +97,7 @@ Never: **keyword stuffing** anywhere; **thin or scaled content** (the top curren
 
 ## Self-check before publishing
 
-Run this against the piece. Fix any "no" before it ships:
+Run this against the piece. Fix any "no" before it ships. Items unverifiable from the piece alone — cannibalization against pages you haven't seen, uniqueness across the site — get an explicit "not verified: <what>" line, never an assumed "yes":
 
 - One clear search intent and primary query, no cannibalization with an existing page?
 - Title ~50–60 chars, keyword near the front, accurate, matches the `<h1>`, earns the click?

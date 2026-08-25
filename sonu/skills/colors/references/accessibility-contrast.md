@@ -2,6 +2,21 @@
 
 Contrast is always measured between a **foreground color** (text, icon, or UI element) and the **background color** it sits on. When checking contrast, identify the background the element will be rendered against, typically the nearest parent's background color.
 
+**Measure, never estimate — a fabricated number cited as evidence is worse than none.** The thresholds below are only as good as the measurement behind them:
+
+- **WCAG 2 ratio** — computable anywhere node runs, no packages:
+  ```bash
+  node -e '
+  const lin = c => { c /= 255; return c <= 0.04045 ? c/12.92 : ((c+0.055)/1.055)**2.4 };
+  const lum = ([r,g,b]) => 0.2126*lin(r) + 0.7152*lin(g) + 0.0722*lin(b);
+  const hex = s => [1,3,5].map(i => parseInt(s.slice(i, i+2), 16));
+  const [fg, bg] = process.argv.slice(1).map(hex).map(lum);
+  const [hi, lo] = fg > bg ? [fg, bg] : [bg, fg];
+  console.log(((hi + 0.05) / (lo + 0.05)).toFixed(2) + ":1");
+  ' "#1a1a2e" "#f5f5f7"   # substitute the rendered pair, as 6-digit hex
+  ```
+- **APCA Lc** — needs the real algorithm (a tool or library implementing it). When none is runnable in this session, report **"Lc not measured"** and fall back to the lightness-gap guide below plus the computed WCAG ratio as proxies. Never write an invented Lc value into a review's evidence column.
+
 **Report, don't repaint.** When a check fails, report it (the failing foreground/background pair, its measured Lc or ratio, and the threshold it misses) and leave the colors unchanged. A project's colors are a design decision; only apply the fix below when the user asks for one.
 
 ## APCA thresholds (recommended)
@@ -83,5 +98,5 @@ To detect hue drift in an existing HSL palette:
 /* HSL blue ramp: hue shifts toward purple */
 hsl(240, 80%, 20%)  →  oklch H ≈ 269
 hsl(240, 80%, 50%)  →  oklch H ≈ 267
-hsl(240, 80%, 90%)  →  oklch H ≈ 285  /* shifted 18° */
+hsl(240, 80%, 90%)  →  oklch H ≈ 285  /* spread across steps: 18° */
 ```

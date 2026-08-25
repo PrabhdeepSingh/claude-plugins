@@ -66,7 +66,7 @@ Run the *consumer*, not just the producer's tests: exercise the real flow, then 
 
 ## 6. Record the impact
 
-End the change with a one-paragraph **Downstream impact** statement: the seam, the consumers found, their classification, and what was verified end-to-end. It feeds [[self-review]]'s risk list and the PR description. Why: the analysis is only durable if the reviewer can see it was done — an undocumented consumer audit is indistinguishable from a skipped one.
+End the change with a one-paragraph **Downstream impact** statement: the seam, the consumers found, their classification, and what was verified end-to-end. Carry it into the PR body's risk section ([[pr-conventions]]'s `## Risk / reviewer attention` block) — that is where the reviewer actually sees the audit happened, and [[self-review]] cites it from there. Why: the analysis is only durable if the reviewer can see it was done — an undocumented consumer audit is indistinguishable from a skipped one.
 
 ---
 

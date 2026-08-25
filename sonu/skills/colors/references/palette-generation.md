@@ -28,11 +28,10 @@ Lightness is clamped to [0.05, 0.95] to avoid pure black/white which have zero c
 
 **Step 2. Distribute lightness** evenly from maxL (lightest, label 50) to minL (darkest, label 950).
 
-**Step 3. Clamp chroma per step.** Each lightness level has a different maximum chroma for a given hue and color space:
+**Step 3. Clamp chroma per step.** Each lightness level has a different maximum chroma for a given hue and color space. Find each step's maximum by binary search: start at C = 0.4 (above any sRGB maximum), test whether `oklch(L C H)` is displayable in the target gamut (a culori-style `displayable()` when tooling is available; otherwise the conversion-and-clamp procedure in `gamut-and-tailwind.md`), and halve the search step toward or away from displayable until it converges — about 9 iterations narrows a 0.4 starting range to within 0.001. Then:
 
 ```
-maxChroma = findMaxChroma(step[i].L, hue, colorSpace)
-step[i].C = (chromaPercentage / 100) * maxChroma
+step[i].C = (chromaPercentage / 100) * maxChroma   # maxChroma from the binary search above
 ```
 
 This ensures every step is within gamut. High-chroma base colors will have lower chroma at the lightest and darkest ends; this is correct and expected.
@@ -88,6 +87,6 @@ Do not mechanically reverse every palette step. Dark appearances often need diff
 
 ## Why not HSL palettes?
 
-**Hue drift:** `hsl(240, 80%, 20%)` and `hsl(240, 80%, 90%)` are not the same perceptual hue. The light variant shifts ~16° toward purple. OKLCH hue is stable.
+**Hue drift:** `hsl(240, 80%, 20%)` and `hsl(240, 80%, 90%)` are not the same perceptual hue. The light variant sits ~16° from the dark one toward purple (the full ramp's spread, mid step included, is 18°). OKLCH hue is stable.
 
 **Brightness inconsistency:** `hsl(60, 100%, 50%)` (yellow) and `hsl(240, 100%, 50%)` (blue) have the same HSL lightness but wildly different perceived brightness.

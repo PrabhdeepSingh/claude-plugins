@@ -82,7 +82,7 @@ The definition of done for a new endpoint, job, or service includes: the four si
 - Is trace context propagated on every outbound call, and does the correlation id appear on both logs and traces?
 - Liveness checks only the process; readiness checks dependencies and returns which one is unhealthy — and neither leaks internals?
 - Are captured errors tagged with release/commit, carrying non-PII context only — and are expected outcomes (validation, 404s) excluded from the error feed?
-- Does every new alert page on a user-facing symptom, with an owner and an action — and did you delete or demote anything that fires-and-gets-ignored?
+- Does every new alert page on a user-facing symptom, with an owner and an action — and did you **flag** any existing alert that fires-and-gets-ignored for deletion or demotion? (Flag to the owner in the hand-off — deleting alert rules outside your diff is the surgical-change violation [[code-standards]] warns about.)
 - If the project has no observability stack: did you say so in the hand-off instead of shipping a black box silently?
 
 ## Provenance and maintenance

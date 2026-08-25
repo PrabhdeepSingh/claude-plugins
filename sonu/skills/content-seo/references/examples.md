@@ -15,7 +15,7 @@ Prefer: 7 Project Management Tips for Remote Teams — Acme
 ```text
 Avoid:  Read our blog post about project management for remote teams. Click here to learn more.
 Prefer: Managing a remote team? These 7 project-management tactics cut status meetings and keep
-        delivery on track — with templates you can copy today.
+        delivery on track — with free templates your whole team can copy today.
 ```
 
 ## §8 — image alt text

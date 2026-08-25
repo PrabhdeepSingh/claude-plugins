@@ -126,7 +126,13 @@ FILE=$(find .sonu/tickets -maxdepth 1 -name "$ID-*.md" | head -1)
 [ -n "$FILE" ] || { echo "STOP: no ticket $ID"; exit 1; }
 grep -q '^trigger: none$' "$FILE" || { echo "STOP: trigger not cleared — do not proceed"; exit 1; }
 git add "$FILE" && git commit -m "tickets: claim $ID for implement"
-git remote | grep -q . && git push || echo "no remote — local claim only"
+# A failed push must STOP — the && … || form would print the benign no-remote
+# message on a push REJECTION, leaving the claim invisible to every other machine.
+if git remote | grep -q .; then
+  git push || { echo "STOP: claim push failed — the claim is invisible to other machines; fix the push before proceeding"; exit 1; }
+else
+  echo "no remote — local claim only"
+fi
 ```
 
 **update body** — rewrite the body sections below the frontmatter with an editing tool, preserving the reporter's original text under `## Original report`, then commit with `tickets: spec NNNN`.
@@ -231,7 +237,12 @@ FILE=$(find .sonu/tickets -maxdepth 1 -name "$A-*.md" | head -1)
 # Edit with an editing tool (not sed -i): ensure a single `blocked_by:` line that includes B.
 # If the line was absent, add `blocked_by: $B`. If present, append B only when not already listed.
 git add "$FILE" && git commit -m "tickets: link $A blocked-by $B"
-git remote | grep -q . && git push || echo "no remote — local link only"
+# Same push discipline as the claim: a rejected push is a STOP, never the no-remote message.
+if git remote | grep -q .; then
+  git push || { echo "STOP: link push failed — the edge is invisible to other machines; fix the push before proceeding"; exit 1; }
+else
+  echo "no remote — local link only"
+fi
 # Read-back — part of the operation.
 grep -m1 '^blocked_by:' "$FILE" | grep -qE "(^| )$B( |$)" \
   || { echo "STOP: read-back failed — $B not in $A's blocked_by"; exit 1; }

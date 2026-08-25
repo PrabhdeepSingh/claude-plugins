@@ -1,4 +1,4 @@
-# Lens dispatch templates — the step-4b fan-out
+# Lens dispatch templates — the step-3b fan-out
 
 Six lenses, one subagent each, plus a seventh **interface** lens dispatched only when the diff touches user-facing interface files — all **in parallel in a single turn** on the cheapest trustworthy executor tier below the session (per the model-tiering ladder). Every lens is read-only and context-free: it gets the prompt below with the placeholders filled — never a summary of the conversation, never the author's intent. **Every lens prompt is self-contained:** the criteria live in the block itself. Do not tell a subagent to `Skill(…)` load or read plugin skill files — those live outside the customer repo root the shared frame supplies, and many harnesses give subagents no Skill tool.
 
@@ -26,11 +26,6 @@ else is lost.
 Only report findings inside your lens (below). If you find nothing, reply
 exactly: "Nothing in my lens." Do NOT invent findings to seem useful — an
 empty report is a good report. Do not report style or preference issues.
-
-<if learned rules were loaded in step 3, append:>
-Additionally check the diff against these learned rules; report a violation
-as a normal Risk line:
-<the scope-matched rule lines>
 ```
 
 ## The six lenses (append one per subagent)
@@ -158,4 +153,4 @@ pre-existing interface problem the diff merely sits near is not a finding.
 - All lenses go out in one turn; they have no dependencies on each other. The interface lens joins the same batch when its condition is met.
 - Model: cheapest trustworthy executor tier below the session on the model-tiering ladder (its Provenance table is authoritative). No such tier → don't dispatch; the skill's step-2 rule already routed to the inline pass.
 - A lens that errors or returns garbage is treated as "Nothing in my lens" **plus** a note in the final output that the lens was degraded — never silently counted as a clean pass.
-- Lens replies are evidence, not verdicts. Every accept/reject happens in the session (SKILL.md step 5).
+- Lens replies are evidence, not verdicts. Every accept/reject happens in the session (SKILL.md step 4).

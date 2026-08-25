@@ -13,6 +13,7 @@ Handles everything from the current working-tree state through a clean, merged P
 - **Clean reviews are not a checkpoint.** If every review source comes back with nothing actionable, go straight to Phase 7 and merge. Never stop to say "reviews are clean, shall I merge?" — that is not a decision the owner needs to make.
 - **Green checks are not a checkpoint.** When the safety checks pass, merge. Do not pause for confirmation.
 - **The only valid stops** are: (a) a review finds something that needs a genuine judgment call the owner must make (a real design/product tradeoff, not a routine fix you can apply yourself), (b) a safety check goes red and the fix isn't obvious, (c) the re-review loop hits its cap without converging, or (d) **a command required to finish was denied by the harness's permission layer.** A denial is the one stop only the operator can clear — report it immediately, quoting the exact command that was denied, then finish any remaining work that doesn't depend on it rather than idling. **No alternate path to the same effect is acceptable:** a denied `gh pr merge` is never a cue to reach for `--admin` or any other bypass (Phase 7 bans it outright) — that ban must not be re-derived under pressure as "find another way." Anything you can fix, justify, or resolve yourself, you do — silently — and keep going.
+- **One carve-out, factory route only:** in a headless run dispatched by `/sonu:factory`, that command's park rule governs this flow's three named waits (the bot settle, the re-review wait, the CI poll) — parking there is a scheduled continuation the next factory pass resumes, not a stop, and the heartbeat mirroring factory.md Phase 6 step 5 defines rides along with each ledger rewrite. Outside that route, the contract above stands unmodified.
 - Report once, at the end, after the PR is merged. Progress narration mid-flow is fine; handing the turn back mid-flow is not.
 
 **No AI attribution.** Do NOT add `Co-Authored-By` trailers, "Generated with Claude Code" lines, or any other AI/tool attribution to commits or the PR body. Commits and PRs read as the owner's own work.
@@ -21,16 +22,21 @@ Handles everything from the current working-tree state through a clean, merged P
 
 **Shell discipline — every Bash call is a fresh shell.** No variable survives from one snippet to the next. Every fenced snippet below therefore begins with the declarations it needs (`BOT_RE`, `REPO`, `PR`, …) — keep those lines when you run it, and substitute literal values where a snippet says `<PR number>` or `<value from step N>`. Never delete a leading declaration because "it was already set earlier" — it wasn't, and an unset variable here fails *silently*: an empty `$BOT_RE` makes jq's `test("")` match **every** login (humans get treated as bots), and an empty `$PR` turns API calls into invisible 404s inside loops. And **never truncate the output of a state-changing git command**: a `git push --force-with-lease` rejection (stale lease) prints its error *above* the final line, so piping through `tail -1` — or reading only the last line — shows something innocuous while the remote stayed on the old commit. Read the full output and confirm the ref-update line before treating a push as done.
 
-**State ledger — survive long runs.** A full ship run spans many tool calls and background waits; if the conversation gets compacted mid-run, your memory of "where was I" is the first casualty. So keep a ledger on disk, inside the `.git` directory (never committable, always repo-local):
+**State ledger — survive long runs.** A full ship run spans many tool calls and background waits; if the conversation gets compacted mid-run, your memory of "where was I" is the first casualty. So keep a ledger on disk, outside version control, at a path that is always writable. That path depends on the checkout: in a **main checkout** it lives inside `.git/` (never committable, always repo-local); in a **linked worktree** — the factory route builds and ships there — it lives at the worktree root as a dotfile, because a linked worktree's git dir resolves *outside* the worktree (`<main>/.git/worktrees/<name>`), which a workspace-scoped session cannot write to. The dotfile still dies with its worktree, so per-worktree isolation holds either way:
 
 ```bash
-LEDGER="$(git rev-parse --git-dir)/sonu-ship-ledger.md"
+GD=$(git rev-parse --git-dir); CD=$(git rev-parse --git-common-dir)
+if [ "$GD" = "$CD" ]; then LEDGER="$GD/sonu-ship-ledger.md"          # main checkout: inside .git/
+else LEDGER="$(git rev-parse --show-toplevel)/.sonu-ship-ledger.md"  # linked worktree: repo root — the per-worktree git dir is outside the workspace
+fi
 ```
 
-- **Adopt it or create it in Phase 0** — never blindly create — and **rewrite it at the end of every phase** with the current facts, one per line: `repo:`, `base:`, `branch:`, `pr:`, `mode:`, `disposition:`, `phase_done:`, `prepr_passes:`, `prepr_reviewed_sha:`, `cycles_used:`, `last_fix_sha:`, `prev_at:`, `handled_comment_ids:` (comma-separated), `reviews_skipped:` (comma-separated; empty is a real value meaning "nothing skipped"), `delegated_fixes:` (count, incremented at each delegation — the final report reads it), `open_items:` (anything mid-flight), and — stacked runs only (see Stacked PRs) — `own_commits:` (this PR's own commit SHAs, oldest first; recorded because after a parent squash-merges it can no longer be recomputed).
+**The ledger is never staged or committed.** In a worktree it sits in the working tree as an untracked file — Phase 1's stage-by-name rule excludes `.sonu-ship-ledger.md`, always.
+
+- **Adopt it or create it in Phase 0** — never blindly create — and **rewrite it at the end of every phase** with the current facts, one per line: `repo:`, `base:`, `branch:`, `pr:`, `mode:`, `disposition:`, `phase_done:`, `prepr_passes:`, `prepr_reviewed_sha:`, `cycles_used:`, `prev_at:`, `handled_comment_ids:` (comma-separated), `reviews_skipped:` (comma-separated; empty is a real value meaning "nothing skipped"), `delegated_fixes:` (count, incremented at each delegation — the final report reads it), `open_items:` (anything mid-flight), and — stacked runs only (see Stacked PRs) — `own_commits:` (this PR's own commit SHAs, oldest first; recorded because after a parent squash-merges it can no longer be recomputed).
 - **A surviving ledger means a previous run did not finish.** The merge deletes it (below), so its presence says exactly one thing: an earlier session on this branch stopped mid-flow. Adopt that ledger — read every field, resume from `phase_done:` — rather than writing a fresh one. Re-initializing looks harmless and is not: `prepr_passes:` and `cycles_used:` are the caps that bound the review loops, and **a cap that resets is not a cap.** A run re-invoked five times then gets five uncapped Phase 1.5 loops, each re-reviewing the whole branch and committing another round of fixes that becomes the next run's input — a treadmill that never converges on a merge. That has shipped; it is the reason this bullet exists.
 - **Whenever you are unsure of the current state** — after a context compaction, a long wait, or an interrupted turn — read the ledger *before* touching the PR, and resume from `phase_done`, not from memory. The ledger is the source of truth for literal values the snippets need (`PR`, `PREV_AT`, handled IDs).
-- **Delete it after the merge** (`rm -f "$LEDGER"`) as part of the final report — a stale ledger must never leak into the next run.
+- **Delete it after the merge** (`rm -f "$LEDGER"`, recomputing `LEDGER` in that fresh shell exactly as the fence above does) as part of the final report — a stale ledger must never leak into the next run.
 
 ---
 
@@ -100,24 +106,31 @@ A PR whose base is not `$BASE` is **stacked**: it merges into another PR's branc
    If `gh repo view` fails (no GitHub remote), stop and tell the owner — this flow needs a GitHub remote.
 2. **Adopt or initialize the state ledger** (see the contract above). Read it *before* deciding anything — including before Phase 1.5 and the effort mode:
    ```bash
-   LEDGER="$(git rev-parse --git-dir)/sonu-ship-ledger.md"
+   # Same two-home computation as the ledger contract: .git/ in a main checkout,
+   # a repo-root dotfile in a linked worktree (whose git dir is outside the workspace).
+   GD=$(git rev-parse --git-dir); CD=$(git rev-parse --git-common-dir)
+   if [ "$GD" = "$CD" ]; then LEDGER="$GD/sonu-ship-ledger.md"
+   else LEDGER="$(git rev-parse --show-toplevel)/.sonu-ship-ledger.md"
+   fi
    # Three outcomes, never two: absent, readable, or present-but-unreadable. The
    # third must STOP rather than fall through — both `[ -f x ] && cat x || echo ...`
    # (which reports "no ledger" when cat fails) and a bare if/else (which prints
    # nothing, reading as an empty ledger) end up re-initializing the caps, which is
    # the exact bug this step exists to prevent. Resuming on unknown state is worse
-   # than not resuming, so an unreadable ledger is an owner-visible stop.
+   # than not resuming, so an unreadable ledger is an owner-visible stop. The `-s`
+   # matters: a zero-byte ledger (an interrupted write) prints nothing under `cat`
+   # and would otherwise read as "adopt nothing" — it is the unreadable case.
    if [ ! -e "$LEDGER" ]; then
      echo "no ledger — this is a fresh run"
-   elif cat "$LEDGER"; then
+   elif [ -s "$LEDGER" ] && cat "$LEDGER"; then
      :   # adopt the fields printed above
    else
-     echo "STOP: ledger exists at $LEDGER but could not be read — resolve before resuming"
+     echo "STOP: ledger exists at $LEDGER but is empty or could not be read — resolve before resuming"
      exit 1
    fi
    ```
    - **Ledger exists and its `branch:` matches the current branch → adopt it.** Keep every field verbatim and resume from `phase_done:` — never write `phase_done: 0` over it, and never re-run a phase it already records as done. Four fields are load-bearing: `prepr_passes:` (Phase 1.5's cap, counted per PR), `prepr_reviewed_sha:` (what the last review actually covered, so the next pass reviews the delta instead of the whole branch again), `cycles_used:` (Phase 6's cap), and `handled_comment_ids:` (so threads already answered are not answered twice). Losing any one of them silently un-caps a loop.
-   - **No ledger, or a `branch:` that doesn't match → initialize.** Write `repo:`, `base:`, `branch:`, `mode:`, `phase_done: 0`. A ledger from a different branch is leftover state, not a resume point — treat it as absent and overwrite.
+   - **No ledger, or a `branch:` that doesn't match → initialize.** Write `repo:`, `base:`, `branch:`, `mode:`, `phase_done: 0`. A ledger from a different branch is leftover state, not a resume point — treat it as absent and overwrite. (One upgrade exception, linked worktrees only: a run started under an older plugin version may have left its ledger at the legacy `$(git rev-parse --git-dir)` location — before initializing fresh in a worktree, check there, and adopt-and-move a matching-branch ledger to the new path rather than resetting its caps.)
 
    **The ledger says where the pass got to — never that a gate was satisfied.** It is a resume pointer, not evidence. Whatever `phase_done:` claims, Phase 7's merge gate is re-verified against the PR itself every time: safety checks green now, `mergeStateStatus` clean now. A ledger reading `phase_done: 7` on an unmerged PR means the last run died mid-merge, not that merging was approved — resuming on its say-so would merge past a check that has since gone red.
 
@@ -147,7 +160,7 @@ A PR whose base is not `$BASE` is **stacked**: it merges into another PR's branc
 
 ## Phase 1 — Commit and open PR (requesting Copilot at creation)
 
-1. Stage relevant files **by name**. Never `git add -A` — exclude `.env*`, secrets, unrelated files.
+1. Stage relevant files **by name**. Never `git add -A` — exclude `.env*`, secrets, unrelated files, and the ship ledger (`.sonu-ship-ledger.md`) — it is run state, not source.
 2. Commit in the repo style (imperative, ≤72-char subject). **No AI attribution / no `Co-Authored-By` trailer** (see the contract above).
 3. `git push -u origin "$(git branch --show-current)"`.
 4. **Run the Phase 1.5 pre-PR fix loop (below)** on the committed diff. It reviews, fixes, and re-reviews *before* any reviewer sees the change; its final pass's risk list is `RISKS` — the 3–5 riskiest spots, embedded in the PR body for traceability and shown to the owner.
@@ -458,7 +471,18 @@ gh pr view $PR --json reviewDecision -q .reviewDecision
 ```
 When either count is ≥ 1, merging additionally requires `reviewDecision` = `APPROVED`. If a stale `CHANGES_REQUESTED` is blocking, `gh pr merge`'s error will suggest `--admin` — **that is exactly the wrong reflex: `--admin` bypasses a real gate and is banned in this flow, always** (and if the harness denies the merge command itself, that is the autonomy contract's stop (d), never a cue to find a bypass). The remedy is a fresh verdict that supersedes the stale one: `gh pr comment $PR --body "@coderabbitai review"` (or re-request the human who left it), wait for the new review, then re-check `reviewDecision`.
 
-Poll the **non-deploy-preview** checks only — `gh pr checks --watch` would block on slow deploy previews. Run this as a background until-loop (don't foreground-sleep). Require the safety-check set to be **non-empty** before breaking — right after PR creation GitHub can return an empty list before Actions register, and `jq all([])` is vacuously `true`, which would otherwise fall through to merge before any check ran. That guard covers the just-created case only: on a **stacked PR** (base ≠ `$BASE`) verified structural per the Stacked PRs section (zero check *suites* on the head commit, from a successful lookup), **do not run this poll loop at all** — with zero checks it can never reach `SAFETY_GREEN`, and its timeout branch would have you waiting forever for checks that will never register. The merge gate in that case is: local suite green (Phase 1.5), the required-reviews gate above, `mergeStateStatus` CLEAN, and the zero check-suite count re-confirmed immediately before the merge command — and the final report says the local suite stood in for CI. Any check that *did* appear on a stacked PR gates normally through this poll like any other safety check.
+Poll the **non-deploy-preview** checks only — `gh pr checks --watch` would block on slow deploy previews. Run this as a background until-loop (don't foreground-sleep). Require the safety-check set to be **non-empty** before breaking — right after PR creation GitHub can return an empty list before Actions register, and `jq all([])` is vacuously `true`, which would otherwise fall through to merge before any check ran.
+
+**A repo that runs no CI on this PR must be detected before the loop, not discovered by its timeout.** This is not only the stacked case — a repo with no workflows at all (no `.github/workflows/`) produces zero checks on every PR, and this loop can then never reach `SAFETY_GREEN`, while the timeout branch below says "keep waiting" forever. So before entering the poll — after the Phase 2C settle window has passed — probe the head commit's check suites, with the error-vs-zero distinction in the fence itself (an error is *not* a zero):
+```bash
+REPO=$(gh repo view --json nameWithOwner -q .nameWithOwner)
+if COUNT=$(gh api "/repos/$REPO/commits/$(git rev-parse HEAD)/check-suites" --jq .total_count); then
+  echo "check_suites: $COUNT"
+else
+  echo "check-suite lookup FAILED — not a zero; run the poll loop normally"
+fi
+```
+A printed `check_suites: 0` means nothing is registered to run. In that case **skip this poll loop entirely**: the merge gate becomes the green local suite (Phase 1.5), the required-reviews gate above, `mergeStateStatus` CLEAN, and the zero check-suite count re-confirmed immediately before the merge command — and the final report says the local suite stood in for CI. (The Stacked PRs section's structural-emptiness rule is this same rule — stacked PRs are just the common way to hit it.) Any check that *does* exist gates normally through this poll like any other safety check.
 
 **jq boolean pattern warning:** Do NOT write `done=$(jq -e '...' && echo "yes" || echo "no")`. `jq -e` always prints `true`/`false` to stdout before `&&` runs, so `$()` captures `"true\nyes"` — a multi-line string that never equals `"yes"` and the loop never breaks. The pattern below pipes through `>/dev/null 2>&1` to discard jq's output and uses only its exit code to drive `break` — copy it exactly, don't adapt it.
 
@@ -482,6 +506,7 @@ gh pr view $PR --json mergeStateStatus,mergeable --jq '{mergeStateStatus, mergea
   gh pr merge $PR --squash --delete-branch
   ```
 - `--delete-branch` also switches your local checkout back to `$BASE`. After it runs, `git checkout $BASE` is a no-op and a separate `git branch -D` will report "not found" — that's expected, not an error.
+- **Inside a linked worktree** (the factory route), that local switch can fail instead: `$BASE` is already checked out in the main worktree, so git refuses, and the command errors *after* the merge already landed. Do not read that as a failed merge and never re-run the merge command — confirm with `gh pr view $PR --json state,mergedAt` (want `MERGED`); the remote branch deletion happened; leave local branch and worktree cleanup to the factory sweep.
 
 Final report to the owner — **compose it before touching the ledger**; three of its bullets are read from ledger fields, and a deleted ledger cannot be read:
 - PR number + URL
@@ -496,7 +521,11 @@ Final report to the owner — **compose it before touching the ledger**; three o
 
 Then — with the report composed — delete the state ledger; the run is over and a stale ledger must not leak into the next one:
 ```bash
-rm -f "$(git rev-parse --git-dir)/sonu-ship-ledger.md"
+GD=$(git rev-parse --git-dir); CD=$(git rev-parse --git-common-dir)
+if [ "$GD" = "$CD" ]; then LEDGER="$GD/sonu-ship-ledger.md"
+else LEDGER="$(git rev-parse --show-toplevel)/.sonu-ship-ledger.md"
+fi
+rm -f "$LEDGER"
 ```
 
 ---

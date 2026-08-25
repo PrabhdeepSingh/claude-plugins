@@ -29,8 +29,15 @@ CONFIG=""
 if [ -f .sonu/factory-config.md ]; then CONFIG=".sonu/factory-config.md"
 elif [ -f "$HOME/.sonu/factory-config.md" ]; then CONFIG="$HOME/.sonu/factory-config.md"
 fi
-[ -n "$CONFIG" ] && echo "config: $CONFIG" && sed -n '2,/^---$/p' "$CONFIG" \
-  || echo "STOP: no factory config — run /sonu:factory init"
+# Three outcomes, never two — a config that exists but cannot be read must NOT
+# report "no config" (that message sends the user to re-init a file they have).
+if [ -z "$CONFIG" ]; then
+  echo "STOP: no factory config — run /sonu:factory init"
+elif [ -s "$CONFIG" ] && sed -n '2,/^---$/p' "$CONFIG"; then
+  echo "config: $CONFIG"
+else
+  echo "STOP: config exists at $CONFIG but is empty or could not be read — fix it before running a pass"
+fi
 ```
 
 The file is Markdown whose YAML frontmatter carries the settings; prose below the frontmatter is for humans and is ignored:
@@ -140,7 +147,7 @@ There is no status field to maintain. With a human triggering every pass, stored
 | Linked PR merged | Done. |
 | Closed with no merged PR | Rejected, duplicate, invalid, or superseded — the closing comment carries which. |
 
-Stored status exists in exactly one legal form: a **display cache** of the derived states above, for humans scanning a ticket list. Two instances — the `factory:*` status markers on label trackers, which mirror the table's states at a glance, and the local file store's `status:` field, which a file additionally needs because it has no other way to express "done". Three rules keep a cache from becoming the stale bookkeeping this section exists to prevent: each transition has exactly one writer at a defined seam (the workflow files and `references/local.md` name them), the factory sweep corrects or clears any marker that has drifted from the artifacts on every pass, and **no workflow ever reads a status marker to decide anything** — decisions come from the artifacts above, because a dead session's leftover marker would steer the next pass wrong. Humans get glanceability; the artifacts keep authority.
+Stored status exists in exactly one legal form: a **display cache** of the derived states above, for humans scanning a ticket list. Two instances — the `factory:*` status markers on label trackers, which mirror the table's states at a glance, and the local file store's `status:` field, which a file additionally needs because it has no other way to express "done". Three rules keep a cache from becoming the stale bookkeeping this section exists to prevent: each transition has exactly one writer at a defined seam (the workflow files and `references/local.md` name them), the factory sweep corrects or clears any marker that has drifted from the artifacts on every pass, and **no workflow ever reads a status marker to decide routing** — routing decisions come from the artifacts above, because a dead session's leftover marker would steer the next pass wrong. The one sanctioned reader is the dispatcher's stale-claim and liveness detection, where a marker serves as *evidence about a possibly-dead session* to report or flag — never as authority, and every action it prompts is re-verified against the artifacts. Humans get glanceability; the artifacts keep authority.
 
 Record risk, dependencies, and unresolved decisions in the ticket body, not as new label dimensions. Why: a dimension nobody queries is pure maintenance cost that still has to be kept correct.
 

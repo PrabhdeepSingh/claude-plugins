@@ -32,6 +32,8 @@ Confirm every value you are about to write already exists in the tracker: the ty
 
 If validation fails, report the exact mismatch and make **no changes at all** — not even the tickets that would have worked. A half-applied sweep is worse than none: nobody can tell which tickets the pass reached.
 
+On the **local file tracker** there is nothing tracker-side to validate: type and priority are free-text frontmatter, and the lifecycle taxonomy itself is the registry. This step passes by construction there — never abort a local sweep on it.
+
 ## 3. Classify — one type, one evidence-based priority
 
 Apply the lifecycle taxonomy per ticket. Type is a question about the deliverable, priority a question about consequence.

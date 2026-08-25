@@ -47,7 +47,7 @@ Update each; the version appears in homes 1–2, the plugin description in homes
 | 4 | `.cursor-plugin/marketplace.json` | Same as #3 |
 | 5 | `README.md` | Component sections, install-section command roster, the Layout diagram |
 
-Description conventions: every command and skill is *named* in the marketplace description (that's what `/validate` check 2 enforces); keep it scannable, not a mega-paragraph.
+Description conventions: every command and skill is *named* in the marketplace description (that's what `/validate` check 2 enforces); keep it scannable, not a mega-paragraph. One deliberate asymmetry: the two marketplace files' top-level *marketplace* `description` fields differ — the Cursor copy carries a "(Claude Code and Cursor)" suffix — and that difference is intentional, not drift; sync everything else.
 
 ## Phase 3 — Validate
 

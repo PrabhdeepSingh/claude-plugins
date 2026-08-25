@@ -96,6 +96,8 @@ General rules: keep every migration transaction **short**; never mix a schema ch
 
 A migration tested only against the dev database has been tested against nothing. Before production: run it against a recent production-shaped copy (a snapshot restore, a staging clone) and record **how long it took and what it locked**. That number is what tells you whether it's a deploy step or a scheduled maintenance job. This is the migration version of [[tdd]]'s "watch the test fail" — evidence over assumption.
 
+When this session has no production-shaped copy to rehearse against — no snapshot access, no staging clone, no row counts — **say so explicitly and write the rehearsal into the hand-off as a named pre-deploy step** (what to restore, what to run, what to record). Claiming a rehearsal that didn't happen is the failure; lacking the copy is just a fact to surface. The same honesty applies to the lock and down-path items in the self-check below.
+
 ---
 
 ## Self-check before you ship a migration
@@ -106,7 +108,7 @@ A migration tested only against the dev database has been tested against nothing
 - Does every step have a tested down path — or an explicit `IRREVERSIBLE` marker with a backup as a stated pre-step?
 - Do you know what locks this takes and for how long **at production row counts** — and did you use the non-blocking form where one exists?
 - New constraints/enum changes: validated against existing data before enforcement? Enum removals staged like renames?
-- Was the migration rehearsed against a production-shaped copy, with its duration recorded?
+- Was the migration rehearsed against a production-shaped copy, with its duration recorded — or, where this session had no copy to rehearse against, is the rehearsal written into the hand-off as a named pre-deploy step (never claimed as done)?
 
 ## Provenance and maintenance
 
