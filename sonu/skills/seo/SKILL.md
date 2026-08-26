@@ -164,6 +164,8 @@ Run this against the diff, template, or piece. Fix any "no" before finishing. It
 - One clear search intent and primary query, no cannibalization — with the piece covering the topic to completion, length driven by intent?
 - Each section led by a 40–60 word direct answer under a question heading, evidentiary (statistics, attributed quotes, citations, original information), with clear authorship?
 - Images: descriptive ≤125-char alt (or empty if decorative), hyphenated lowercase file names — and 2–5 descriptive internal links per 1,000 words of prose?
+- Every anchor descriptive (no "read more"), pointing at a canonical URL, no redundant duplicate links — and non-critical JS/CSS externalized and minified, the rendered output free of whitespace/comments (a build-output property; never hand-strip source templates)?
+- Primary keyword in title / H1 / first-100-words / slug, written naturally with no stuffing — and if AI-assisted, has a human added original value and verified the facts?
 - Free of every anti-pattern in §22?
 
 ---
