@@ -11,7 +11,7 @@ Prabhdeep (Sonu) Singh's personal [Claude Code](https://claude.com/claude-code) 
 /plugin install sonu@prabhdeep-tools
 ```
 
-Run those once per device. After that, `/sonu:build`, `/sonu:ship`, `/sonu:factory`, `/sonu:tdd`, `/sonu:design-tree`, `/sonu:self-review`, `/sonu:ticket-triage`, `/sonu:classify-tickets`, and `/sonu:bug-finder` are available in every repo on that machine, and the **code-standards**, **tdd**, **debugging**, **security**, **blast-radius**, **safe-migrations**, **infra-standards**, **observability**, **seo**, **design-tree**, **model-tiering**, **self-review**, **pr-conventions**, **ticket-lifecycle**, **ticket-triage**, **classify-tickets**, and **bug-finder** skills ride along automatically — no command to run, they just shape how code and content get written. To pull updates later:
+Run those once per device. After that, `/sonu:build`, `/sonu:ship`, `/sonu:factory`, `/sonu:tdd`, `/sonu:design-tree`, `/sonu:self-review`, `/sonu:ticket-triage`, `/sonu:classify-tickets`, and `/sonu:bug-finder` are available in every repo on that machine, and the **code-standards**, **tdd**, **debugging**, **security**, **performance**, **intent-interview**, **blast-radius**, **safe-migrations**, **infra-standards**, **observability**, **seo**, **design-tree**, **model-tiering**, **self-review**, **pr-conventions**, **ticket-lifecycle**, **ticket-triage**, **classify-tickets**, and **bug-finder** skills ride along automatically — no command to run, they just shape how code and content get written. To pull updates later:
 
 ```
 /plugin marketplace update prabhdeep-tools
@@ -305,6 +305,18 @@ Build-time security discipline, distinct from the after-the-fact `/security-revi
 
 Edit `sonu/skills/security/SKILL.md` to tune it.
 
+### `performance` — the measurement is the work
+
+Performance as measurement discipline, not a bag of tricks: baseline first (metric, conditions, budget), profile-don't-deduce, one change per cycle, re-measure the same way, beat the noise not the mean — and a keep/revert verdict where **neutral is a revert** ("code you keep, you maintain forever; make it pay for itself"). Reverted attempts go in a ledger so dead ideas stay dead, and wins get guarded by a budget or alert.
+
+Edit `sonu/skills/performance/SKILL.md` to tune it.
+
+### `intent-interview` — find out what they actually want first
+
+Pre-spec intent extraction for when the asked-for artifact itself might be wrong ("build me a dashboard" that turns out to need a list). One question at a time, each with a visible guess attached; the want-vs-should-want detector ("if you didn't have to justify this to anyone, what would you actually want?"); a six-line restate ending in Out of scope; and a list of what does NOT count as yes ("whatever you think is best" is delegation, not confidence). Interactive contexts only — headless runs flag the gap as a blocker instead of guessing.
+
+Edit `sonu/skills/intent-interview/SKILL.md` to tune it.
+
 ### `pr-conventions` — right template, living description, honest replies
 
 A skill, not a command — there's nothing to invoke. Once the plugin is installed, Claude uses it automatically inside `/sonu:ship` to author PR descriptions, keep them current, and reply to review threads. Also callable standalone when you're crafting a PR body or responding to comments outside the ship flow.
@@ -483,6 +495,10 @@ claude-plugins/
         │   └── references/  # before/after examples + the llms.txt aside
         ├── security/
         │   └── SKILL.md     # threat-model-first, boundary tiers, SSRF, supply chain, LLM security, privacy
+        ├── performance/
+        │   └── SKILL.md     # baseline → one change → beat the noise → neutral is a revert
+        ├── intent-interview/
+        │   └── SKILL.md     # pre-spec intent extraction — one question at a time, guess attached
         ├── interface-review/
         │   └── SKILL.md     # holistic interface audit — coordinates the six domains below into one verdict
         ├── accessibility/
