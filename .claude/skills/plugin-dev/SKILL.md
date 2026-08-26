@@ -38,7 +38,7 @@ These decisions are deliberate. Don't reverse them casually; if one must change,
 
 These are law for every contribution. They pre-date this file; this is their canonical written home.
 
-1. **No named sources.** Skills never cite books, authors, papers, or studies — not in the description, not in the body. Embed the knowledge as owned instruction. A named source sends a smaller model off to research the citation instead of applying the content (this happened: a named study in content-seo had to be excised).
+1. **No named sources.** Skills never cite books, authors, papers, or studies — not in the description, not in the body. Embed the knowledge as owned instruction. A named source sends a smaller model off to research the citation instead of applying the content (this happened: a named study in the editorial-SEO skill had to be excised).
 2. **Description = routing signal only.** A skill's frontmatter `description` says *what it is* and *when to load it* (distinctive triggers, plus when NOT to and which sibling to use — within §4's description budget). Methodology, sequencing, and rules live in the body. The description is what the model reads when deciding whether to load the skill — nothing else fits there.
 3. **No AI attribution anywhere.** No `Co-Authored-By` trailers, no "Generated with" lines — in this repo's own commits and PRs, and in everything ship produces. Work reads as the owner's own.
 4. **Version-sync in the same PR.** Any component change bumps the plugin version and syncs the plugin description across its five homes — they have drifted before. The exact file list and procedure live in exactly one place, `/release` Phase 2; follow that rather than reciting from memory.
@@ -56,7 +56,7 @@ Definitions a zero-context contributor needs (re-verify against the official Cla
   - `disable-model-invocation: true` — prevents the model from firing the command on its own; the user must type it. Deliberately **not** set on `/sonu:ship`: the command's own body makes saying "ship it" the authorization for the whole flow, so the owner decided in 2026-07 that model-invocation should work. Don't re-add the flag without a fresh decision to reverse that.
 - **`$ARGUMENTS`** — the literal text typed after the invocation, in commands and in directly-invoked skills alike. House convention for handling it, used wherever it appears: *"the text typed after the invocation; if that token appears literally or is empty, derive the task from context."* Commands phrase it "typed after the command" — same convention, both wordings canonical. (The "appears literally" clause covers harnesses that don't substitute the token.)
 - **Skill invocation from a command**: `Skill(sonu:<name>)` — always the namespaced form. Unqualified names are a real bug that shipped once.
-- **`[[…]]` links** — an in-house cross-reference convention between sibling skills (e.g. `[[tdd]]`, `[[seo-standards]]`). There is no resolver; it just marks "see that skill." Keep using it; don't invent URLs. Every double-bracket reference must name a real sibling skill — `/validate` checks this.
+- **`[[…]]` links** — an in-house cross-reference convention between sibling skills (e.g. `[[tdd]]`, `[[safe-migrations]]`). There is no resolver; it just marks "see that skill." Keep using it; don't invent URLs. Every double-bracket reference must name a real sibling skill — `/validate` checks this.
 
 ## 4. Authoring conventions — the house shape
 

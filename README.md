@@ -11,7 +11,7 @@ Prabhdeep (Sonu) Singh's personal [Claude Code](https://claude.com/claude-code) 
 /plugin install sonu@prabhdeep-tools
 ```
 
-Run those once per device. After that, `/sonu:build`, `/sonu:ship`, `/sonu:factory`, `/sonu:tdd`, `/sonu:design-tree`, `/sonu:self-review`, `/sonu:ticket-triage`, `/sonu:classify-tickets`, and `/sonu:bug-finder` are available in every repo on that machine, and the **code-standards**, **tdd**, **debugging**, **blast-radius**, **safe-migrations**, **infra-standards**, **observability**, **seo-standards**, **content-seo**, **design-tree**, **model-tiering**, **self-review**, **pr-conventions**, **ticket-lifecycle**, **ticket-triage**, **classify-tickets**, and **bug-finder** skills ride along automatically — no command to run, they just shape how code and content get written. To pull updates later:
+Run those once per device. After that, `/sonu:build`, `/sonu:ship`, `/sonu:factory`, `/sonu:tdd`, `/sonu:design-tree`, `/sonu:self-review`, `/sonu:ticket-triage`, `/sonu:classify-tickets`, and `/sonu:bug-finder` are available in every repo on that machine, and the **code-standards**, **tdd**, **debugging**, **blast-radius**, **safe-migrations**, **infra-standards**, **observability**, **seo**, **design-tree**, **model-tiering**, **self-review**, **pr-conventions**, **ticket-lifecycle**, **ticket-triage**, **classify-tickets**, and **bug-finder** skills ride along automatically — no command to run, they just shape how code and content get written. To pull updates later:
 
 ```
 /plugin marketplace update prabhdeep-tools
@@ -293,21 +293,11 @@ A skill, not a command — it fires automatically on any infra surface: Terrafor
 
 A skill, not a command — it fires automatically when creating a service, endpoint, or job, or adding metrics/tracing/error capture/health checks/alerts. It encodes the producing side of what `debugging` consumes: the four questions every operation must answer from telemetry alone (traffic, errors, latency, saturation), the metric cardinality trap (no unbounded labels), trace-context propagation, liveness-vs-readiness health endpoints that don't cause restart storms, error capture tagged with the release (what makes first-seen bisection possible), and alert quality — page on user-facing symptoms only, every alert actionable and owned, delete what gets ignored. Instrumentation ships with the feature, not after the incident.
 
-### `seo-standards` — technical SEO, baked in
+### `seo` — technical + editorial SEO, baked in
 
-The HTML/template/plumbing side of SEO. Like `code-standards`, there's nothing to invoke — Claude reaches for it automatically whenever it touches anything served as a web page or that affects how one is crawled: page/component templates (HTML, JSX/TSX, Vue, Svelte, Astro), route and URL definitions, redirects, `<head>` metadata (title, meta description, canonical, robots, hreflang, Open Graph), schema.org JSON-LD, sitemaps, and robots.txt.
+Both halves of SEO in one skill. The plumbing side fires whenever Claude touches anything served as a web page or affecting how one is crawled — templates (HTML, JSX/TSX, Vue, Svelte, Astro), routes, redirects, `<head>` metadata, schema.org JSON-LD, sitemaps, robots.txt — covering heading structure, title/meta lengths, canonicals, URL strategy, redirect rules (301/302/410), structured data, and indexation controls. The editorial side fires on prose meant to be published (posts, guides, landing copy, changelogs, docs, Markdown content): one search intent per page, structure a machine can extract, depth and E-E-A-T over keyword stuffing, and featured-snippet / AI-citation formatting so content earns citations in AI answer engines, not just blue links.
 
-It covers heading structure (one `<h1>` per URL, headings for hierarchy not nav), title/meta length, canonical tags, URL strategy, redirect rules (301/302/410), structured data, render-blocking JS/CSS, and indexation controls — every rule optimizing for the crawler and the human reader at once. The point: correct SEO is far cheaper to bake in at build time than to retrofit after launch.
-
-Edit `sonu/skills/seo-standards/SKILL.md` to tune it.
-
-### `content-seo` — write it so humans rank it and AI cites it
-
-The editorial counterpart to `seo-standards`: that one governs the plumbing, this one governs the *writing*. It fires automatically whenever Claude writes or edits prose meant to be published — blog posts, articles, guides, tutorials, landing/marketing copy, press releases, changelog and "what's new" entries, FAQs, docs, and Markdown content (`content/**/*.md`, `*.mdx`) plus its frontmatter.
-
-It encodes modern on-page SEO: start from a single search intent, structure a machine can extract, real depth and E-E-A-T over keyword stuffing, internal linking, image alt text, URL slugs, and featured-snippet / AI-citation formatting — so content doesn't just rank in the traditional top 10 but earns citations in AI answer engines (Google AI Overviews, ChatGPT, Claude, Perplexity, Gemini).
-
-Edit `sonu/skills/content-seo/SKILL.md` to tune it.
+Edit `sonu/skills/seo/SKILL.md` to tune it.
 
 ### `pr-conventions` — right template, living description, honest replies
 
@@ -341,7 +331,7 @@ Auto-applied — it fires automatically whenever you're designing or planning an
 It encodes a design methodology built around one core idea: design is traversing a branching tree, not marching a line. What that looks like in practice:
 
 - **Interview first.** Before branching anything, ask 2–4 targeted questions to confirm intent, constraints, success criteria, and non-goals. Designing the right problem saves more context and tokens than anything else.
-- **Load the standards as constraints.** `code-standards` always, plus `safe-migrations`/`seo-standards`/`content-seo`/`infra-standards`/`observability`/`blast-radius` and the interface bars (`accessibility`, `layout`, `ui-polish`, and `typography`/`colors`/`ux-writing`) when the surface matches — a fork a standard already settles is stated and cited, never treed. The plan-vs-standards conflict gets resolved at design time, not discovered by the executor mid-build.
+- **Load the standards as constraints.** `code-standards` always, plus `safe-migrations`/`seo`/`infra-standards`/`observability`/`blast-radius` and the interface bars (`accessibility`, `layout`, `ui-polish`, and `typography`/`colors`/`ux-writing`) when the surface matches — a fork a standard already settles is stated and cited, never treed. The plan-vs-standards conflict gets resolved at design time, not discovered by the executor mid-build.
 - **Find the real forks.** Only decision points where the design could genuinely go in ≥2 consequential ways — not trivia, not forced choices.
 - **Enumerate genuine alternatives** at every fork. No strawmen invented to be knocked down.
 - **Record the chosen branch** with a decisive reason (a real constraint, trade-off, or irreversibility) — not a vague preference.
@@ -482,10 +472,8 @@ claude-plugins/
         │   └── SKILL.md     # IaC, Docker, CI/CD, secrets — plan before apply
         ├── observability/
         │   └── SKILL.md     # metrics, traces, health checks, alerts worth paging on
-        ├── seo-standards/
-        │   └── SKILL.md     # technical SEO for web pages
-        ├── content-seo/
-        │   ├── SKILL.md     # editorial SEO for published prose
+        ├── seo/
+        │   ├── SKILL.md     # technical + editorial SEO for anything served as a web page
         │   └── references/  # before/after examples + the llms.txt aside
         ├── interface-review/
         │   └── SKILL.md     # holistic interface audit — coordinates the six domains below into one verdict

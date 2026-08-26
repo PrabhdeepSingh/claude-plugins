@@ -102,7 +102,7 @@ Every identity — service principals, IAM roles, managed identities, deploy key
 ## 7. Environments: parity, previews, and idempotency
 
 - **Staging mirrors production's shape** — same IaC modules, smaller SKUs. Config differences are parameters, not divergent templates; the thing you tested should be structurally the thing you ship.
-- **Ephemeral previews** (Vercel preview deploys, PR environments) are production-shaped too: preview env vars are a separate scope from production's, and previews stay non-indexable — the same discipline [[seo-standards]] applies to staging environments.
+- **Ephemeral previews** (Vercel preview deploys, PR environments) are production-shaped too: preview env vars are a separate scope from production's, and previews stay non-indexable — the same discipline [[seo]] applies to staging environments.
 - **Idempotency is the IaC contract**: applying twice with no changes = zero diff. If a second apply shows changes, something is non-deterministic (a timestamp, an unpinned version, drift) — fix it before it hides a real diff.
 
 ---
