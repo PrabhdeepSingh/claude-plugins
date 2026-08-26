@@ -78,7 +78,7 @@ Build the change test-first under the active quality bars:
 4. **Run the suite via `Bash`.** Don't take green on faith:
    ```bash
    # derive the right command from the repo's package.json / Makefile / README
-   # e.g.: npm test / pytest / go test ./... / cargo test
+   # discover the repo's real commands per tdd's discover-the-stack rule — never assume a default
    ```
    If tests are red, fix and re-run until green. Do not proceed while the suite is failing.
 

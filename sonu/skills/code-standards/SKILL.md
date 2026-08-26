@@ -109,6 +109,10 @@ A function should do one thing at one level of abstraction — if you need "and"
 
 Separate concerns by layer — business logic doesn't belong in UI components; data access doesn't belong in controllers or views. Prefer pure functions (same input, same output, no hidden side effects) wherever the work is a calculation, and push side effects to the edges. Don't repeat yourself, but don't abstract prematurely either — reach for a shared abstraction on the third occurrence (the rule of three), once you know what actually varies.
 
+**Refactors must reduce complexity, not relocate it.** Count the concepts a reader must hold to follow the code; if a "cleaner" version leaves that count unchanged, it isn't cleaner — prefer the restructuring that makes whole branches, modes, or layers disappear, and prefer deleting an abstraction to polishing it. The mirror-image traps when simplifying: inlining a helper that gave a concept its name makes call sites *harder* to read; merging two simple functions into one complex one isn't simpler; some abstractions exist for testability or extension, not complexity — and fewer lines was never the goal. Before simplifying unfamiliar code, answer: what is its responsibility, who calls it, what are the edge cases, do tests define its behavior, and *why might it be written this way* (performance? platform constraint? check `git blame`) — if you can't answer these, you're not ready to simplify. And a simplification that requires modifying tests to pass likely changed behavior — that's [[tdd]]'s test-is-innocent rule firing.
+
+**Two size tripwires beyond the function.** A *file* near ~1000 total lines is an inspection signal even when the diff is small — when a change materially grows an already-large file, decompose first, then add. And a refactor that would touch more than ~500 lines by hand gets automated (a codemod, `sed`, an AST transform) — manual edits at that scale are error-prone and exhausting to review.
+
 ## 5. Data access: ask for exactly what you need
 
 Queries are where code meets scale — something instant against 50 rows in development can take down production at 50,000. Write every query as if the table is already huge.
@@ -156,7 +160,7 @@ Logs are how you understand a system you can't step through — in production th
 
 Every value crossing a trust boundary — request body, query string, headers, third-party responses — is hostile until proven otherwise. Two defenses, always together:
 
-**Validate at the boundary, before the value touches any logic.** Check type, shape, length, range, and allowed values the moment input enters; prefer allow-lists over deny-lists; validate on the *server* even when the client already did (client checks are UX, not security). Use a schema validator (zod, Joi, pydantic) rather than a pile of hand-rolled `if`s.
+**Validate at the boundary, before the value touches any logic.** Check type, shape, length, range, and allowed values the moment input enters; prefer allow-lists over deny-lists; validate on the *server* even when the client already did (client checks are UX, not security). Use a schema validator (zod, Joi, pydantic) rather than a pile of hand-rolled `if`s. **And know where the boundary ends**: don't re-validate between internal functions that share a type contract, inside utilities only ever called by validated code, or on data read back from your own database — validation everywhere is noise that buries the boundaries that matter.
 
 **Never build a query or command by concatenating input — parameterize.** A parameterized query sends SQL and values over separate channels, so a malicious value is treated as data, never executed. The same instinct extends to shells (pass an argument array), `eval`, file paths (traversal), and HTML output (XSS — encode on output).
 
@@ -189,7 +193,9 @@ An endpoint's response gets baked into clients you don't control, so what you re
 - **One error shape, everywhere** — every error response uses the same envelope, or every client writes its own parser.
 - **Breaking a response is a migration** — remove or rename a field the same staged way as [[safe-migrations]]: add alongside, migrate consumers, retire deliberately, never in one step.
 
-→ `references/data-and-api.md` — the allowlist example, full status-code list, and migration detail, read when this change touches an endpoint's request or response shape.
+- **Retried operations need idempotency designed, not assumed.** Any endpoint that moves money, sends messages, or creates records will be retried — and retries are *correlated*, spiking exactly when a dependency is degraded and duplicates cost most. Derive the idempotency key from the *intent* (client- or event-supplied, from an immutable identifier), never from the attempt; claim it atomically (check-then-act is a race — the unique constraint *is* the mechanism); and treat every outbound call as having three outcomes — success, failure, and *unknown* — recording intent before calling out.
+
+→ `references/data-and-api.md` — the allowlist example, full status-code list, migration detail, and the full idempotency contract (key derivation, atomic claim, payload guard, in-flight duplicates, retention), read when this change touches an endpoint's request or response shape or a retried operation.
 
 ## 14. Configuration and feature flags: absence must be safe
 
@@ -206,6 +212,16 @@ const newDashboardEnabled = process.env.NEW_DASHBOARD_ENABLED === 'true';
 Two corollaries: config that is *required* for correct operation fails fast at startup rather than defaulting at all; and the resolved values of behavior-gating flags are logged once at startup (through the §8 logger) so what's actually running is observable, not assumed.
 
 The criterion for which corollary applies: **would running with this thing off be unsafe?** A *feature* gate (a new UI, an experiment, an optimization) defaults off — absence is safe. A *protective control* (auth enforcement, rate limiting, TLS verification) is required config: in production it fails fast at startup when unset, because "off" isn't a safe state for a protection — it's the outage waiting to be discovered. The one thing absence must never do, in either case, is silently choose "on."
+
+## 15. Dependencies: adopt deliberately, upgrade one at a time
+
+Adding a package is an architectural decision; upgrading one is a behavioral change wearing a version number.
+
+- **Read the changelog, not the version number.** Semver is a promise the maintainer may not have kept — a "patch" can carry a behavioral change your code depends on.
+- **One dependency per change.** When a bulk bump breaks the build, you've lost which package did it; a single-package change makes the cause obvious and the revert clean.
+- **Let the tests decide** — green before *and* after, not "it installed." Thin coverage around the dependency's behavior is itself the finding: add the test first.
+- **Review the lockfile diff, not just the manifest** — one direct bump can pull dozens of transitive changes. Commit the lockfile; never hand-edit it.
+- **Don't implement a framework's API from memory.** Verify against the current official docs for the installed version; when you can't verify, mark the code `UNVERIFIED: based on training data` rather than hedging — a disclaimer helps nobody, a flag gets checked.
 
 ---
 
@@ -224,5 +240,5 @@ Run this against your own diff — the numbered sections above are the rest of t
 
 | File | What it answers |
 |------|-----------------|
-| `references/data-and-api.md` | A full example record (§2), worked SQL/ORM query examples (§5), and the API allowlist example, status-code list, and migration detail (§13) |
+| `references/data-and-api.md` | A full example record (§2), worked SQL/ORM query examples (§5), the API allowlist example, status-code list, and migration detail (§13), and the idempotency contract (§13) |
 | `references/security.md` | The silent-fallback example (§7), SQL-injection and boundary-validation examples (§9), and the login-enumeration example (§10) |

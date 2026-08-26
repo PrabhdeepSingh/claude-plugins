@@ -16,6 +16,8 @@ Follow these rules the same way you follow [[code-standards]] — as the instinc
 
 Before writing a single line of production code, write the failing test. Let the test drive the design. Then write the minimum code to make it pass. Then refactor. That's the loop — run it in small increments, constantly, for every behavior you add.
 
+**Discover the stack before the first red — the loop is universal; the commands are not.** Find the build system from its manifest (`package.json`, `pyproject.toml`, `go.mod`, `Cargo.toml`, `pom.xml`, `Gemfile`, a `Makefile`); prefer checked-in wrappers (`./gradlew`, `./mvnw`, `make test`, a repo script) over globally installed tools; learn **both** the focused-single-test command (run during the loop) and the full-suite command (run before completion) — they differ in every framework; and read the README/CONTRIBUTING and CI workflow files, because those show the commands that actually gate merges. Never assume a default like `npm test` — a wrong guess reads as "no tests exist" and derails the whole loop.
+
 **Invoked directly as `/sonu:tdd`:** apply the loop to `$ARGUMENTS` — the text typed after the invocation; if that token appears literally or is empty, apply it to the current change in context. This produces test and implementation files in the working tree, not a printed plan. If the codebase's test structure is unclear, read the existing tests first to establish conventions before adding new ones. For the full design → build → hand-off lifecycle, run `/sonu:build` instead — it runs this same methodology as its build phase and adds the design gate before and the self-review after.
 
 When you finish a change, run the self-check at the bottom against your own diff.
@@ -76,12 +78,13 @@ Non-negotiable — a test suite without these isn't a safety net, it's noise you
 - **Isolated.** No shared mutable state between tests, no ordering dependency.
 - **Deterministic.** No real clock, random numbers, or file system in the unit core — inject dependencies so tests control them. A test that sometimes passes and sometimes fails trains you to ignore red.
 - **Self-validating.** The test itself asserts pass or fail — no human reads output to decide.
+- **Run once, trust the result.** After a green run, re-running the same command on unchanged code adds no information — it's reassurance-seeking, not verification. Run again after the next edit, not in between.
 
 → `references/examples.md` §6 — injecting a frozen clock instead of depending on real time — read when a test depends on time, randomness, or I/O.
 
 ## 7. Test doubles — mock only at the seams
 
-A test double is a stand-in for a real collaborator: **stubs** return canned data, **mocks** assert call behavior, **fakes** are working lightweight implementations, **spies** record what was called. **Mock only at architectural seams** — things that cross a process boundary: a real database, a payment gateway, the network, the clock. These are slow, unreliable, or have real-world consequences you don't want tests to trigger. **Don't mock your own domain objects** — a test that mocks the unit under test or its value objects tests nothing. The rule of thumb: the more you mock, the less you're testing.
+A test double is a stand-in for a real collaborator: **stubs** return canned data, **mocks** assert call behavior, **fakes** are working lightweight implementations, **spies** record what was called. **Mock only at architectural seams** — things that cross a process boundary: a real database, a payment gateway, the network, the clock. These are slow, unreliable, or have real-world consequences you don't want tests to trigger. **Don't mock your own domain objects** — a test that mocks the unit under test or its value objects tests nothing. The rule of thumb: the more you mock, the less you're testing. Preference order when a double is genuinely needed: **real implementation → fake → stub → mock** — reach for the next rung only when the previous one is too slow, nondeterministic, or side-effecting.
 
 → `references/examples.md` §7 — over-mocked vs. seam-only example — read when choosing what to mock.
 
@@ -92,6 +95,8 @@ Tests live at three layers: **unit** (base, most — one unit in isolation, real
 ## 9. Coverage is a byproduct, not a target
 
 Coverage tells you which lines ran, not whether the behavior was verified. A test that calls a function without asserting anything meaningful moves the number but catches no bugs — negative value: maintenance cost with no protection. Don't chase 100%; use coverage to find gaps in behavior, not to hit a number.
+
+**Snapshot tests are the same theater in a different costume.** A large snapshot nobody reviews breaks on any change and gets blindly regenerated — an assertion that asserts nothing. Use snapshots sparingly, keep them small enough to read in a diff, and review every regeneration as a deliberate spec change.
 
 → `references/examples.md` §9 — coverage-theater vs. a real assertion — read when tempted to chase a coverage number.
 
@@ -126,7 +131,7 @@ A test change is legitimate in exactly two cases, and both require saying so out
 
 ## 12. Tests are first-class code
 
-A test suite that's hard to read is a test suite nobody trusts. Apply [[code-standards]] to test code with the same discipline as production code: intention-revealing names, small focused helpers, guard clauses, no magic numbers, no commented-out tests, no duplication. If the test body is long enough to need scrolling, extract helpers.
+A test suite that's hard to read is a test suite nobody trusts. Apply [[code-standards]] to test code with the same discipline as production code: intention-revealing names, small focused helpers, guard clauses, no magic numbers, no commented-out tests. **One deliberate carve-out: in tests, descriptive beats DRY.** A test should read like a specification — a complete story without tracing through shared helpers — so duplication between tests is acceptable exactly when it makes each test independently understandable; extract a helper when it clarifies, never merely to deduplicate. If the test body is long enough to need scrolling, extract helpers.
 
 ---
 

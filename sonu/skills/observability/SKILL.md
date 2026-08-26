@@ -12,6 +12,8 @@ The [[debugging]] skill's first production move is "pull the real event." That m
 
 Instrumentation is part of the feature, not a follow-up: a new endpoint ships with its metrics, error capture, and trace context wired, the same way it ships with tests. Run the self-check before calling any service change done.
 
+**Define "working" before instrumenting.** Write down 2–4 questions an on-call engineer will ask about *this feature* ("is the retry actually recovering payments?", "which provider is slow?") — every signal below must help answer one. Telemetry without a question is noise: if you can't name the questions, you'll log everything and learn nothing. The division of labor, as a rule of thumb: **metrics tell you *that* something is wrong, traces tell you *where*, logs tell you *why*.**
+
 ---
 
 ## 1. The four questions drive what you instrument
@@ -32,7 +34,7 @@ The mechanics — levels, structured key/value context, correlation ids, the no-
 ## 3. Metrics: counters, histograms, and the cardinality trap
 
 - **Counters** for things that happen (`orders_created_total`), **histograms** for durations and sizes (`checkout_duration_seconds`), **gauges** for current levels (`queue_depth`). Name with the unit in the name — a metric called `timeout` that's secretly milliseconds causes a 1000× misread.
-- **The cardinality trap — the one metrics mistake that takes the platform down.** Every distinct label combination is a separate stored time series. Labels are for *low-cardinality dimensions*: endpoint, status class, region — a bounded set you could list. Putting `user_id`, `order_id`, an email, or a raw URL path (with ids embedded) in a label multiplies series without bound until the metrics backend falls over or the bill does. Per-entity data belongs in logs and traces, which are built for it — never in metric labels.
+- **The cardinality trap — the one metrics mistake that takes the platform down.** Every distinct label combination is a separate stored time series. Labels are for *low-cardinality dimensions*: endpoint, status class, region — a bounded set you could list. Putting `user_id`, `order_id`, an email, a `request_id`, raw error-message text, or a raw URL path (with ids embedded) in a label multiplies series without bound until the metrics backend falls over or the bill does. Per-entity data belongs in logs and traces, which are built for it — never in metric labels.
 
 ```js
 // Avoid: unbounded label — one time series per user, forever
@@ -66,11 +68,14 @@ Wire the error tracker (Sentry, App Insights, Datadog — whatever the project u
 
 - **Alert on what users feel** — error rate, latency percentile, availability — not on causes like CPU or memory. High CPU with healthy latency is a Tuesday; paging on it teaches people to ignore pages. Cause-level signals belong on dashboards, where they explain a symptom alert.
 - **Every alert is actionable and owned**: a threshold someone can defend, a responder who knows it's theirs, and a linked runbook or at minimum a "check X, then Y" note. An alert with no action attached is spam with a pager.
+- **Exactly two severities: page and ticket.** Page means a human acts now; ticket means someone acts this week. A third tier becomes the pile everyone learns to ignore — and trains them to ignore the first two.
 - **Alert fatigue is a system failure, not a personnel issue.** An alert that fires routinely and gets dismissed routinely must be re-thresholded, converted to a dashboard, or deleted — a channel full of ignored red is *worse* than silence, because it hides the real one. (Same failure shape as coverage theater in [[tdd]]: signal that doesn't mean anything trains people to skip signal entirely.)
 
 ## 8. Instrumentation ships with the feature
 
-The definition of done for a new endpoint, job, or service includes: the four signals (section 1), error capture with release tagging (section 6), trace propagation (section 4), and — for a new service — the two health endpoints (section 5). Retrofitting is 10× the cost and always happens *after* the incident that needed it. If the project has no observability stack at all, say so explicitly and put the gap in the hand-off notes ([[self-review]]) rather than silently shipping a black box.
+The definition of done for a new endpoint, job, or service includes: the four signals (section 1), error capture with release tagging (section 6), trace propagation (section 4), and — for a new service — the two health endpoints (section 5). Retrofitting is 10× the cost and always happens *after* the incident that needed it.
+
+**Then verify the telemetry itself — instrumentation is code, and it can be wrong.** Before calling it done: force an error in a non-production environment and find it in the tracker by correlation id, with fields structured (not `[object Object]`); send test traffic and confirm the metric series appear with the expected labels; follow one request across services and confirm no broken spans; and fire each new alert once by temporarily lowering its threshold, confirming it reaches the right channel and its runbook link works. The bar: **an induced failure was located from telemetry alone, without reading the source.** If the project has no observability stack at all, say so explicitly and put the gap in the hand-off notes ([[self-review]]) rather than silently shipping a black box.
 
 ---
 
