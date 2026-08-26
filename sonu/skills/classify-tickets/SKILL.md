@@ -74,9 +74,3 @@ Anything you notice that falls outside the two fields — a ticket needing a spe
 - Did you leave already-correct tickets untouched instead of churning them?
 - Does the report name the evidence for every P0 and P1 in one line each?
 - Did you avoid every out-of-bounds action in section 5 — no comments, no closures, no triggers, no text edits, no code?
-
-## Provenance and maintenance
-
-Last verified 2026-07:
-
-- Tracker mechanics for the classify operation, and which dimension is a label versus a native field, live per-adapter in [[ticket-lifecycle]]'s `references/` — re-verify there, not here, when an API changes.

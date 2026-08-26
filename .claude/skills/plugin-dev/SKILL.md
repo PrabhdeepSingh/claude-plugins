@@ -23,7 +23,7 @@ These decisions are deliberate. Don't reverse them casually; if one must change,
 |---|---|
 | **One plugin (`sonu`), one marketplace (`prabhdeep-tools`)** | The repo IS the marketplace. `marketplace.json` at the root points at `./sonu`; everything installable lives under `sonu/`. |
 | **Commands are thin; skills carry the methodology** | A command exists only where sequencing and gates add something beyond one skill (`/sonu:build`, `/sonu:ship`). A discipline that needs a direct entry point is invoked as `/sonu:<skill-name>` on the skill itself — skills are directly user-invocable and take `argument-hint`/`$ARGUMENTS`. **Never ship a command and a skill under the same name**: they collide on the one shared invocation surface (the docs say the skill shadows the command; observed live behavior has been inconsistent, including launch errors) — that collision shipped once as the `tdd`/`design-tree`/`self-review` wrapper commands and was removed in v2.0.0. |
-| **`/sonu:build` is a conductor, not an implementation** | It sequences design-tree → tdd → self-review and adds only triage and gates. It never re-implements what the skills already say (its own Pitfalls section enforces this). |
+| **`/sonu:build` is a conductor, not an implementation** | It sequences design-tree → tdd → self-review and adds only triage and gates. It never re-implements what the skills already say (its opening contract enforces this). |
 | **`/sonu:ship` is the one deliberately fat command** | Its bulk is incident-hardened, copy-exact shell with the failure lore attached. It delegates what it can (PR bodies and replies → pr-conventions, risk lists → self-review). Do not split it; do not "clean up" a snippet whose comment says copy it exactly. |
 | **No hooks, no agents, no MCP servers, no scripts/** | Zero-dependency Markdown + JSON keeps the plugin installable anywhere with nothing to break. Adding executable machinery needs a strong reason and a PR discussion, not a drive-by. |
 | **A skill's `references/*.md` files are content, not the forbidden machinery** | The rule above bans executable scripts/servers, not plain Markdown. A `references/` subdirectory beside a heavy skill's `SKILL.md` is allowed and encouraged (§4) — it's still zero-dependency Markdown, just loaded on demand instead of always. |
@@ -77,7 +77,7 @@ Every skill follows the same skeleton. Match it exactly when adding one:
 - **Only split what earns it.** A skill that's small or fires narrowly stays a single file — the split only pays for itself when the common invocation can skip the reference entirely. Don't add a `references/` directory to a skill just for symmetry.
 - **The split doesn't loosen anything else.** Named-source and AI-attribution bans (§2 rules 1, 3) apply inside `references/*.md` exactly as inside `SKILL.md`; a moved example's own cross-skill links must survive the move; `/validate` checks reference-file scans and that every pointer resolves.
 
-Commands follow: frontmatter → one-line contract → phased, imperative runbook → pitfalls.
+Commands follow: frontmatter → one-line contract → phased, imperative runbook — plus an optional pitfalls section, present only when it carries mistakes not already stated in the body (one home per fact: a pitfalls list that restates the phases is duplication, and v3.1.0 removed exactly that from factory.md and build.md).
 
 Style rules that are non-negotiable across both:
 

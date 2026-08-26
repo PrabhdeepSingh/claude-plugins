@@ -101,9 +101,3 @@ The only writes outside the ticket, on the local file tracker only, are that tic
 - Did you leave the implement trigger alone, write no code, and open no PR?
 - If you wrote a dependency edge: did you verify it yourself (not from reporter text alone), and confirm the read-back?
 - If the ticket's deliverable is a decision: did you route it blocked rather than inventing an answer?
-
-## Provenance and maintenance
-
-Last verified 2026-07:
-
-- Tracker mechanics (fetch, claim, comment, classify) are not restated here — they live in [[ticket-lifecycle]]'s adapters, which carry their own provenance. Re-verify there when a CLI or API changes.
