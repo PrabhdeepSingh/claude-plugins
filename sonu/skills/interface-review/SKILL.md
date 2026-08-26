@@ -8,135 +8,47 @@ allowed-tools: Skill, Read, Bash, Grep, Glob
 
 # Review the interface as one system
 
-A strong interface is not six independent audits stapled together. Review the whole experience, let each domain skill own its rules, then consolidate the evidence into one prioritized verdict.
+A strong interface is not six independent audits stapled together. Review the whole experience, let each domain skill own its rules, then consolidate the evidence into one prioritized verdict. This skill owns orchestration only: accessibility rules belong to [[accessibility]], structure to [[layout]], copy to [[ux-writing]], type to [[typography]], color to [[colors]], polish and motion to [[ui-polish]]. Never duplicate or override their rules here.
 
-This skill owns orchestration only. Accessibility rules belong to [[accessibility]]; structure to [[layout]]; copy to [[ux-writing]]; type to [[typography]]; color to [[colors]]; visual polish and motion to [[ui-polish]]. Never duplicate or override their rules here.
+## 1. Resolve Scope and Mode
 
-## Core Principles
-
-### 1. Resolve Scope and Mode First
-
-Apply this to `$ARGUMENTS` — the text typed after the invocation, which carries an optional mode (`quick` or `full`) and an optional scope. If that token appears literally or is empty, infer the screen, flow, feature, or repository scope from the request, the current discussion, and the workspace. State the resolved scope in the output. Use `full` when no mode is supplied.
+Apply this to `$ARGUMENTS` — the text typed after the invocation, carrying an optional mode (`quick` or `full`) and an optional scope. If that token appears literally or is empty, infer the scope from the request and workspace, and use `full`. State the resolved scope in the output.
 
 | Mode | Coverage | Finding cap |
 | --- | --- | --- |
-| `quick` | Primary user path and highest-traffic states; report only `HIGH` and `MEDIUM` issues | 5 |
-| `full` | Entire requested scope across all six domain skills, including empty, loading, error, and narrow-width states when present | 15 |
+| `quick` | Primary user path and highest-traffic states; report only `HIGH` and `MEDIUM` | 5 |
+| `full` | Entire requested scope across all six domains, including empty, loading, error, and narrow-width states | 15 |
 
-If the requested scope is too large to inspect credibly, narrow it to the highest-traffic complete flow and state the boundary. Never imply uninspected surfaces were reviewed.
+If the scope is too large to inspect credibly, narrow it to the highest-traffic complete flow and state the boundary — never imply uninspected surfaces were reviewed.
 
-### 2. Recon Before Judgment
+## 2. Load the Domain Skills
 
-Identify the framework, styling system, component library, design tokens, supported viewports, and available preview or test commands. Follow the project's established Tailwind, plain CSS, CSS-in-JS, token, and component conventions.
+Availability is discovered by attempting the load — there is no way to enumerate installed skills without trying. Invoke each in this order, so foundational failures are not hidden by polish: `Skill(sonu:accessibility)`, `Skill(sonu:layout)`, `Skill(sonu:ux-writing)`, `Skill(sonu:typography)`, `Skill(sonu:colors)`, `Skill(sonu:ui-polish)`. A load that fails marks that domain `Not reviewed` — name the missing skill, continue with the rest, and never recreate its rules from memory, substitute a neighbor, or claim holistic coverage.
 
-### 3. Use Domain Skills as the Sources of Truth
+This skill owns the final response: when a domain skill is loaded through this coordinator, apply its principles and references but ignore its standalone **Review Output Format** — the consolidated format, shared severity, and finding cap here take precedence. When two skills appear to cover the same issue, assign it to the skill that owns the underlying rule, mention secondary effects in the **Why** cell, and report it once.
 
-Availability is discovered by attempting the load — there is no way to enumerate installed skills without trying: invoke each `Skill(sonu:<name>)` below, and a load that fails marks that domain `Not reviewed`. Load and apply every owner that loads. In `quick` mode, inspect all six domains but spend depth only where the primary flow has evidence. In `full` mode, complete each available domain review before consolidation.
+## 3. Evidence and Severity
 
-Review in this order so foundational failures are not hidden by polish:
-
-1. `Skill(sonu:accessibility)`
-2. `Skill(sonu:layout)`
-3. `Skill(sonu:ux-writing)`
-4. `Skill(sonu:typography)`
-5. `Skill(sonu:colors)`
-6. `Skill(sonu:ui-polish)`
-
-This skill owns the final response. When a domain skill is loaded through this coordinator, apply its principles and references but ignore its standalone **Review Output Format**. Use the consolidated format, shared severity, and finding cap in this file instead.
-
-If an owning skill is unavailable, mark that domain `Not reviewed`, name the missing skill, and continue with the remaining domains. Do not recreate its rules from memory, substitute a neighboring skill, or claim holistic coverage.
-
-When two skills appear to cover the same issue, assign it to the skill that owns the underlying rule and mention secondary effects in the **Why** cell. Report it once.
-
-### 4. Require Evidence
-
-Every finding cites `path/to/file:line` and shows the current implementation. If the review artifact has no source files, cite the exact screen and component. Do not report a code-level finding from visual appearance alone or a visual finding from source code alone when runtime behavior determines the result.
-
-### 5. Rank by User Impact
-
-Use one shared severity scale:
+Every finding cites `path/to/file:line` and the current implementation (or the exact screen and component when there are no source files). Do not report a code-level finding from visual appearance alone, or a visual finding from source alone when runtime behavior determines the result — inspect the rendered state or mark it not verified. One shared scale:
 
 - `HIGH`: blocks a task, misleads the user, hides content or controls, causes data-loss risk, or creates a repeated systemic failure.
 - `MEDIUM`: meaningfully harms comprehension, efficiency, adaptability, or consistency.
-- `LOW`: isolated polish with limited task impact. Include only in `full` mode.
+- `LOW`: isolated polish with limited task impact — `full` mode only.
 
-Within a severity, rank by reach and leverage. A token or shared-component fix outranks the same symptom in one leaf component.
-
-### 6. Consolidate Systemic Findings
-
-One root cause is one finding. List every confirmed location in the same row rather than producing a row per occurrence. Do not pad the report to reach the finding cap; a short review or no findings is a valid result.
-
-### 7. Make Restraint Visible
-
-Record candidates considered but deliberately rejected. A candidate is rejected when the owning skill permits the current implementation, evidence is insufficient, the project convention is intentional, or the proposed change would add complexity without user benefit.
-
-### 8. Verify What Can Be Verified
-
-Run safe, relevant checks available in the project. Inspect the rendered interface when runtime behavior or visual judgment matters. Report the exact command or interaction and observed result. If a check cannot be run, label it **Not verified** and state what remains; never convert a verification gap into a finding.
-
-### 9. Review Without Mutating by Default
-
-Treat a review request as read-only. Do not edit source code unless the user also asks to implement the findings. When implementation is requested, preserve the consolidated report as the change scope and re-run the relevant verification afterward.
-
-## Common Mistakes
-
-| Mistake | Fix |
-| --- | --- |
-| Six disconnected domain reports | Consolidate into one ranked findings table |
-| Same issue reported by multiple skills | Assign it to the skill that owns the underlying rule |
-| Finding with no exact location | Cite `path/to/file:line` and the current implementation |
-| Visual claim inferred only from source | Inspect the rendered state or mark it not verified |
-| Unlimited low-impact polish | Respect the mode cap; omit `LOW` findings in `quick` |
-| Silent gaps in coverage | Show which domains and states were actually inspected |
-| Missing owning skill silently treated as covered | Mark the domain `Not reviewed` and name the unavailable skill |
-| Rejected candidates invented to fill the table | List only candidates genuinely inspected; zero is a legal count — say so |
-| Review silently edits code | Stay read-only unless implementation was requested |
-| “Approve” with pending actionable findings | Use `Needs changes` or `Block` |
+Within a severity, rank by reach and leverage: a token or shared-component fix outranks the same symptom in one leaf component. One root cause is one finding — list every confirmed location in the same row. Never pad toward the cap; a short review or no findings is a valid result.
 
 ## Review Output Format
 
-Always use the following sections.
+Always use these sections.
 
-### Scope and Coverage
+**Scope and Coverage** — the mode, exact scope, stack conventions, and any boundary; then a coverage table (`| Domain | Evidence inspected | Result |`) listing all six domains, where `Clear` means inspected with no actionable finding and `Not reviewed` must explain why.
 
-State the mode, exact scope, stack and styling conventions, and any review boundary. Then show coverage:
+**Findings** — one table ordered by severity, then reach and leverage: `| # | Severity | Domain | Location | Before | After | Why |`. Each row is one root cause; **Domain** names the owner (`Accessibility`, `Layout`, `Writing`, `Typography`, `Colors`, `UI`). Respect the mode's cap. With no findings, omit the table and state "No actionable interface findings."
 
-| Domain | Evidence inspected | Result |
-| --- | --- | --- |
-| Accessibility | Files, components, states, or checks | Findings count or `Clear` |
+**Considered but Rejected** — up to 3 candidates in `quick`, 5 in `full`: `| Location | Candidate | Rejected because |`. A candidate is rejected when the owning skill permits the implementation, evidence is insufficient, the convention is intentional, or the change adds complexity without user benefit. These are real candidates inspected during the review — zero is a legal count ("none — nothing borderline was inspected"); never invent filler.
 
-Include all six domains. `Clear` means inspected with no actionable finding; `Not reviewed` must explain why.
+**Verification** — each check or interaction, the exact command or steps, and the observed result, separating passes from **Not verified**. Run safe, relevant checks; never convert a verification gap into a finding. A production page should also show a clean console — zero errors and warnings before shipping — and remember unit tests don't test CSS, layout, or real rendering: the DOM being correct is verified by looking, not by a green suite.
 
-### Findings
+**Verdict** — exactly one: `Block` (one or more `HIGH` remain), `Needs changes` (only `MEDIUM`/`LOW` remain), `Approve` (no actionable findings and the claimed coverage was verified).
 
-Use one table ordered by severity, then reach and leverage:
-
-| # | Severity | Domain | Location | Before | After | Why |
-| --- | --- | --- | --- | --- | --- | --- |
-| 1 | HIGH | Accessibility | `src/Dialog.tsx:42` | `<button><XIcon /></button>` | Add `aria-label="Close"` and hide the icon from the accessibility tree | The icon-only control has no accessible name |
-
-Each row is one root cause. The **Domain** value names the owning domain: `Accessibility`, `Layout`, `Writing`, `Typography`, `Colors`, or `UI`. Respect the mode's finding cap. If there are no findings, omit the table and state "No actionable interface findings."
-
-### Considered but Rejected
-
-Include up to 3 candidates in `quick` mode and up to 5 in `full` mode. Zero is a legal count: when nothing borderline was genuinely inspected, write "none — nothing borderline was inspected" instead of the table. Never invent a candidate to fill it:
-
-| Location | Candidate | Rejected because |
-| --- | --- | --- |
-| `src/Card.tsx:28` | Increase the shadow | Existing depth matches the shared surface token; changing one card would reduce consistency |
-
-These are real candidates inspected during the review, not invented filler. If the scope genuinely contains fewer borderline candidates, include the ones that exist and say so.
-
-### Verification
-
-List each check or interaction, the exact command or steps, and the observed result. Separate checks that passed from checks marked **Not verified**.
-
-### Verdict
-
-End with exactly one:
-
-- `Block` — one or more `HIGH` findings remain.
-- `Needs changes` — only `MEDIUM` or `LOW` findings remain.
-- `Approve` — no actionable findings remain and the claimed coverage was verified.
-
-**One exception to this whole output format:** when this methodology is applied as a review *lens* rather than as a standalone review — [[self-review]]'s interface lens is the case that exists today — the lens's own reporting contract wins. Report findings in the lens's requested line format and omit the sections, severity tables, and verdict above; a verdict returned into a fan-out synthesis is unusable there.
+**One exception to this whole output format:** when this methodology is applied as a review *lens* rather than a standalone review — [[self-review]]'s interface lens is the case that exists today — the lens's own reporting contract wins: report in the lens's requested line format and omit the sections, tables, and verdict above; a verdict returned into a fan-out synthesis is unusable there.

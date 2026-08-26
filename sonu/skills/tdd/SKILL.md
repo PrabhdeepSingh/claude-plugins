@@ -132,20 +132,14 @@ A test suite that's hard to read is a test suite nobody trusts. Apply [[code-sta
 
 ## Self-check before you call it done
 
-Run this against your own diff. Fix any "no" before finishing:
+Run this against your own diff — the numbered sections above are the rest of the bar; these are the checks that have actually been skipped under pressure:
 
-- Did you write the failing test *before* the production code (or discard and rebuild a spike test-first) — and did you see each new test actually fail before the implementation and pass after?
-- Does every new or changed behavior have a test that would fail if you deleted the implementation?
-- Are you asserting observable outcomes — not private state, not internal call sequences?
-- Does each test have a clear Arrange-Act-Assert structure, one behavior, one reason to fail?
-- Does every test name read as a spec sentence — what broke, under what condition — without reading the body?
-- Are tests fast, isolated (no shared mutable state or order dependency), and deterministic (no real clock/network/random)?
-- Are test doubles used only at architectural seams — real domain objects throughout the core?
-- If this was a bug fix, did you write a failing test that reproduced the bug *before* fixing it?
-- If the change enforces a threshold (limit, quota, timeout, cap): does a test configure a value small enough to trip, and assert both sides of the boundary — within the threshold passes, beyond it fails?
-- If the change alters visible or interactive behavior: did you exercise the real flow and capture evidence — or state plainly what the environment left unverified, instead of letting a green suite stand in for proof?
-- If any existing test changed: can you name which legitimate case applies (spec change or implementation-detail cleanup), with zero weakening (no updated-to-actual expectations, no skips, no broadened assertions, no sleeps, no try/catch around the failure)?
-- Is the test code held to the same naming, clarity, and structure bar as [[code-standards]]?
+- Did you see each new test fail before the implementation and pass after — the failing test written first (or the spike discarded and rebuilt test-first)?
+- Would every new or changed behavior's test fail if you deleted the implementation?
+- If this was a bug fix: did a failing reproduction test exist *before* the fix?
+- If the change enforces a threshold (limit, quota, timeout, cap): does a test configure a value small enough to trip it, asserting both sides of the boundary?
+- If the change alters visible or interactive behavior: real flow exercised with evidence, or the unverified gap stated plainly — never a green suite standing in for proof?
+- If any existing test changed: which legitimate case applies (spec change or implementation-detail cleanup), with zero weakening?
 
 A passing test suite is only as trustworthy as the discipline behind it. If you're not confident the tests would catch a regression, they wouldn't.
 

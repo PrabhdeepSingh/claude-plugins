@@ -1,7 +1,7 @@
 ---
 name: blast-radius
 description: >-
-  Consumer-impact discipline for contract changes — enumerate every consumer, flag the ones that degrade silently, verify one downstream path end-to-end, before the change ships. INVOKE PROACTIVELY when a change alters anything other code reads — return shapes, payloads, DB columns, telemetry fields, config values — or renames a published identifier (tool name, route, env key). Skip purely internal changes and strictly additive optional fields. (Schema seams: [[safe-migrations]]; downstream verification: [[tdd]].)
+  Consumer-impact discipline for contract changes — enumerate every consumer, flag the ones that degrade silently, verify one downstream path end-to-end before shipping. INVOKE PROACTIVELY when a change alters anything other code reads — return shapes, payloads, DB columns, config values — or renames a published identifier. Skip purely internal changes and strictly additive optional fields. (Schema seams: [[safe-migrations]]; downstream verification: [[tdd]].)
 ---
 
 # Blast Radius — who reads the thing you're changing?
@@ -72,11 +72,9 @@ End the change with a one-paragraph **Downstream impact** statement: the seam, t
 
 ## Self-check before you call it done
 
-- Did you name the seam in one sentence before editing?
-- Did you enumerate consumers by *searching* (symbol, field names, parse sites, column/topic names) — not from memory?
-- Did you explicitly search the logging/telemetry/analytics layer for the seam's field names?
-- Is every silent-degradation site downstream of the seam (`catch → default`, `|| []`, `?? null`) identified and dispositioned?
-- Does every affected consumer have an explicit disposition — updated, contract versioned, or break accepted in writing?
-- Did you verify at least one downstream consumer end-to-end and *observe* its real output (logged row, emitted event, dashboard value)?
-- Is the Downstream impact statement written where the reviewer will see it?
-- If the change renames or removes a published identifier with external or cached consumers, is the old identity still resolving (alias/shim) through a deprecation window — i.e. not removed in this release?
+- Seam named in one sentence before editing?
+- Consumers enumerated by *searching* (symbols, field names, parse sites, columns/topics) — including the logging/telemetry/analytics layer — never from memory?
+- Every silent-degradation site downstream (`catch → default`, `|| []`, `?? null`) identified, and every affected consumer explicitly dispositioned — updated, versioned, or break accepted in writing?
+- At least one downstream consumer verified end-to-end, its real output *observed* (logged row, emitted event, dashboard value)?
+- Downstream impact statement written where the reviewer will see it?
+- If a published identifier is renamed or removed: old identity still resolving (alias/shim) through a deprecation window — not removed in this release?

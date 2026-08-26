@@ -186,35 +186,9 @@ Exit animations should be softer and less attention-grabbing than enter animatio
 
 When icons appear or disappear contextually (on hover, on state change), animate them with `opacity`, `scale`, and `blur` rather than just toggling visibility.
 
-### Motion Example
+### Cross-fade mechanics
 
-This example uses the `motion` package. If the project instead has `framer-motion`, import the same APIs from `"framer-motion"`; never mix an installed package with the other package's import path.
-
-```tsx
-import { AnimatePresence, motion } from "motion/react";
-
-function IconButton({ isActive, icon: Icon }) {
-  return (
-    <button>
-      <AnimatePresence mode="popLayout">
-        <motion.span
-          key={isActive ? "active" : "inactive"}
-          initial={{ opacity: 0, scale: 0.25, filter: "blur(4px)" }}
-          animate={{ opacity: 1, scale: 1, filter: "blur(0px)" }}
-          exit={{ opacity: 0, scale: 0.25, filter: "blur(4px)" }}
-          transition={{ type: "spring", duration: 0.3, bounce: 0 }}
-        >
-          <Icon />
-        </motion.span>
-      </AnimatePresence>
-    </button>
-  );
-}
-```
-
-### CSS Transition Approach (No Motion)
-
-If the project doesn't use Motion (Framer Motion), keep both icons in the DOM and cross-fade them with CSS transitions. Because neither icon unmounts, both enter and exit animate smoothly.
+When the project uses `motion`/`framer-motion`, animate with `AnimatePresence mode="popLayout"` and the exact values below on `initial`/`animate`/`exit`. Otherwise keep both icons in the DOM and cross-fade them with CSS transitions. Because neither icon unmounts, both enter and exit animate smoothly.
 
 The trick: one icon is absolutely positioned on top of the other. Toggling state cross-fades them: the entering icon scales up from `0.25` while the exiting icon scales down to `0.25`, both with opacity and blur.
 
@@ -254,15 +228,6 @@ function IconButton({ isActive, ActiveIcon, InactiveIcon }) {
 
 The non-absolute icon (InactiveIcon) defines the layout size. The absolute icon (ActiveIcon) overlays it without affecting flow.
 
-### Choosing Between Motion and CSS
-
-| | Motion (Framer Motion) | CSS transitions (both icons in DOM) |
-| --- | --- | --- |
-| **Enter animation** | Yes | Yes |
-| **Exit animation** | Yes (via `AnimatePresence`) | Yes (cross-fade, icon never unmounts) |
-| **Spring physics** | Yes | No, use `cubic-bezier(0.2, 0, 0, 1)` as approximation |
-| **When to use** | Project already uses `motion` or `framer-motion` | No motion dependency, or keeping bundle small |
-
 **Rule:** Check the project's `package.json`. Import from `"motion/react"` when `motion` is installed, or from `"framer-motion"` when `framer-motion` is installed. If both exist, follow the imports already used by the component or its nearest peers. If neither is present, use the CSS cross-fade pattern; don't add a dependency just for icon transitions.
 
 ### When to Animate Icons
@@ -284,9 +249,7 @@ The non-absolute icon (InactiveIcon) defines the layout size. The absolute icon 
 
 A subtle scale-down on click gives buttons tactile feedback. Always use `scale(0.96)`. Never use a value smaller than `0.95`: anything below feels exaggerated. Use CSS transitions for interruptibility, so that if the user releases mid-press, it smoothly returns.
 
-Not every button needs this. Add a `static` prop to your button component that disables the scale effect when the motion would be distracting.
-
-### CSS Example
+Not every button needs this. Add a `static` prop to your button component that conditionally omits the scale class/transition when the motion would be distracting. (Tailwind: `transition-transform duration-150 ease-out active:scale-[0.96]`; Motion: `whileTap={{ scale: 0.96 }}`.)
 
 ```css
 .button {
@@ -298,49 +261,6 @@ Not every button needs this. Add a `static` prop to your button component that d
 .button:active {
   scale: 0.96;
 }
-```
-
-### Tailwind Example
-
-```tsx
-<button className="transition-transform duration-150 ease-out active:scale-[0.96]">
-  Click me
-</button>
-```
-
-### Motion Example
-
-```tsx
-<motion.button whileTap={{ scale: 0.96 }}>
-  Click me
-</motion.button>
-```
-
-### Static Prop Pattern
-
-Extract the scale class into a variable and conditionally apply it based on a `static` prop:
-
-```tsx
-const tapScale = "active:not-disabled:scale-[0.96]";
-
-function Button({ static: isStatic, className, children, ...props }) {
-  return (
-    <button
-      className={cn(
-        "transition-transform duration-150 ease-out",
-        !isStatic && tapScale,
-        className,
-      )}
-      {...props}
-    >
-      {children}
-    </button>
-  );
-}
-
-// Usage
-<Button>Click me</Button>           {/* scales on press */}
-<Button static>Submit</Button>       {/* no scale */}
 ```
 
 ## Skip Animation on Page Load
