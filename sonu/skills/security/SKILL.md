@@ -1,7 +1,7 @@
 ---
 name: security
 description: >-
-  Build-time security discipline — threat-model before controls, Always/Ask-First/Never boundary tiers, SSRF, supply chain, LLM/agent security, privacy as a distinct question. INVOKE PROACTIVELY when building anything touching auth, user data, uploads, outbound fetches, dependencies, or model output — even when nobody says "security". The review pass stays /security-review's; validation mechanics: [[code-standards]]; infra secrets: [[infra-standards]].
+  Build-time security discipline — threat-model before controls, Always/Ask-First/Never boundary tiers, SSRF, supply chain, LLM/agent security, privacy as a distinct question. INVOKE PROACTIVELY when building anything touching auth, user data, uploads, outbound fetches, dependencies, or model output — even when nobody says "security". The after-the-fact review pass belongs to /security-review; validation mechanics: [[code-standards]]; infra secrets: [[infra-standards]].
 ---
 
 # Security — decide what can go wrong before deciding what to build
@@ -39,7 +39,7 @@ The Ask-First tier is the house authorization posture applied to security: the s
 Any fetch whose URL a user can influence — webhooks, link previews, importers, "fetch my avatar from a URL" — can be aimed at your own internal network. The defense, in order:
 
 - **Allowlist the scheme and host** when the destination set is knowable; an allowlist beats any amount of blocklist cleverness.
-- When arbitrary hosts are the feature: **resolve every DNS record and reject if any resolved address is not public unicast** — that one check covers loopback, link-local (the cloud metadata endpoint, the single most-targeted SSRF destination), private, and unique-local ranges, across IPv4 and IPv6. **Forbid redirects**, or re-validate every hop — a public URL that 302s to an internal one passes the naive check.
+- When arbitrary hosts are the feature: **resolve every DNS record and reject unless every resolved address is globally routable** (a public IPv4 address or IPv6 global unicast) — that one check rejects loopback, link-local (the cloud metadata endpoint, the single most-targeted SSRF destination), private, and unique-local ranges alike. **Forbid redirects**, or re-validate every hop — a public URL that 302s to an internal one passes the naive check.
 - **Know the honest limit: the check-then-fetch gap.** The HTTP client resolves DNS again after your validation, so a short-TTL record can rebind to an internal address between the check and the connection. For high-risk surfaces, resolve once and connect to the pinned address, or route through a filtering egress proxy. A defense that doesn't state this limit reads as complete and isn't.
 
 ## 4. A committed secret is a rotated secret
