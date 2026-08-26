@@ -11,7 +11,7 @@ Prabhdeep (Sonu) Singh's personal [Claude Code](https://claude.com/claude-code) 
 /plugin install sonu@prabhdeep-tools
 ```
 
-Run those once per device. After that, `/sonu:build`, `/sonu:ship`, `/sonu:factory`, `/sonu:tdd`, `/sonu:design-tree`, `/sonu:self-review`, `/sonu:ticket-triage`, `/sonu:classify-tickets`, and `/sonu:bug-finder` are available in every repo on that machine, and the **code-standards**, **tdd**, **debugging**, **blast-radius**, **safe-migrations**, **infra-standards**, **observability**, **seo**, **design-tree**, **model-tiering**, **self-review**, **pr-conventions**, **ticket-lifecycle**, **ticket-triage**, **classify-tickets**, and **bug-finder** skills ride along automatically — no command to run, they just shape how code and content get written. To pull updates later:
+Run those once per device. After that, `/sonu:build`, `/sonu:ship`, `/sonu:factory`, `/sonu:tdd`, `/sonu:design-tree`, `/sonu:self-review`, `/sonu:ticket-triage`, `/sonu:classify-tickets`, and `/sonu:bug-finder` are available in every repo on that machine, and the **code-standards**, **tdd**, **debugging**, **security**, **blast-radius**, **safe-migrations**, **infra-standards**, **observability**, **seo**, **design-tree**, **model-tiering**, **self-review**, **pr-conventions**, **ticket-lifecycle**, **ticket-triage**, **classify-tickets**, and **bug-finder** skills ride along automatically — no command to run, they just shape how code and content get written. To pull updates later:
 
 ```
 /plugin marketplace update prabhdeep-tools
@@ -299,6 +299,12 @@ Both halves of SEO in one skill. The plumbing side fires whenever Claude touches
 
 Edit `sonu/skills/seo/SKILL.md` to tune it.
 
+### `security` — decide what can go wrong before deciding what to build
+
+Build-time security discipline, distinct from the after-the-fact `/security-review` pass. It fires automatically on features touching auth, user data, uploads, outbound fetches, dependencies, or LLM/agent output: threat-model-first (trust boundaries, assets, abuse cases as the first tests), the Always/Ask-First/Never boundary tiers, SSRF defense with its honest check-then-fetch limit, committed-secret-means-rotate, supply-chain hygiene (install scripts, typosquats, reachability triage), LLM output as untrusted input, and privacy as its own question — should we hold this data at all, and for how long?
+
+Edit `sonu/skills/security/SKILL.md` to tune it.
+
 ### `pr-conventions` — right template, living description, honest replies
 
 A skill, not a command — there's nothing to invoke. Once the plugin is installed, Claude uses it automatically inside `/sonu:ship` to author PR descriptions, keep them current, and reply to review threads. Also callable standalone when you're crafting a PR body or responding to comments outside the ship flow.
@@ -475,6 +481,8 @@ claude-plugins/
         ├── seo/
         │   ├── SKILL.md     # technical + editorial SEO for anything served as a web page
         │   └── references/  # before/after examples + the llms.txt aside
+        ├── security/
+        │   └── SKILL.md     # threat-model-first, boundary tiers, SSRF, supply chain, LLM security, privacy
         ├── interface-review/
         │   └── SKILL.md     # holistic interface audit — coordinates the six domains below into one verdict
         ├── accessibility/
