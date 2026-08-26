@@ -32,7 +32,7 @@ Most security decisions are pre-made; the discipline is knowing which tier a cha
 - **Ask First** (a human approves before the change ships, because each widens the attack surface in a way the diff understates): a new authentication flow or a change to auth logic; storing a **new category** of sensitive data; a new external service integration; a CORS change; a file-upload handler; a rate-limiting or throttling change; granting an elevated permission or role. The list is the point: these look like ordinary features and are not.
 - **Never**: secrets in source or logs, PII in telemetry, disabled TLS verification, auth checks only on the client, security controls that fail open.
 
-The Ask-First tier is the house authorization posture applied to security: the same reason a merge needs a human's trigger, an attack-surface widening needs a human's yes.
+The Ask-First tier is the house authorization posture applied to security: the same reason a merge needs a human's trigger, an attack-surface widening needs a human's yes. In a non-interactive run, "ask first" means write the precise widening into the hand-off or ticket as a blocker and stop that part — never proceed on an approval nobody gave.
 
 ## 3. Outbound requests to user-influenced destinations (SSRF)
 
