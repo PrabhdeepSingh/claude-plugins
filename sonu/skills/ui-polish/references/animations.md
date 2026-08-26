@@ -188,7 +188,7 @@ When icons appear or disappear contextually (on hover, on state change), animate
 
 ### Cross-fade mechanics
 
-When the project uses `motion`/`framer-motion`, animate with `AnimatePresence mode="popLayout"` and the exact values below on `initial`/`animate`/`exit`. Otherwise keep both icons in the DOM and cross-fade them with CSS transitions. Because neither icon unmounts, both enter and exit animate smoothly.
+When the project uses `motion`/`framer-motion`, animate with `AnimatePresence mode="popLayout"`, key the animated element by the state it represents (so a state change unmounts it and the exit runs), and put the exact values listed at the end of this section on `initial`/`animate`/`exit`. Otherwise keep both icons in the DOM and cross-fade them with CSS transitions. Because neither icon unmounts, both enter and exit animate smoothly.
 
 The trick: one icon is absolutely positioned on top of the other. Toggling state cross-fades them: the entering icon scales up from `0.25` while the exiting icon scales down to `0.25`, both with opacity and blur.
 

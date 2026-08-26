@@ -1,7 +1,7 @@
 ---
 name: blast-radius
 description: >-
-  Consumer-impact discipline for contract changes — enumerate every consumer, flag the ones that degrade silently, verify one downstream path end-to-end before shipping. INVOKE PROACTIVELY when a change alters anything other code reads — return shapes, payloads, DB columns, config values — or renames a published identifier. Skip purely internal changes and strictly additive optional fields. (Schema seams: [[safe-migrations]]; downstream verification: [[tdd]].)
+  Consumer-impact discipline for contract changes — enumerate every consumer, flag the ones that degrade silently, verify one downstream path end-to-end before shipping. INVOKE PROACTIVELY when a change alters anything other code reads — return shapes, payloads, DB columns, telemetry fields, config values — or renames a published identifier. Skip purely internal changes and strictly additive optional fields. (Schema seams: [[safe-migrations]]; downstream verification: [[tdd]].)
 ---
 
 # Blast Radius — who reads the thing you're changing?

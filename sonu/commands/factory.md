@@ -267,7 +267,7 @@ Then stop:
 
 > **Green and ready.** Ticket claimed, built in its own worktree. Review the diff, then run `/sonu:ship` when you're satisfied.
 
-Never commit source code here, never merge. A convenient by-product of worktrees: ship's state ledger is per-worktree — in a linked worktree it lives at the worktree root (`.sonu-ship-ledger.md`) — so parallel ship runs cannot collide on state.
+Never commit source code here, never merge, never apply a trigger — the ship authorization is the human's diff review, never this pass's own momentum. A convenient by-product of worktrees: ship's state ledger is per-worktree — in a linked worktree it lives at the worktree root (`.sonu-ship-ledger.md`) — so parallel ship runs cannot collide on state.
 
 ---
 

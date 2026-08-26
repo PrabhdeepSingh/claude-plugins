@@ -19,11 +19,11 @@ Apply this to `$ARGUMENTS` — the text typed after the invocation, carrying an 
 | `quick` | Primary user path and highest-traffic states; report only `HIGH` and `MEDIUM` | 5 |
 | `full` | Entire requested scope across all six domains, including empty, loading, error, and narrow-width states | 15 |
 
-If the scope is too large to inspect credibly, narrow it to the highest-traffic complete flow and state the boundary — never imply uninspected surfaces were reviewed.
+If the scope is too large to inspect credibly, narrow it to the highest-traffic complete flow and state the boundary — never imply uninspected surfaces were reviewed. A review is read-only: implement findings only when the user also asks for that, and re-run the relevant verification afterward.
 
 ## 2. Load the Domain Skills
 
-Availability is discovered by attempting the load — there is no way to enumerate installed skills without trying. Invoke each in this order, so foundational failures are not hidden by polish: `Skill(sonu:accessibility)`, `Skill(sonu:layout)`, `Skill(sonu:ux-writing)`, `Skill(sonu:typography)`, `Skill(sonu:colors)`, `Skill(sonu:ui-polish)`. A load that fails marks that domain `Not reviewed` — name the missing skill, continue with the rest, and never recreate its rules from memory, substitute a neighbor, or claim holistic coverage.
+Identify the framework, styling system, design tokens, and available preview or test commands first — findings must follow the project's own conventions. Availability of the domain skills is then discovered by attempting the load — there is no way to enumerate installed skills without trying. Invoke each in this order, so foundational failures are not hidden by polish: `Skill(sonu:accessibility)`, `Skill(sonu:layout)`, `Skill(sonu:ux-writing)`, `Skill(sonu:typography)`, `Skill(sonu:colors)`, `Skill(sonu:ui-polish)`. A load that fails marks that domain `Not reviewed` — name the missing skill, continue with the rest, and never recreate its rules from memory, substitute a neighbor, or claim holistic coverage.
 
 This skill owns the final response: when a domain skill is loaded through this coordinator, apply its principles and references but ignore its standalone **Review Output Format** — the consolidated format, shared severity, and finding cap here take precedence. When two skills appear to cover the same issue, assign it to the skill that owns the underlying rule, mention secondary effects in the **Why** cell, and report it once.
 
