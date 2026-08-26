@@ -1,14 +1,14 @@
 ---
 name: ux-writing
 description: >-
-  UX writing and interface copy — voice and tone, button and link labels, error messages, settings labels, empty states, placeholders. INVOKE PROACTIVELY when writing or reviewing any user-facing interface text — even when nobody says "copy" or "microcopy". How copy renders: [[typography]]; error markup and announcements: [[accessibility]]; prose meant to rank in search: [[content-seo]]; whole-screen audits: [[interface-review]].
+  UX writing and interface copy — voice and tone, button and link labels, error messages, settings labels, empty states, placeholders. INVOKE PROACTIVELY when writing or reviewing any user-facing interface text — even when nobody says "copy" or "microcopy". How copy renders: [[typography]]; error markup and announcements: [[accessibility]]; prose meant to rank in search: [[seo]]; whole-screen audits: [[interface-review]].
 ---
 
 # Writing that disappears into the interface
 
 Clear and brief beats clever, consistency beats variety, and the best error message is the interaction redesigned so the error can't happen. Apply these principles when writing or reviewing any user-facing text.
 
-How copy renders (capitalization via `text-transform`, truncation, smart punctuation) is covered by [[typography]]; error markup and announcements (`aria-invalid`, live regions) by [[accessibility]]; room for translated strings by [[layout]]. This skill owns interface copy — the words a user reads while operating the product. Prose written to rank in search (articles, landing pages, documentation) belongs to [[content-seo]] instead.
+How copy renders (capitalization via `text-transform`, truncation, smart punctuation) is covered by [[typography]]; error markup and announcements (`aria-invalid`, live regions) by [[accessibility]]; room for translated strings by [[layout]]. This skill owns interface copy — the words a user reads while operating the product. Prose written to rank in search (articles, landing pages, documentation) belongs to [[seo]] instead.
 
 ## Core Principles
 
