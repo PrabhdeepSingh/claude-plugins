@@ -221,7 +221,7 @@ Adding a package is an architectural decision; upgrading one is a behavioral cha
 - **One dependency per change.** When a bulk bump breaks the build, you've lost which package did it; a single-package change makes the cause obvious and the revert clean.
 - **Let the tests decide** — green before *and* after, not "it installed." Thin coverage around the dependency's behavior is itself the finding: add the test first.
 - **Review the lockfile diff, not just the manifest** — one direct bump can pull dozens of transitive changes. Commit the lockfile; never hand-edit it.
-- **Don't implement a framework's API from memory.** Verify against the current official docs for the installed version; when you can't verify, mark the code `UNVERIFIED: based on training data` rather than hedging — a disclaimer helps nobody, a flag gets checked.
+- **Don't implement a framework's API from memory.** Verify against the current official docs for the installed version; when you can't verify, mark the code `UNVERIFIED: not checked against current docs for the installed version` rather than hedging — a disclaimer helps nobody, a flag gets checked.
 
 ---
 
