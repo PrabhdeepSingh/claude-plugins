@@ -6,7 +6,7 @@ allowed-tools: Skill, Read, Write, Edit, Bash, EnterPlanMode, ExitPlanMode, Agen
 
 # /build — decide → build → hand back
 
-**Contract:** this command sequences the implementation lifecycle — design, build, self-review — and then hands back. It pauses **once** (for you to approve the design — or zero times when `/sonu:factory` routes a ticket whose spec you already approved) and stops **once** (at a green suite, before shipping). It never commits, never merges. It delegates to existing skills; it does not re-implement them — and it is additive, not a replacement: `/sonu:design-tree`, `/sonu:tdd`, and `/sonu:ship` work identically when run standalone. Run `/sonu:ship` when you're ready to push.
+**Contract:** this command sequences the implementation lifecycle — design, build, self-review — and then hands back. It pauses **once** (for you to approve the design — or zero times when `/sonu:factory` routes a ticket whose spec you already approved) and stops **once** (at a green suite, before shipping). It never commits, never merges. It delegates to existing skills; it does not re-implement them — and it is additive, not a replacement: `/sonu:design-tree`, `/sonu:tdd`, and `/sonu:ship` work identically when run standalone. Run `/sonu:ship` when you're ready to ship.
 
 Apply this to `$ARGUMENTS` — the text typed after the command. If that token appears literally or is empty, derive the task from the current discussion in context.
 

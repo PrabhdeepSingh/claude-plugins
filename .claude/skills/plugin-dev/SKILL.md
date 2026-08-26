@@ -77,7 +77,7 @@ Every skill follows the same skeleton. Match it exactly when adding one:
 - **Only split what earns it.** A skill that's small or fires narrowly stays a single file — the split only pays for itself when the common invocation can skip the reference entirely. Don't add a `references/` directory to a skill just for symmetry.
 - **The split doesn't loosen anything else.** Named-source and AI-attribution bans (§2 rules 1, 3) apply inside `references/*.md` exactly as inside `SKILL.md`; a moved example's own cross-skill links must survive the move; `/validate` checks reference-file scans and that every pointer resolves.
 
-Commands follow: frontmatter → one-line contract → phased, imperative runbook — plus a pitfalls section only for mistakes not already stated in the body (one home per fact: a pitfalls list that restates the phases is duplication, and v3.1.0 removed exactly that from factory.md and build.md).
+Commands follow: frontmatter → one-line contract → phased, imperative runbook — plus an optional pitfalls section, present only when it carries mistakes not already stated in the body (one home per fact: a pitfalls list that restates the phases is duplication, and v3.1.0 removed exactly that from factory.md and build.md).
 
 Style rules that are non-negotiable across both:
 
