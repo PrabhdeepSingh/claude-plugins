@@ -51,4 +51,11 @@ Always use these sections.
 
 **Verdict** — exactly one: `Block` (one or more `HIGH` remain), `Needs changes` (only `MEDIUM`/`LOW` remain), `Approve` (no actionable findings and the claimed coverage was verified).
 
+## Self-check before the verdict
+
+- Was every domain either genuinely inspected or marked `Not reviewed` with the missing skill named — no coverage claimed beyond what was actually loaded and read?
+- Does every finding cite a location you actually inspected, with rendered-state checks run or explicitly marked not verified?
+- Is each root cause exactly one row, ranked by severity then reach — nothing padded toward the cap, nothing invented for the rejected table?
+- Did the review stay read-only, with implementation only on explicit request?
+
 **One exception to this whole output format:** when this methodology is applied as a review *lens* rather than a standalone review — [[self-review]]'s interface lens is the case that exists today — the lens's own reporting contract wins: report in the lens's requested line format and omit the sections, tables, and verdict above; a verdict returned into a fan-out synthesis is unusable there.
