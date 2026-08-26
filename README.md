@@ -160,7 +160,7 @@ Twenty-six skills fire automatically as Claude works — nothing to invoke, noth
 | **safe-migrations** | Zero-downtime schema and data migration discipline — expand → migrate → contract, never destructive in the release that ships the code, backfills as jobs, every step reversible. |
 | **security** | Build-time security discipline — threat-model before controls, Always/Ask-First/Never boundary tiers, SSRF, supply chain, LLM/agent security, privacy. |
 | **self-review** | Surface the riskiest parts of the current diff so a reviewer knows where to look hardest — one inline pass on small diffs, parallel review lenses with adversarial synthesis on substantial ones. |
-| **seo** | SEO for anything served as a web page — the plumbing (templates, routes, redirects, <head> metadata, JSON-LD, sitemaps, robots.txt) and the prose (posts, guides, landing copy, docs) so pages rank and get cited by AI answer engines. |
+| **seo** | SEO for anything served as a web page — the plumbing (templates, routes, redirects, `<head>` metadata, JSON-LD, sitemaps, robots.txt) and the prose (posts, guides, landing copy, docs) so pages rank and get cited by AI answer engines. |
 | **tdd** | Test-driven development — the red-green-refactor discipline for code that's correct by design, not by accident. |
 | **ticket-lifecycle** | The ticket-as-control-plane rulebook — the single home for the tracker-operations contract, tracker resolution, the type/priority taxonomy, human-only trigger authorization, derived status, and trust boundaries. |
 | **ticket-triage** | Turn one raw ticket into an implementation-ready spec — or ask the smallest unblocking question — without writing production code. |
@@ -168,7 +168,7 @@ Twenty-six skills fire automatically as Claude works — nothing to invoke, noth
 | **ui-polish** | Design-engineering details that make an interface feel polished — border radius, optical alignment, shadows and elevation, animations and micro-interactions, press feedback, icons. |
 | **ux-writing** | UX writing and interface copy — voice and tone, button and link labels, error messages, settings labels, empty states, placeholders. |
 
-Ten of them double as direct invocations (`/sonu:tdd`, `/sonu:design-tree`, `/sonu:self-review`, `/sonu:interface-review`, `/sonu:ticket-triage`, `/sonu:classify-tickets`, `/sonu:bug-finder`, `/sonu:performance`, `/sonu:intent-interview`, `/sonu:model-tiering`) — same skill, called by name when you want it on demand.
+Every skill is also directly invocable by name (`/sonu:<skill>`) — the same methodology on demand instead of auto-fired. The ones designed as entry points, with argument hints, include `/sonu:tdd`, `/sonu:design-tree`, `/sonu:self-review`, `/sonu:interface-review`, `/sonu:ticket-triage`, `/sonu:classify-tickets`, `/sonu:bug-finder`, `/sonu:performance`, and `/sonu:intent-interview`.
 
 ## Developing this plugin
 
