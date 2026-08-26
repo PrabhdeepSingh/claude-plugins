@@ -1,7 +1,7 @@
 ---
 name: security
 description: >-
-  Build-time security discipline — threat-model before controls, Always/Ask-First/Never boundary tiers, SSRF, supply chain, LLM/agent security, privacy as a distinct question. INVOKE PROACTIVELY when building anything touching auth, user data, uploads, outbound fetches, dependencies, or model output — even when nobody says "security". The after-the-fact review pass belongs to /security-review; validation mechanics: [[code-standards]]; infra secrets: [[infra-standards]].
+  Build-time security discipline — threat-model before controls, Always/Ask-First/Never boundary tiers, SSRF, supply chain, LLM/agent security, privacy. INVOKE PROACTIVELY when building anything touching auth, user data, uploads, outbound fetches, dependencies, or model output — even when nobody says "security". The after-the-fact review pass belongs to /security-review; validation mechanics: [[code-standards]]; infra secrets: [[infra-standards]].
 ---
 
 # Security — decide what can go wrong before deciding what to build
