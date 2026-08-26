@@ -154,14 +154,23 @@ Every `BOT_RE=` declaration in ship.md must be identical (the registry is copy-p
 n=$(grep -h "BOT_RE='" sonu/commands/ship.md | sed 's/^[[:space:]]*//' | sort -u | wc -l | tr -d ' ')
 [ "$n" = "1" ] && echo "OK: single consistent BOT_RE" || { echo "FAIL: $n distinct BOT_RE variants in ship.md:"; grep -n "BOT_RE='" sonu/commands/ship.md; }
 
-for ref in $(grep -rhoE 'sonu:[a-z-]+' sonu/ .claude/skills/ .claude/commands/ | sed 's/sonu://' | sort -u); do
-  [ -d "sonu/skills/$ref" ] || [ -f "sonu/commands/$ref.md" ] \
-    || echo "FAIL: reference sonu:$ref resolves to no skill or command"
-done
-for ref in $(grep -rhoE '\[\[[a-z-]+\]\]' sonu/ .claude/skills/ .claude/commands/ | tr -d '[]' | sort -u); do
-  [ -d "sonu/skills/$ref" ] || echo "FAIL: [[$ref]] resolves to no skill"
-done
-echo "(cross-reference scan done — silence above means OK)"
+# Cross-references are scanned OUTSIDE fenced code blocks (a ``[[name]]`` quoted inside an
+# example fence is illustration, not a reference — scanning fences produced false trips), and
+# fences are stripped BEFORE matching so an example can neither satisfy nor fail the check:
+python3 - <<'PYEOF'
+import glob, os, re, sys
+fails = 0
+for path in sorted(glob.glob('sonu/**/*.md', recursive=True) + glob.glob('.claude/skills/**/*.md', recursive=True) + glob.glob('.claude/commands/*.md')):
+    text = re.sub(r'^ *```.*?^ *```', '', open(path).read(), flags=re.S | re.M)
+    for ref in set(re.findall(r'sonu:([a-z-]+)', text)):
+        if not (os.path.isdir(f'sonu/skills/{ref}') or os.path.isfile(f'sonu/commands/{ref}.md')):
+            print(f'FAIL: {path}: sonu:{ref} resolves to no skill or command'); fails += 1
+    for ref in set(re.findall(r'\[\[([a-z-]+)\]\]', text)):
+        if not os.path.isdir(f'sonu/skills/{ref}'):
+            print(f'FAIL: {path}: [[{ref}]] resolves to no skill'); fails += 1
+print('OK: cross-references resolve (fences stripped)' if not fails else f'{fails} cross-reference failure(s)')
+sys.exit(1 if fails else 0)
+PYEOF
 ```
 
 ## 8. Reference-file pointers resolve, and no orphans
