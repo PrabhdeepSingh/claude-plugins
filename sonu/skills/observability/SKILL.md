@@ -12,7 +12,7 @@ The [[debugging]] skill's first production move is "pull the real event." That m
 
 Instrumentation is part of the feature, not a follow-up: a new endpoint ships with its metrics, error capture, and trace context wired, the same way it ships with tests. Run the self-check before calling any service change done.
 
-**Define "working" before instrumenting.** Write down 2–4 questions an on-call engineer will ask about *this feature* ("is the retry actually recovering payments?", "which provider is slow?") — every signal below must help answer one. Telemetry without a question is noise: if you can't name the questions, you'll log everything and learn nothing. The division of labor, as a rule of thumb: **metrics tell you *that* something is wrong, traces tell you *where*, logs tell you *why*.**
+**Define "working" before instrumenting.** Section 1's four questions are the per-operation floor every service owes; on top of them, write down 2–4 questions an on-call engineer will ask about *this feature specifically* ("is the retry actually recovering payments?", "which provider is slow?") — every signal you add beyond the floor must help answer one. Telemetry without a question is noise: if you can't name the questions, you'll log everything and learn nothing. The division of labor, as a rule of thumb: **metrics tell you *that* something is wrong, traces tell you *where*, logs tell you *why*.**
 
 ---
 

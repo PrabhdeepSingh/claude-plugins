@@ -77,8 +77,8 @@ Build the change test-first under the active quality bars:
 3. Honor the plan's `[delegate]`/`[delegate-heavy]` tags per `Skill(sonu:model-tiering)` — routing, retries, and verification mechanics all live in that skill. Two things are non-negotiable here: subagents spawn only in this step, and step 1's discipline still governs delegated work (see the failing test in-session before delegating the implementation step that makes it pass). A plan with no tags — or a harness without subagents — builds everything inline; nothing changes. Under `--solo`, ignore any `[delegate]`/`[delegate-heavy]` tags that may be present and build every step inline regardless — the flag overrides the tags.
 4. **Run the suite via `Bash`.** Don't take green on faith:
    ```bash
-   # derive the right command from the repo's package.json / Makefile / README
-   # discover the repo's real commands per tdd's discover-the-stack rule — never assume a default
+   # tdd's discover-the-stack rule finds this — never assume a default like npm test
+   <the repo's full-suite command, e.g. from its Makefile, package.json scripts, or CI workflow>
    ```
    If tests are red, fix and re-run until green. Do not proceed while the suite is failing.
 
