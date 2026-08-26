@@ -58,6 +58,10 @@ Breakpoints come from the content, not device presets. Keep the expanded layout 
 
 Plan for substantial and language-dependent string growth rather than relying on a universal percentage: no fixed widths or heights on text containers, and let rows wrap. Never park critical actions where resizing or scrolling clips them; keep them reachable in the normal flow or stable chrome appropriate to the product.
 
+### 11. Every Data View Has Four States
+
+A view that renders data has four states, and a layout isn't done until all four are designed: **loading** (a skeleton preserving the eventual layout, marked busy for assistive technology — a spinner tells the user nothing about what's coming), **error** (with a retry path, not a dead end), **empty** (with the next step — what the user does to make content exist), and the content itself. The empty and error states are the ones that ship unstyled, because development always runs against populated happy-path data. And state that defines *which* view the user sees — active filters, the current page, a selected tab worth sharing — belongs in the URL (`searchParams`), where it survives refresh and travels in a link, not in component memory that evaporates.
+
 ## Common Mistakes
 
 | Mistake | Fix |

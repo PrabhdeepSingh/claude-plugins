@@ -47,7 +47,7 @@ git diff --numstat "origin/$BASE...HEAD" \
 - **Under ~100 changed code lines** → the inline pass (step 3a). Small diffs don't earn a fan-out's cost.
 - **At or above ~100** → the lens fan-out (step 3b).
 - **Count uncomputable** (weird state, no git) → fan out. Fail toward more review, never less.
-- **Judgment override:** a small diff touching a high-risk surface — a migration, an auth path, a contract other code consumes — may be fanned out anyway. The threshold is a floor on cheapness, not a ceiling on caution. And in a repo whose product *is* its documents (a skills or plugin repo, a docs site), count all changed lines — the doc-exclusion above otherwise makes the fan-out unreachable exactly where the diffs are largest.
+- **Judgment override:** a small diff touching a high-risk surface may be fanned out anyway. Checkable markers of high-risk: it introduces or modifies branching logic, crosses a module or service boundary, asserts a property the type system cannot verify (thread safety, idempotence, ordering, an invariant), or has an irreversible blast radius — a migration, an auth path, a contract other code consumes. The threshold is a floor on cheapness, not a ceiling on caution. And in a repo whose product *is* its documents (a skills or plugin repo, a docs site), count all changed lines — the doc-exclusion above otherwise makes the fan-out unreachable exactly where the diffs are largest.
 
 The fan-out also needs a working subagent facility: if the harness has no subagent tool, or [[model-tiering]]'s ladder gives this session no trustworthy executor tier below it (locate your tier per that skill; if you cannot locate it with confidence, treat that as no tier — its uncertainty asymmetry applies here too), run the inline pass regardless of size. The skill degrades to exactly its single-pass behavior; nothing breaks.
 
@@ -83,7 +83,9 @@ The lenses report; this session judges. That split is load-bearing: reviewing ga
 - **Default-reject.** A finding survives only if it cites a concrete `file:line` and you can articulate the mechanism by which it goes wrong. Pure style, preference, or "could be cleaner" findings are rejected — that is nit-churn, not risk. When you cannot verify a finding against the actual diff, it dies.
 - **Dedup with a bump.** Two or more lenses flagging the same file+issue collapse to one entry — and co-flagging by independent readers is itself a signal, so the merged entry ranks higher.
 - **Cross-cut.** The same mistake appearing in N places is one theme with N locations, not N findings.
-- Rank what survives and keep the top 3–5. If nothing survives, the diff is low-risk — say so plainly ("This diff is low-risk: X, Y, Z") rather than promoting rejected findings to fill a quota.
+- Rank what survives and keep the top 3–5 — **by leverage, structural problems first**: one structural risk above ten nits is the correct order, because if there is one structural problem and ten nits, the structural problem *is* the review.
+- **Watch for doubt theater.** Across two or more passes where lenses surfaced substantive findings, zero findings accepted as real means you are validating your own work, not reviewing it — stop and say so in the hand-off instead of emitting a clean-looking list.
+- If nothing survives, the diff is low-risk — say so plainly ("This diff is low-risk: X, Y, Z") rather than promoting rejected findings to fill a quota.
 
 **5. Write the list.**
 

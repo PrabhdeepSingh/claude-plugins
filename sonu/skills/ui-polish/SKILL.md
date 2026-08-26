@@ -84,6 +84,23 @@ Icons use `currentColor` and get their states (hover, selected, disabled) from C
 
 No custom animation on high-frequency interactions: the attention cost repeats on every trigger. Motion is never the only feedback channel; every animated state change also needs a static cue (color, icon, label).
 
+### 16. Don't Ship the Model Default
+
+A generated interface has a recognizable house style, and every entry in it is a defect with a reason:
+
+| Model default | Why it's a problem |
+| --- | --- |
+| Purple/indigo everything | The visually "safe" palette makes every generated app look identical — derive color from the product's own brand or content |
+| Gradients everywhere | Visual noise that clashes with most real design systems |
+| `rounded-2xl` on everything | Maximum rounding ignores the radius hierarchy (§1's concentric rule) that real designs use to signal nesting |
+| Generic hero section | Template-driven layout with no connection to the actual content or user need |
+| Lorem-ipsum-style copy | Placeholder text hides the layout problems real content reveals — length, wrapping, overflow |
+| Equal oversized padding | Uniform generous spacing destroys visual hierarchy and wastes screen space |
+| Stock card grids | A uniform grid is a layout shortcut that ignores information priority and scanning order |
+| Shadow-heavy depth | Layered shadows compete with content and cost rendering on low-end devices |
+
+None of these is banned outright — each is banned *as a default*: reach for it only when the product's content and brand actually call for it.
+
 ## Common Mistakes
 
 | Mistake | Fix |

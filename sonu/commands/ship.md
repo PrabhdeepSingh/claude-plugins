@@ -6,7 +6,7 @@ allowed-tools: Bash, Read, Edit, Write, Skill, Agent
 
 # /ship — PR Babysitter
 
-Handles everything from the current working-tree state through a clean, merged PR. Run after implementation is complete and the owner has said "go". Do not stop until the PR is merged (or auto-merging), or a decision only the owner can make is reached.
+Handles everything from the current working-tree state through a clean, merged PR. Run after implementation is complete and the owner has said "go" — an unambiguous affirmative ("ship it", "go", "yes"); a hedged response ("looks reasonable", "I guess") is not authorization, ask once and plainly. Do not stop until the PR is merged (or auto-merging), or a decision only the owner can make is reached.
 
 **Autonomy contract — run start-to-finish without checking back.** Invoking `/ship` (or saying "ship it") IS the authorization for the entire flow through merge. A human applying `factory-ready-to-ship` to a ticket is that same authorization for the ticket's branch, delivered through `/sonu:factory`'s ship route — the route claims the trigger, verifies the build finished, and invokes this command; nothing else about this flow changes. Once started, flow through every phase — including the final merge — without pausing to report or to ask for a go-ahead. In particular:
 
@@ -161,7 +161,7 @@ A PR whose base is not `$BASE` is **stacked**: it merges into another PR's branc
 ## Phase 1 — Commit and open PR (requesting Copilot at creation)
 
 1. Stage relevant files **by name**. Never `git add -A` — exclude `.env*`, secrets, unrelated files, and the ship ledger (`.sonu-ship-ledger.md`) — it is run state, not source.
-2. Commit in the repo style (imperative, ≤72-char subject). **No AI attribution / no `Co-Authored-By` trailer** (see the contract above).
+2. Run one mechanical secret sweep over what's staged — `git diff --staged | grep -iE "password|secret|api_key|token"` — and review any hit before committing (a hit is usually a variable name; the one time it isn't pays for every time it is). Then commit in the repo style (imperative, ≤72-char subject). **No AI attribution / no `Co-Authored-By` trailer** (see the contract above).
 3. `git push -u origin "$(git branch --show-current)"`.
 4. **Run the Phase 1.5 pre-PR fix loop (below)** on the committed diff. It reviews, fixes, and re-reviews *before* any reviewer sees the change; its final pass's risk list is `RISKS` — the 3–5 riskiest spots, embedded in the PR body for traceability and shown to the owner.
 5. **Invoke `Skill(sonu:pr-conventions)`** to compose the PR body — the skill scans for a team `PULL_REQUEST_TEMPLATE` first (wins over built-ins if found), classifies the change type from the branch name / commit prefix / diff, fills the matching per-type template, and embeds the `RISKS` list from step 4 in the risk section. Do not put any AI-attribution line in the body. **Capture the composed text into `BODY` explicitly** (never pass `--body "$BODY"` with an unset variable — that opens the PR with a blank description):

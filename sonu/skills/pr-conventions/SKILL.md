@@ -186,6 +186,10 @@ gh api -X POST "/repos/$REPO/pulls/$PR/comments/$COMMENT_ID/replies" \
   -f body="<reply text from table above>"
 ```
 
+### Classify severity before replying
+
+Not every finding is mandatory, and treating them all as mandatory wastes the fix budget on nits while the structural item waits. Read each incoming finding for its stated severity — `Critical:`/blocking (security, data loss, broken behavior: fix before merge), unprefixed/required (fix before merge), `Nit:`/`Optional:`/`Consider:` (author's discretion — fix or justify), `FYI` (no action owed). A reviewer who marked something optional gets a decision, not an apology; a reviewer who found something structural gets it fixed first, whatever order the comments arrived in.
+
 ### Tone + resolution policy
 
 **Bot threads** (inside `/sonu:ship`, any login matching that command's Phase 2 AI-reviewer registry — the canonical home; standalone, where that registry isn't loaded, classify mechanically: a commenter whose API `user.type` is `"Bot"`, or the literal login `Copilot`, is a bot):
@@ -203,6 +207,14 @@ gh api -X POST "/repos/$REPO/pulls/$PR/comments/$COMMENT_ID/replies" \
 - No AI attribution anywhere?
 
 ---
+
+## E — Versions and changelogs
+
+Commits are how *you* track change; a **version** is how your *consumers* track it — the moment anything depends on the code, "latest on main" stops answering "what am I running, and is it safe to upgrade?". Three rules when a change ships to consumers:
+
+- **When unsure whether a change is breaking, assume it is.** A "patch" that changes behavior consumers relied on is a major change wearing a disguise — a surprise major is far cheaper than a broken consumer.
+- **A changelog is not `git log`.** It's the curated, consumer-facing answer to "what changed and do I care?" — grouped Added / Changed / Fixed / Deprecated / Removed / Security, phrased by user impact. Write the entry **in the same change that makes the change**, while the impact is fresh; reconstructed at release time, half of it is missing.
+- **Derive the version from the tag** where the ecosystem allows, so the artifact, the tag, and the changelog can never disagree — every hand-edited version file is a place for them to drift apart.
 
 ## Provenance and maintenance
 

@@ -34,7 +34,7 @@ Any change made by hand in a cloud console/portal is **drift**: invisible to rev
 
 Config varies per environment; secrets are config with consequences. The discipline (the runtime-code side of this lives in [[code-standards]] sections 8–10):
 
-- **Config comes from the environment** — env vars or platform config (App Service settings, Vercel project env), never hardcoded per-environment values inside the artifact.
+- **Config comes from the environment** — env vars or platform config (App Service settings, Vercel project env), never hardcoded per-environment values inside the artifact. The file taxonomy, stated once: `.env.example` committed (the template), `.env` never committed, `.env.test` committable only with no real secrets, CI secrets in the platform vault, production secrets in the deployment platform — and **CI never holds production secrets**; even a CI-only test database gets its own secret rather than a hardcoded value, so test credentials can't leak into other contexts by habit.
 - **Secrets come from a secret store** — Azure Key Vault, AWS Secrets Manager, Vercel encrypted env, CI's secret mechanism. Never in: source, `.tfvars` committed to the repo, Dockerfile `ENV`/`ARG`, pipeline YAML, or logs (`set -x` in a CI script echoes everything — including the secret you just interpolated).
 - **Each environment gets its own secrets.** A staging leak must not be a production leak.
 
@@ -90,6 +90,7 @@ The pipeline is code: reviewed, least-privileged, and honest.
 
 - **Never green the pipeline by weakening it.** Skipping the failing test, `continue-on-error: true`, commenting out the failing step, `|| true` — these are [[code-standards]] section 12's suppression rule wearing a hard hat: the signal goes away, the problem ships. A red pipeline is telling you something; fix the cause or genuinely justify (narrow scope, stated reason, removal condition) — never bare-suppress.
 - **Fail fast, cache honestly**: cheap checks (lint, types, unit) before expensive ones; dependency caches keyed on the lockfile hash so a lockfile change busts the cache instead of poisoning it.
+- **When the pipeline crosses ~10 minutes, optimize in impact order**: cache dependencies → parallelize independent jobs (lint/types/tests/build) → path-filter so only what changed runs (docs-only PRs skip e2e) → shard the test suite → move slow tests off the critical path onto a schedule → bigger runners last. The order matters because the early steps are free and the late ones cost money — reaching for larger runners before caching is paying to skip the checklist.
 - **Build once, promote the artifact.** The image/bundle that passed staging is byte-for-byte what reaches production. Rebuilding per environment means deploying something nothing ever tested.
 - **Least-privilege tokens**: scope CI credentials to what the job does — in GitHub Actions, set the `permissions:` block explicitly (default it to `contents: read` and grant upward per job) and prefer OIDC federation to cloud providers over long-lived stored keys.
 - **Pin third-party actions/tasks** to a version (for supply-chain-critical workflows, a commit SHA) — an unpinned action is someone else's push access to your pipeline.
@@ -106,6 +107,14 @@ Every identity — service principals, IAM roles, managed identities, deploy key
 - **Idempotency is the IaC contract**: applying twice with no changes = zero diff. If a second apply shows changes, something is non-deterministic (a timestamp, an unpinned version, drift) — fix it before it hides a real diff.
 
 ---
+
+## 8. Feature flags and staged rollout
+
+[[code-standards]] section 14 owns flag *defaults* (absence must be safe); this section owns the *lifecycle* and the rollout the flag gates.
+
+- **Every flag has an owner and an expiration date**, set at creation. Clean up within a couple of weeks of full rollout — a flag that lives forever is dead code with a pulse, and its stale branch is untested production behavior waiting for someone to flip it.
+- **Never nest flags** — combinations grow exponentially and nobody tests the off-off-on states. **CI exercises both states** of any flag gating behavior, or the untested state is the one that ships broken.
+- **Write the rollback plan before the deploy, not during the incident**: the trigger conditions ("error rate more than double baseline = roll back; p95 latency +50% = roll back; new client-error types above a fraction of a percent of sessions = roll back; business metric down beyond noise = roll back — between those thresholds, hold and investigate"), the mechanism, and its time budget (a flag flip is seconds; redeploying the previous artifact is minutes; a database rollback is its own [[safe-migrations]] plan). In the first hour after a risky rollout, confirm the rollback mechanism actually works — a dry run if possible — because an escape hatch verified only during the escape is a hope, not a plan.
 
 ## Self-check before you ship an infra change
 
