@@ -20,6 +20,8 @@ Before writing a single line of production code, write the failing test. Let the
 
 **Invoked directly as `/sonu:tdd`:** apply the loop to `$ARGUMENTS` — the text typed after the invocation; if that token appears literally or is empty, apply it to the current change in context. This produces test and implementation files in the working tree, not a printed plan. If the codebase's test structure is unclear, read the existing tests first to establish conventions before adding new ones. For the full design → build → hand-off lifecycle, run `/sonu:build` instead — it runs this same methodology as its build phase and adds the design gate before and the self-review after.
 
+One execution habit: after a green run, don't re-run the same command on unchanged code — that's reassurance-seeking, not verification; run again after the next edit. The one exception is hunting a suspected flake, where repetition *is* the experiment (that's [[debugging]]'s loop, and the fix is removing the nondeterminism §6 bans).
+
 When you finish a change, run the self-check at the bottom against your own diff.
 
 ---
@@ -78,7 +80,6 @@ Non-negotiable — a test suite without these isn't a safety net, it's noise you
 - **Isolated.** No shared mutable state between tests, no ordering dependency.
 - **Deterministic.** No real clock, random numbers, or file system in the unit core — inject dependencies so tests control them. A test that sometimes passes and sometimes fails trains you to ignore red.
 - **Self-validating.** The test itself asserts pass or fail — no human reads output to decide.
-- **Run once, trust the result.** After a green run, re-running the same command on unchanged code adds no information — it's reassurance-seeking, not verification. Run again after the next edit, not in between.
 
 → `references/examples.md` §6 — injecting a frozen clock instead of depending on real time — read when a test depends on time, randomness, or I/O.
 
