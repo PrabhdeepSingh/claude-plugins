@@ -40,8 +40,7 @@ Apply the lifecycle taxonomy per ticket. Type is a question about the deliverabl
 
 For each ticket, in one operation: remove conflicting values in the dimension, then set the chosen one. Two things this pass must resist:
 
-- **Priority is not size.** The most common corruption of a backlog is ranking by how much work something looks like. A one-line fix for data loss outranks a month of work nobody is waiting for. Effort belongs in planning, never in priority.
-- **Priority is not volume.** How many people commented, or how forcefully, is evidence of attention, not of impact. Weigh impact, likelihood, affected scope, and urgency instead.
+- **Priority is never size or volume.** Ranking by apparent effort or by comment count is the most common backlog corruption — effort belongs in planning, and attention is not impact; weigh impact, likelihood, affected scope, and urgency. The rule's canonical home is [[ticket-lifecycle]]'s taxonomy.
 
 Leave priority **unset** on a ticket that should be rejected rather than implemented — unset is the taxonomy's signal for "not intended work," and inventing a low priority for it hides the recommendation.
 
@@ -65,12 +64,8 @@ Anything you notice that falls outside the two fields — a ticket needing a spe
 
 ## Self-check before you call it done
 
-- Did you fetch the live backlog rather than working from a remembered list?
-- Did you validate every field and value against the tracker before the first write, and make zero changes when validation failed?
-- Does every open ticket in scope now carry exactly one type, and exactly one priority when actionable?
-- Is priority unset on every ticket you would recommend rejecting?
-- Did any priority come from implementation size, comment volume, or a ticket's self-declared urgency? Redo it from impact evidence.
-- For tickets whose claims needed checking, did you actually inspect the repository?
-- Did you leave already-correct tickets untouched instead of churning them?
+- Fetched the live backlog, validated every field and value against the tracker before the first write — zero changes when validation failed?
+- Every open ticket in scope carries exactly one type, and exactly one priority when actionable — unset where you'd recommend rejection?
+- Did any priority come from implementation size, comment volume, or self-declared urgency? Redo it from impact evidence, inspecting the repository where claims needed checking.
+- Already-correct tickets left untouched, and nothing outside the two fields — no comments, closures, triggers, text edits, or code?
 - Does the report name the evidence for every P0 and P1 in one line each?
-- Did you avoid every out-of-bounds action in section 5 — no comments, no closures, no triggers, no text edits, no code?
