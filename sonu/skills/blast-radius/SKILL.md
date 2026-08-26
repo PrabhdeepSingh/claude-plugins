@@ -1,7 +1,7 @@
 ---
 name: blast-radius
 description: >-
-  Consumer-impact discipline for contract changes — enumerate every consumer, flag the ones that degrade silently, verify one downstream path end-to-end, before the change ships. INVOKE PROACTIVELY whenever a change alters anything other code reads — return shapes, payloads, DB columns, log/telemetry fields, events, config/env values, parsed CLI output — or renames a published identifier (tool name, route, flag, env key, event type), even when it "just wraps" or "just renames". Skip purely internal changes and strictly additive optional fields. (Schema seams: [[safe-migrations]]; downstream verification: [[tdd]].)
+  Consumer-impact discipline for contract changes — enumerate every consumer, flag the ones that degrade silently, verify one downstream path end-to-end, before the change ships. INVOKE PROACTIVELY when a change alters anything other code reads — return shapes, payloads, DB columns, telemetry fields, config values — or renames a published identifier (tool name, route, env key). Skip purely internal changes and strictly additive optional fields. (Schema seams: [[safe-migrations]]; downstream verification: [[tdd]].)
 ---
 
 # Blast Radius — who reads the thing you're changing?

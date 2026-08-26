@@ -75,41 +75,9 @@ Plan for substantial and language-dependent string growth rather than relying on
 
 Use this format only when the user asks for a standalone layout review. When [[interface-review]] orchestrates the review, provide domain evidence and findings to that skill and let its output format, severity scale, consolidation rules, cap, and verdict take precedence.
 
-Present the standalone review in two parts.
+Report all confirmed findings as one markdown table grouped by principle — `| Severity | Location | Before | After | Why |`, never separate "Before:" / "After:" lines. **Location** cites `path/to/file:line` (or the exact screen and component when there are no source files); **Before / After** show the current implementation and an actionable replacement; **Why** names the violated principle and its impact. Consolidate a repeated systemic issue into one row listing every affected location; omit principles with no findings. **Severity**: `HIGH` blocks content or an action at a supported viewport; `MEDIUM` harms hierarchy, reading order, or adaptability; `LOW` is isolated alignment or spacing polish.
 
-### Findings
-
-Group all confirmed findings by principle. Use a markdown table with **Severity**, **Location**, **Before**, **After**, and **Why** columns. Never use separate "Before:" / "After:" lines.
-
-- **Severity**: `HIGH` blocks content or an action at a supported viewport; `MEDIUM` harms hierarchy, reading order, or adaptability; `LOW` is isolated alignment or spacing polish.
-- **Location**: cite `path/to/file:line`. If the artifact has no source files, cite the exact screen and component instead.
-- **Before / After**: show the current layout and an actionable replacement.
-- **Why**: name the violated principle and its effect on comprehension or adaptability.
-
-Consolidate a repeated systemic issue into one row and list every affected location. Omit principles with no findings.
-
-### Example
-
-#### Group with space, not lines
-| Severity | Location | Before | After | Why |
-| --- | --- | --- | --- | --- |
-| LOW | `src/Settings.tsx:41` | `border-b` on every settings row | Remove borders; use `space-y-2` within groups and `space-y-8` between groups | Spacing communicates grouping with less visual noise |
-| LOW | `src/ProfileForm.tsx:58` | `<hr>` between form sections | Replace with `mt-10` on each section heading | Section hierarchy should not depend on repeated rules |
-
-#### Align to shared edges
-| Severity | Location | Before | After | Why |
-| --- | --- | --- | --- | --- |
-| LOW | `src/Card.tsx:24` | Card text at `pl-4`, card icon at `pl-3` | Align both to the same `pl-4` edge | Shared edges create a legible structure |
-| MEDIUM | `src/Nav.css:19` | `margin-left: 16px` | `margin-inline-start: 16px` | Physical properties break direction-aware layouts |
-
-### Verification and Verdict
-
-After the findings:
-
-1. **Verification**: list the exact checks run and their observed results across the relevant viewport widths, reading order, zoom, and RTL state. If a check was not run, state what still needs verification.
-2. **Verdict**: `Block` if any `HIGH` finding remains, `Needs changes` if only `MEDIUM` or `LOW` findings remain, and `Approve` only when no actionable findings remain.
-
-When there are no findings, omit the tables, state "No actionable layout findings", report verification, and end with `Approve`.
+After the findings: **Verification** — list the exact checks run and their observed results (the relevant viewport widths, reading order, zoom, RTL state when applicable), and name any check not run. Then **Verdict**: `Block` if any `HIGH` finding remains, `Needs changes` if only `MEDIUM` or `LOW` findings remain, `Approve` only when no actionable findings remain. When there are no findings, omit the table, state "No actionable layout findings", report verification, and end with `Approve`.
 
 ## Provenance and maintenance
 

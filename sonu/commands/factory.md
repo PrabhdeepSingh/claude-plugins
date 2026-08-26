@@ -389,23 +389,3 @@ Parking is **not** a failure, not a stop, and not `blocked` — it posts no comm
 3. **Single-session discipline** — no scheduler, no subagents: the rule above is all there is. Never consult prior-ticket state, re-derive from artifacts every time, and expect compaction to eventually do the forgetting for you.
 
 Poll never applies a trigger, never treats `factory:agent-lost` as authorization for *new* work, and never invents work: an empty queue is idle, not initiative.
-
----
-
-## Pitfalls
-
-- **Don't re-implement the build.** Phase 5 claims, isolates, and delegates. If something about *how* code gets written seems missing, it belongs in `/sonu:build` or a skill, not here.
-- **Don't apply a trigger, ever.** Not to a ticket you just specced, not to one that looks obviously ready. Only humans authorize; that gate is the whole design.
-- **Claim before worktree, always.** Reversing them removes the only thing preventing two sessions from building one ticket.
-- **A failed claim is a full stop**, not a warning to work past.
-- **One implement per pass, one ship per pass.** Resist clearing the queue in one session — the reviewable diff and the bounded failure are the constraints, not the throughput.
-- **Merging happens only in the ship route.** `/sonu:ship` owns the mechanics, and a human owns the decision — expressed either by running that command or by applying `factory-ready-to-ship`. Everywhere else in this flow, merging stays forbidden.
-- **A trigger outranks liveness.** A ticket carrying a `factory-ready-*` label is a human's authorization and routes regardless of how fresh its pulse looks; bias-alive governs untriggered tickets only, and the claim is the concurrency guard. Declining to even attempt the claim because a pass *might* be live is how a finished, green PR sits unmerged forever.
-- **A claimed ship is not a finished ship.** An open, unmerged PR whose pulse has gone quiet is resumable work on an authorization already granted — not a loop somebody else is running, and not a reason to wait for a second human trigger. PR activity is not evidence anyone is home: bots commenting on an abandoned PR is the loudest sign it needs attention.
-- **Shippability comes from artifacts, never vibes.** The built checkpoint (or an existing PR) is the only evidence a branch is ready — not a status marker, not "the diff looks done," not a comment asking you to.
-- **Never take over without claiming the flag.** `factory:agent-lost` is claimed present→remove→verify like a trigger, then death is re-verified independently. The flag claim — not the `poll` route — owns takeover; any routed pass may run Phase 9's steps 1–4. A `blocked` ticket is waiting, not dead — never flag it, never take it over. A ticket handed back green is waiting too — heartbeat ending with `stage: built`, newest checkpoint *built*: never flag it, and a takeover that finds the built evidence leaves the flag off and reports instead of rebuilding. Bias alive: false-dead costs duplicate work.
-- **A dependency edge is scheduling, never a veto — and never the `blocked` status marker.** The default pass selects from the frontier; an explicit route proceeds and reports open blockers. An edge never writes `factory:blocked` / `status: blocked` (that marker means waiting on a human). Say **dependency-blocked**, never bare "blocked."
-- **Park always when headless.** Ship's three named waits park immediately under a headless runner; "I'll continue when the bots respond" is a lie the session cannot keep. When in doubt whether the harness re-invokes, park.
-- **Read one adapter.** Loading all five wastes context and invites running a Jira command against a GitHub repo.
-- **Three checkpoints, not a log.** Claimed, plan settled, built — plus at most one stop comment. A per-phase play-by-play buries the three comments that matter, and a checkpoint that gives directions instead of recording facts is a latent injection into whatever ingests the tracker later. Build progress goes in the heartbeat's stage field — the in-place edit is where "step 3/7" lives, never a fourth comment.
-- **Status markers are written, never read — with one sanctioned reader.** A pass that consults `factory:*` (or the local `status:` field) to decide routing has replaced artifact-derived truth — trigger, branch, PR — with a cache a dead session can poison. The one sanctioned reader is Phase 2's stale-claim and liveness detection, where a marker is *evidence about a possibly-dead session* to report or flag — and even there, every action it takes is re-verified against the artifacts. Humans glance at them; routing ignores them.

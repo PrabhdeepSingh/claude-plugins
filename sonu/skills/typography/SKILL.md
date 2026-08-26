@@ -136,41 +136,9 @@ Set `lang` so browsers and assistive technology choose the right pronunciation, 
 
 Use this format only when the user asks for a standalone typography review. When [[interface-review]] orchestrates the review, provide domain evidence and findings to that skill and let its output format, severity scale, consolidation rules, cap, and verdict take precedence.
 
-Present the standalone review in two parts.
+Report all confirmed findings as one markdown table grouped by principle — `| Severity | Location | Before | After | Why |`, never separate "Before:" / "After:" lines. **Location** cites `path/to/file:line` (or the exact screen and component when there are no source files); **Before / After** show the current implementation and an actionable replacement; **Why** names the violated principle and its impact. Consolidate a repeated systemic issue into one row listing every affected location; omit principles with no findings. **Severity**: `HIGH` makes text unreadable, unavailable, or structurally misleading; `MEDIUM` harms hierarchy, wrapping, or scanning; `LOW` is isolated typographic polish.
 
-### Findings
-
-Group all confirmed findings by principle. Use a markdown table with **Severity**, **Location**, **Before**, **After**, and **Why** columns. Never use separate "Before:" / "After:" lines.
-
-- **Severity**: `HIGH` makes text unreadable, unavailable, or structurally misleading; `MEDIUM` harms hierarchy, wrapping, or scanning; `LOW` is isolated typographic polish.
-- **Location**: cite `path/to/file:line`. If the artifact has no source files, cite the exact screen and component instead.
-- **Before / After**: show the current typography and an actionable replacement.
-- **Why**: name the violated principle and its effect on readability or hierarchy.
-
-Consolidate a repeated systemic issue into one row and list every affected location. Omit principles with no findings.
-
-### Example
-
-#### Tabular numbers
-| Severity | Location | Before | After | Why |
-| --- | --- | --- | --- | --- |
-| MEDIUM | `src/Price.tsx:17` | `<span>{price}</span>` on a live price | `<span className="tabular-nums">{price}</span>` | Proportional digits cause changing values to shift |
-| LOW | `src/numbers.css:8` | `font-feature-settings: "tnum" 1` | `font-variant-numeric: tabular-nums` | The high-level property preserves fallback behavior |
-
-#### Line-height and measure
-| Severity | Location | Before | After | Why |
-| --- | --- | --- | --- | --- |
-| MEDIUM | `src/Article.tsx:33` | `leading-none` on a body paragraph | `leading-normal` (`1.5`–`1.6`) | Wrapped body text needs enough vertical separation |
-| MEDIUM | `src/article.css:12` | Full-width article column | `max-width` near 65 characters at `16px` | Long measures make lines hard to track |
-
-### Verification and Verdict
-
-After the findings:
-
-1. **Verification**: list the exact checks run and their observed results, including wrapping, hierarchy, text resizing, font loading, and dynamic-value stability when applicable. If a check was not run, state what still needs verification.
-2. **Verdict**: `Block` if any `HIGH` finding remains, `Needs changes` if only `MEDIUM` or `LOW` findings remain, and `Approve` only when no actionable findings remain.
-
-When there are no findings, omit the tables, state "No actionable typography findings", report verification, and end with `Approve`.
+After the findings: **Verification** — list the exact checks run and their observed results (wrapping, hierarchy, text resizing, font loading, dynamic-value stability when applicable), and name any check not run. Then **Verdict**: `Block` if any `HIGH` finding remains, `Needs changes` if only `MEDIUM` or `LOW` findings remain, `Approve` only when no actionable findings remain. When there are no findings, omit the table, state "No actionable typography findings", report verification, and end with `Approve`.
 
 ## Reference files
 

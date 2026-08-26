@@ -101,7 +101,4 @@ Do not commit. Do not merge. The turn ends here.
 
 ## Pitfalls
 
-- **Don't re-implement skills.** If design-tree or tdd need to do something, invoke them — don't inline their logic here.
-- **Don't commit.** Phase 3 ends at the hand-back message. Committing and shipping are deliberate acts that belong to `/sonu:ship`.
 - **Coexistence.** `/sonu:design-tree`, `/sonu:tdd`, and `/sonu:ship` work identically when run standalone. This conductor is additive, not a replacement.
-- **Trivial changes skip plan mode.** Entering plan mode for a one-line fix is overhead that blocks write tools unnecessarily. Use the size classification in Phase 0.
