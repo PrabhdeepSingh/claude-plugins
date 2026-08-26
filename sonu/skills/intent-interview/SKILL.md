@@ -1,7 +1,7 @@
 ---
 name: intent-interview
 description: >-
-  Pre-spec intent extraction — one question at a time, each with a guess attached, until you can predict the user's answers; for when the asked-for artifact itself might be wrong. INVOKE when a request's outcome, audience, or success measure is genuinely unclear, before any spec or design. NOT ticket speccing ([[ticket-triage]]), choosing approaches ([[design-tree]]), or any non-interactive run — there an underspecified ask is a blocker, never a license to guess.
+  Pre-spec intent extraction — one question at a time, each with a guess attached, until you can predict the user's answers; for when the asked-for artifact itself might be wrong. INVOKE when a request's outcome, audience, or success measure is genuinely unclear. NOT ticket speccing ([[ticket-triage]]), choosing approaches ([[design-tree]]), or any non-interactive run — there an underspecified ask is a blocker, never a license to guess.
 argument-hint: "[the vague request to interview toward]"
 allowed-tools: Skill, Read
 ---

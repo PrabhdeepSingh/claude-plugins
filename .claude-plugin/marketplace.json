@@ -76,7 +76,8 @@
         "git-worktrees",
         "parallel-agents",
         "security",
-        "performance"
+        "performance",
+        "intent-interview"
       ],
       "source": "./sonu"
     }

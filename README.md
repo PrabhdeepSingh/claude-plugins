@@ -11,7 +11,7 @@ Prabhdeep (Sonu) Singh's personal [Claude Code](https://claude.com/claude-code) 
 /plugin install sonu@prabhdeep-tools
 ```
 
-Run those once per device. After that, `/sonu:build`, `/sonu:ship`, `/sonu:factory`, `/sonu:tdd`, `/sonu:design-tree`, `/sonu:self-review`, `/sonu:ticket-triage`, `/sonu:classify-tickets`, and `/sonu:bug-finder` are available in every repo on that machine, and the **code-standards**, **tdd**, **debugging**, **security**, **performance**, **blast-radius**, **safe-migrations**, **infra-standards**, **observability**, **seo**, **design-tree**, **model-tiering**, **self-review**, **pr-conventions**, **ticket-lifecycle**, **ticket-triage**, **classify-tickets**, and **bug-finder** skills ride along automatically — no command to run, they just shape how code and content get written. To pull updates later:
+Run those once per device. After that, `/sonu:build`, `/sonu:ship`, `/sonu:factory`, `/sonu:tdd`, `/sonu:design-tree`, `/sonu:self-review`, `/sonu:ticket-triage`, `/sonu:classify-tickets`, and `/sonu:bug-finder` are available in every repo on that machine, and the **code-standards**, **tdd**, **debugging**, **security**, **performance**, **intent-interview**, **blast-radius**, **safe-migrations**, **infra-standards**, **observability**, **seo**, **design-tree**, **model-tiering**, **self-review**, **pr-conventions**, **ticket-lifecycle**, **ticket-triage**, **classify-tickets**, and **bug-finder** skills ride along automatically — no command to run, they just shape how code and content get written. To pull updates later:
 
 ```
 /plugin marketplace update prabhdeep-tools
