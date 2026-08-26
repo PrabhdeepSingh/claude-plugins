@@ -97,7 +97,7 @@ A generated interface has a recognizable house style, and every entry in it is a
 | Lorem-ipsum-style copy | Placeholder text hides the layout problems real content reveals — length, wrapping, overflow |
 | Equal oversized padding | Uniform generous spacing destroys visual hierarchy and wastes screen space |
 | Stock card grids | A uniform grid is a layout shortcut that ignores information priority and scanning order |
-| Shadow-heavy depth | Layered shadows compete with content and cost rendering on low-end devices |
+| Shadow-heavy depth | Layered shadows compete with content and are costly to render on low-end devices |
 
 None of these is banned outright — each is banned *as a default*: reach for it only when the product's content and brand actually call for it.
 
