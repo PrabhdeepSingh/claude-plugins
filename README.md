@@ -123,294 +123,52 @@ Two human decisions (approve the spec, approve the diff); everything between the
 
 While all this runs, the ticket itself tells the story: each pass posts checkpoint comments (claimed → plan settled → built, with the risk list), keeps a `factory:*` status label current so the issue list shows every ticket's stage at a glance, and parks any question it can't answer as a `blocked` ticket with the question in a comment — answer it and re-apply the trigger to resume.
 
-#### Poll mode — the queue without the retyping
+#### Poll, parallelism, and trackers — the short version
 
-`/sonu:factory poll` turns the pass into a standing loop: the session sweeps, ships one, builds one, specs what's ready, then idles and wakes again (15–30 minutes, via the harness's loop facility). Authorization doesn't change — you still apply every trigger; poll only saves you re-running the command. There is still no hosted daemon: the loop is your session, on your machine, and it stops when you close it. Passes maintain a heartbeat comment (one comment, edited in place) so a died session is detectable: the sweep — or an optional GitHub Action that `init` offers to install — flags tickets whose pass stopped answering as `factory:agent-lost`, and a polling session may then take the work over by claiming that flag and rebuilding from the spec. Blocked tickets waiting on your answer are never flagged and never taken over — waiting is not death. And once a ticket is shipped and closed (closure is automatic on merge — your gate was applying the ship trigger), the loop drops that ticket's context entirely and starts the next one fresh from its own thread: the ticket is the durable memory, not the session.
+**Poll mode** (`/sonu:factory poll`) turns the pass into a standing loop in your own session — sweep, ship one, build one, spec what's ready, idle, wake. You still apply every trigger; there is no hosted daemon, and the loop dies with your session. Passes keep an edited-in-place heartbeat so a died session is detectable (`factory:agent-lost`) and its work can be taken over from the spec — blocked tickets waiting on your answer are never flagged.
 
-#### Parallel work — a worktree per ticket
+**Parallel work**: every implement pass builds in its own git worktree on its own `ticket/…` branch, claimed in the main checkout first — so several agents can run at once without stomping, and two sessions can never build the same ticket. Worktrees don't inherit untracked config (`.env` stays behind), so the pass copies what the suite needs.
 
-Every implement pass builds in its own git worktree (`../myrepo-wt-0001-fix-login-loop` on branch `ticket/0001-fix-login-loop`), unconditionally. That's what makes it safe to run several agents at once, each on a different ticket: separate directories, separate branches, no stomping. The claim happens in the main checkout *before* the worktree exists, so two sessions can never build the same ticket. A dirty main checkout is a hard stop rather than something to build around, and the factory sweep cleans up worktrees and branches for tickets whose PRs have merged. In a sandboxed harness that can't write outside the workspace, it falls back to building in place on a clean tree and says so.
+**Trackers**: five backends — GitHub Issues (`gh`), Jira (MCP/REST), Linear (MCP/GraphQL), a zero-dependency local Markdown store under `.sonu/tickets/`, or `custom` (init interviews you and generates an adapter). Config lives in `.sonu/factory-config.md` (committed; `~/.sonu/` as the global fallback); credentials stay in environment variables, never in the file. Ticket-file edits on the local tracker are committed alone with a `tickets:` prefix — tracker metadata only, never source code. The full operation contract and per-tracker mechanics live in the `ticket-lifecycle` skill's adapters.
 
-Two things worth knowing before you run agents in parallel. A fresh worktree gets a fresh install and **does not inherit untracked local config** — `.env` and friends stay behind, and a suite that quietly skips tests for missing config will report green while proving nothing, so the pass copies what the suite needs. And on the local file tracker, claims are commits: if your agents run on more than one machine, the claim commit has to reach the remote for the other machine to see it, which is why the pass pushes when a remote exists.
+### Direct skill invocations
 
-#### Tracker configuration
-
-Five backends. Pick per repo, or once for everything:
-
-| `tracker:` | Backend | Notes |
-|---|---|---|
-| `github` | GitHub Issues via `gh` | Everything is a label; `Closes #N` closes the ticket when the PR merges **to the default branch** (a merge into a release branch won't). |
-| `jira` | Jira via the Atlassian MCP or REST | Native type and priority fields; nothing auto-closes, so the sweep transitions to Done. |
-| `linear` | Linear via its MCP or GraphQL | Native priority; `Fixes ENG-123` closes on merge **when Linear's GitHub integration is enabled** — without it, the sweep reports the ticket for a manual move. |
-| `local` | Markdown files in the repo | Zero dependencies, works offline, tickets diff in PRs. |
-| `custom` | Anything else | `init` interviews you and generates the adapter. |
-
-Configuration lives in `.sonu/factory-config.md` in the repo (committed, so the team shares it), falling back to `~/.sonu/factory-config.md` for a tracker you use everywhere:
-
-```markdown
----
-tracker: local
----
-Notes for humans go below the frontmatter; workflows read only the frontmatter.
-```
-
-Credentials never go in that file — Jira and Linear read them from environment variables (see Requirements).
-
-The **local** backend is the one that needs nothing but git. Tickets are files under `.sonu/tickets/`:
-
-```markdown
----
-id: 0001
-title: Fix login redirect loop
-type: bug
-priority: P1
-trigger: ready-to-implement
-status: open
-created: 2031-01-15
----
-## Problem
-## Scope and non-goals
-## Acceptance criteria
-## Verification plan
-## Discussion
-```
-
-Ticket-file edits (claims, specs, classifications, status flips) are committed on their own with a `tickets:` prefix, never mixed into a code commit — so the diff you review stays clean, and a claim is durable the moment it happens. That's the one deliberate exception to "these workflows never commit," and it covers tracker metadata only, never source code.
-
-For a tracker that isn't one of the four, `/sonu:factory init` asks how your tool works — how an agent reaches it, which environment variables hold credentials, what marks the three triggers, how type and priority map, how a merge closes a ticket, whether a comment can be edited in place — and writes an adapter file for you to review. Workflows only ever name an operation from a fixed list (list queue, list open, search, fetch, claim, update body, comment, heartbeat, classify, mark status, create, close the loop), so a tracker is fully supported the moment a document answers all of them; an adapter missing one is a hard stop, never an improvised command (the two display/liveness aids, *mark status* and *heartbeat*, degrade gracefully instead).
-
-### `/sonu:tdd` — drive a change test-first
-
-Runs the red-green-refactor loop on a named feature, bug, or behavior. This is the `tdd` skill (below) invoked directly — it writes test and implementation files to the working tree, not a printed plan.
-
-```
-/sonu:tdd                          # apply test-first methodology to the current change
-/sonu:tdd cart checkout flow       # drive a specific feature test-first
-/sonu:tdd fix the off-by-one bug   # reproduce with a failing test, then fix
-```
-
-The `tdd` skill (below) auto-applies the same methodology whenever code is written or changed, without needing an explicit invocation.
-
-### `/sonu:design-tree` — design tree mapper
-
-Maps any design problem as an explicit branching tree instead of one linear narrative. This is the `design-tree` skill (below) invoked directly. Pair it with `/sonu:ship` for complete PR lifecycle coverage: tree the design first, then ship the implementation.
-
-What it does:
-
-1. **Interviews you** to reach shared understanding — intent, constraints, success criteria, non-goals — before mapping a single decision point. This is the highest-leverage step, and it's always first.
-2. **Finds the real forks** — only decision points where the design could genuinely go in ≥2 consequential ways. House standards load first as pre-decided constraints, so a fork they already settle is stated and cited, not treed.
-3. **Records every branch**: chosen option with the decisive reason, rejected options with the reason each lost.
-4. **Preserves the rejected branches** so decisions don't get silently relitigated and you have a real fork to backtrack to if a downstream choice invalidates an earlier one.
-5. **Folds into the plan file** when in plan mode (as a `## Design Tree` section), or prints in-chat when called standalone.
-
-```
-/sonu:design-tree                  # tree the current design or active plan
-/sonu:design-tree auth system      # tree a specific topic
-```
-
-The same skill auto-applies in plan mode without an explicit invocation — see its entry under Skills below.
-
-### `/sonu:self-review` — where should a reviewer look?
-
-The `self-review` skill invoked directly: the 3–5 riskiest spots in the current diff (untracked files and multi-commit branches included), in plain language, ending with an explicit "this is a pointer, not an approval." Substantial diffs get the full treatment — independent parallel review lenses synthesized adversarially (see the skill entry below); small diffs get a single inline pass. `/sonu:build` and `/sonu:ship` already run it automatically at the right moments — this invocation is for everywhere else.
+`/sonu:tdd` runs the red-green-refactor loop on a named feature or bug (writes real files, not a plan). `/sonu:design-tree` maps a design as an explicit branching tree — interview, real forks only, rejected branches preserved — into the plan file or in-chat. `/sonu:self-review` lists the 3–5 riskiest spots in the current diff and ends with "a pointer, not an approval"; substantial diffs get independent parallel review lenses. All three are the skills themselves (see the table below) invoked by name; `/sonu:build` and `/sonu:ship` already run them at the right moments.
 
 ## Skills
 
-### `code-standards` — code the way I do
-
-A skill, not a command — there's nothing to invoke. Once the plugin is installed, Claude consults it automatically before writing, generating, or refactoring code in any repo, so AI-written code lands in my style instead of generic boilerplate.
-
-It opens with **working discipline** — how to approach the task, not just the output: think before coding and surface assumptions, build the minimum that solves the problem, look for an existing implementation (codebase, stdlib, dependencies) before writing a fresh one, make surgical changes that trace to the request (reverting dead ends completely), and turn vague asks into verifiable goals — claiming only outcomes you actually observed. Then it encodes the foundation across fourteen areas:
-
-- **Naming** — intention-revealing names, no `data`/`temp`/`Manager` junk-drawer names.
-- **Schema & API conventions** — `snake_case` fields, UUID ids, `created_date`/`last_modified_date` timestamps in UTC, first/last name stored separately.
-- **Readability** — flat guard-clause control flow over nested `if`s, comments that explain *why*.
-- **Modularity** — small single-purpose functions, separation of concerns.
-- **Data access** — select only the columns you need, paginate by default, no unbounded loads, no N+1.
-- **Presentation/logic/data separation** — no inline styles, no magic numbers or strings.
-- **Error handling** — fail loudly, never swallow errors.
-- **Logging** — through one shared logger (never raw `console.log`), structured, filterable, no secrets.
-- **Input validation & injection** — validate untrusted input at the boundary, parameterize every query.
-- **Information leaks** — generic API errors with detail logged internally, no auth/account enumeration.
-- **State** — immutability by default, tight scope.
-- **Tooling diagnostics** — fix the cause, never bare-suppress (`as any`, `@ts-ignore`, `eslint-disable` need a narrow scope and a stated reason).
-- **API design** — responses built from explicit field allowlists (never a serialized entity — no leaked hashes/tokens/internal flags), honest status codes, one error shape, pagination from day one, staged deprecation for breaking changes.
-- **Configuration & flags** — absence must be safe: a missing or malformed env var/flag never silently enables behavior; feature gates default off, protective controls fail fast; `true` defaults are explicit commented decisions; resolved flags logged at startup.
-
-Every rule explains *why* it's there, ships with good/bad examples so it actually sticks, and ends with a self-check the model runs against its own diff. When it's editing an existing codebase, matching that codebase's conventions wins over the guide.
-
-Edit `sonu/skills/code-standards/SKILL.md` to make it yours — it's plain Markdown.
-
-### `tdd` — test-driven development, baked in
-
-Auto-applied — once the plugin is installed, Claude follows the red-green-refactor discipline whenever it writes, changes, or tests code in any repo, even when "TDD" or "tests" aren't mentioned. `/sonu:tdd` (above) is this same skill invoked directly by name; there is no separate command component.
-
-It encodes a strict test-first methodology with honest carve-outs (spikes are thrown away and rebuilt test-first; code never lands without tests) across thirteen areas:
-
-- **Red-green-refactor** — failing test first, minimum code to green, refactor under protection. Small steps, run tests constantly.
-- **Test-first discipline** — the one carve-out: exploratory spikes to learn a shape, discarded entirely before building the real thing test-first.
-- **Behavior not implementation** — assert observable outcomes, never private state or internal call counts, so refactors don't break tests.
-- **Arrange-Act-Assert** — one behavior per test, three clean phases, one reason to fail.
-- **Spec-sentence naming** — test names document what broke and under what condition; the suite reads as a specification.
-- **Test qualities** — fast (milliseconds), isolated (no shared mutable state, no ordering), deterministic (injected clock/seed, no real I/O in unit tests), self-validating.
-- **Test doubles** — mock only at architectural seams (database, network, clock); real domain objects throughout the core; no mock returning a mock.
-- **The testing pyramid** — many unit tests, fewer integration, fewest end-to-end; push behavior down to the unit level.
-- **Coverage as byproduct** — use it to find gaps, not to hit a number; a test with no meaningful assertion is negative value.
-- **What to test** — behavior, boundaries, edge cases, error paths; thresholds (limits, timeouts, caps) at values a test can actually trip, asserting both sides; skip trivial pass-throughs and generated code.
-- **Behavioral evidence** — a green unit suite doesn't prove a screen renders or a flow completes; visible and interactive changes get the real flow exercised and evidence captured, or an explicit statement of what went unverified.
-- **The bug-fix reflex** — reproduce the bug with a failing test before fixing it, every time.
-- **The test is innocent** — a failing test means the code is wrong, not the test; no updating expectations to match broken output, no skips, no broadened assertions, no sleeps.
-
-Every rule explains the *why*, ships with Avoid/Prefer code examples, and the red-green-refactor section shows the full three-step sequence end-to-end. Tests are held to the same bar as production code via `code-standards`.
-
-Edit `sonu/skills/tdd/SKILL.md` to make it yours — it's plain Markdown.
-
-### `debugging` — hypothesis testing, not patch roulette
-
-A skill, not a command — it fires automatically whenever Claude is diagnosing anything broken: an error message, a stack trace, a failing or flaky test, a crash, unexpected output, a regression, a production incident. When the bug is a production report, it **pulls the real event instead of debugging the paraphrase** — discovering from the repo whether the project uses Sentry, Datadog, Azure Application Insights, CloudWatch, or plain logs, fetching the exact exception, breadcrumbs, frequency, and first-seen release (via MCP server, API, or CLI — or asking for access rather than improvising), and treating what it finds as production data that never leaks into code, commits, or PRs. It encodes the scientific debugging loop: **reproduce first** (no reproduction, no fix), **read the actual error** (verbatim, first-error-in-the-log, no pattern-matched diagnoses), **locate the origin, not the surface** (trace the bad state back to where it was made wrong — never patch where it exploded), **one hypothesis → one change → one observation** (never two variables at once), **instrument and bisect** instead of guessing, **revert dead ends completely** (no fossils of failed attempts under the final fix), **prove the fix** (the reproduction passes AND you can say why in one sentence, pinned with a regression test via `tdd`), and **know when to stop** (three dead hypotheses → reframe; escalate with a structured summary of what's ruled out).
-
-Edit `sonu/skills/debugging/SKILL.md` to make it yours — it's plain Markdown.
-
-### `blast-radius` — who reads the thing you're changing?
-
-A skill, not a command — it fires automatically whenever a change alters the shape, format, or semantics of anything other code consumes: a function's return value, an API/tool response body, a serialized payload, a DB column read elsewhere, a log or telemetry field, an event message, a config value, or parsed CLI output. Wrapping counts; renaming counts; "the data is still there, just enveloped" counts.
-
-It encodes consumer-impact discipline in six steps: **name the seam** (an unnamed contract can't be searched for), **enumerate consumers mechanically** — by grepping for symbols, field names, and parse sites, never from memory, and always including the out-of-band readers (loggers, telemetry, ETL, dashboards) that call-graph intuition structurally misses — **classify each consumer by how it fails** (unaffected / breaks loudly / *degrades silently* — the killer class, hunted via `catch → default`, `|| []`, `?? null` downstream of the seam), **disposition every affected consumer explicitly** (update it, version the contract expand-→-migrate-→-contract style, or accept the break in writing), **verify one downstream path end-to-end** by observing real output — a logged row, an emitted event — not just the producer's green tests, and **record the downstream impact** where the reviewer will see it.
-
-The motivating failure mode: a locally-correct, fully-tested change to a producer's output format that silently nulls out a downstream parser's data for weeks, because the parser's fallback made breakage look like missing data. This skill makes "who reads this?" a mandatory step instead of an instinct.
-
-Edit `sonu/skills/blast-radius/SKILL.md` to make it yours — it's plain Markdown.
-
-### `safe-migrations` — the schema change and the safe path to it are different artifacts
-
-A skill, not a command — it fires automatically whenever Claude writes or edits a database migration, an `ALTER TABLE`, a backfill, or any change where code and schema move together. It encodes zero-downtime discipline: every migration stays compatible one release in each direction (rolling deploys mean old code meets new schema), breaking changes decompose into **expand → migrate → contract** across separate releases, destructive operations ship alone one release late, backfills run as batched/resumable/idempotent jobs (never inside the deploy), every step has a tested down path or an explicit `IRREVERSIBLE` marker, lock-aware DDL forms, and rehearsal against production-shaped data.
-
-### `infra-standards` — infrastructure is code: reviewed, planned, least-privileged, boring
-
-A skill, not a command — it fires automatically on any infra surface: Terraform/Bicep/CloudFormation, Dockerfiles, CI pipelines (GitHub Actions, Azure Pipelines), Vercel config, env/secrets handling. It encodes: no clickops (console changes are drift; codify or they don't exist), read the plan before apply (every `destroy`/`replace` line explained), secrets only from secret stores (never in source, tfvars, images, or pipeline logs), Dockerfile baselines (pinned bases, multi-stage, non-root, cache-aware layers, pinned deploy tags), CI discipline (build once and promote, scoped tokens, pinned actions — and **never green a pipeline by weakening it**), least privilege everywhere, and idempotency as the IaC contract.
-
-### `observability` — instrument for the question you'll ask at 2am
-
-A skill, not a command — it fires automatically when creating a service, endpoint, or job, or adding metrics/tracing/error capture/health checks/alerts. It encodes the producing side of what `debugging` consumes: the four questions every operation must answer from telemetry alone (traffic, errors, latency, saturation), the metric cardinality trap (no unbounded labels), trace-context propagation, liveness-vs-readiness health endpoints that don't cause restart storms, error capture tagged with the release (what makes first-seen bisection possible), and alert quality — page on user-facing symptoms only, every alert actionable and owned, delete what gets ignored. Instrumentation ships with the feature, not after the incident.
-
-### `seo` — technical + editorial SEO, baked in
-
-Both halves of SEO in one skill. The plumbing side fires whenever Claude touches anything served as a web page or affecting how one is crawled — templates (HTML, JSX/TSX, Vue, Svelte, Astro), routes, redirects, `<head>` metadata, schema.org JSON-LD, sitemaps, robots.txt — covering heading structure, title/meta lengths, canonicals, URL strategy, redirect rules (301/302/410), structured data, and indexation controls. The editorial side fires on prose meant to be published (posts, guides, landing copy, changelogs, docs, Markdown content): one search intent per page, structure a machine can extract, depth and E-E-A-T over keyword stuffing, and featured-snippet / AI-citation formatting so content earns citations in AI answer engines, not just blue links.
-
-Edit `sonu/skills/seo/SKILL.md` to tune it.
-
-### `security` — decide what can go wrong before deciding what to build
-
-Build-time security discipline, distinct from the after-the-fact `/security-review` pass. It fires automatically on features touching auth, user data, uploads, outbound fetches, dependencies, or LLM/agent output: threat-model-first (trust boundaries, assets, abuse cases as the first tests), the Always/Ask-First/Never boundary tiers, SSRF defense with its honest check-then-fetch limit, committed-secret-means-rotate, supply-chain hygiene (install scripts, typosquats, reachability triage), LLM output as untrusted input, and privacy as its own question — should we hold this data at all, and for how long?
-
-Edit `sonu/skills/security/SKILL.md` to tune it.
-
-### `performance` — the measurement is the work
-
-Performance as measurement discipline, not a bag of tricks: baseline first (metric, conditions, budget), profile-don't-deduce, one change per cycle, re-measure the same way, beat the noise not the mean — and a keep/revert verdict where **neutral is a revert** ("code you keep, you maintain forever; make it pay for itself"). Reverted attempts go in a ledger so dead ideas stay dead, and wins get guarded by a budget or alert.
-
-Edit `sonu/skills/performance/SKILL.md` to tune it.
-
-### `intent-interview` — find out what they actually want first
-
-Pre-spec intent extraction for when the asked-for artifact itself might be wrong ("build me a dashboard" that turns out to need a list). One question at a time, each with a visible guess attached; the want-vs-should-want detector ("if you didn't have to justify this to anyone, what would you actually want?"); a six-line restate ending in Out of scope; and a list of what does NOT count as yes ("whatever you think is best" is delegation, not confidence). Interactive contexts only — headless runs flag the gap as a blocker instead of guessing.
-
-Edit `sonu/skills/intent-interview/SKILL.md` to tune it.
-
-### `pr-conventions` — right template, living description, honest replies
-
-A skill, not a command — there's nothing to invoke. Once the plugin is installed, Claude uses it automatically inside `/sonu:ship` to author PR descriptions, keep them current, and reply to review threads. Also callable standalone when you're crafting a PR body or responding to comments outside the ship flow.
-
-What it does:
-
-1. **Discovers the team's own template first** — scans for `.github/PULL_REQUEST_TEMPLATE.md` (and the multi-template directory variant) before reaching for any built-in. The team standard wins; built-ins are the fallback.
-2. **Picks the right built-in template** from eight types: feature, bugfix, hotfix, chore, refactor, docs, perf, release — detected from the branch name, conventional-commit prefix on the commits, or the diff. Each template includes the sections that matter for that change type and nothing else.
-3. **Keeps the description current** as fixes land and re-reviews cycle through — refreshing Summary/Changes bullets and the Risk section in-place so re-reviewers see the actual state, not the opening snapshot.
-4. **Supplies reply templates** for every review-thread scenario (fixed / justified / false-positive / partial / question). Bot threads get replied to and resolved; human threads get replied to and left open — presumptuously closing a person's feedback thread is not this skill's call.
-
-Edit `sonu/skills/pr-conventions/SKILL.md` to tune the templates or add new change types.
-
-### `self-review` — point attention at the riskiest parts
-
-Auto-applied — once the plugin is installed, Claude runs it at two moments without being asked: before handing back from `/sonu:build` (so you know where to look before you run `/sonu:ship`), and in `/sonu:ship`'s pre-PR fix loop (each pass reviews, the loop fixes, and the final pass's list is embedded in the PR body for traceability and surfaced in the final report). `/sonu:self-review` (above) is this same skill invoked directly by name.
-
-How it reviews scales to the diff. A small diff (under ~100 changed code lines) gets one inline pass. A substantial one gets the fan-out: **six independent review lenses run in parallel as read-only subagents** — correctness, security surfaces, data integrity and migration, blast radius and consumer impact, test adequacy, silent behavior change — each reading the diff cold, with no access to the conversation that produced the code. A seventh **interface** lens joins them only when the diff actually touches user-facing interface files, applying `interface-review`'s domains to catch the regressions a reviewer can't see by reading diff text. The author reviewing its own work is the least reliable judge; fresh eyes that never saw the intent don't inherit the blind spots. The session then synthesizes adversarially: **findings are rejected by default** unless they cite a concrete `file:line` with an articulable failure mechanism, duplicates from independent lenses merge (and rank higher for being co-flagged), and pure style nits die. Lenses run on a cheaper model tier per `model-tiering`; every accept/reject decision stays on the session. On a harness without subagents, it degrades to the single inline pass — same output shape, nothing breaks.
-
-What it produces: a plain-language list of the **3–5 spots in the diff** that a reviewer should look hardest at. One line per item with `file:line` where helpful.
-
-What it explicitly is **not**: a score, a grade, a gate, or an approval. Self-scoring rubber-stamps the model's own work; the value is directing *your* eyes to the corners that will otherwise get skimmed. The list ends with a plain statement to that effect.
-
-The same reasoning applies when you ask for a self-review manually — "what should I look at?", "what's risky here?", "self-review this." If the diff is genuinely low-risk, it says so rather than inventing items to fill the list.
-
-### `design-tree` — decide by branching, not by marching
-
-Auto-applied — it fires automatically whenever you're designing or planning an implementation approach, especially in plan mode. `/sonu:design-tree` (above) is this same skill invoked directly by name at any time; there is no separate command component.
-
-It encodes a design methodology built around one core idea: design is traversing a branching tree, not marching a line. What that looks like in practice:
-
-- **Interview first.** Before branching anything, ask 2–4 targeted questions to confirm intent, constraints, success criteria, and non-goals. Designing the right problem saves more context and tokens than anything else.
-- **Load the standards as constraints.** `code-standards` always, plus `safe-migrations`/`seo`/`infra-standards`/`observability`/`blast-radius` and the interface bars (`accessibility`, `layout`, `ui-polish`, and `typography`/`colors`/`ux-writing`) when the surface matches — a fork a standard already settles is stated and cited, never treed. The plan-vs-standards conflict gets resolved at design time, not discovered by the executor mid-build.
-- **Find the real forks.** Only decision points where the design could genuinely go in ≥2 consequential ways — not trivia, not forced choices.
-- **Enumerate genuine alternatives** at every fork. No strawmen invented to be knocked down.
-- **Record the chosen branch** with a decisive reason (a real constraint, trade-off, or irreversibility) — not a vague preference.
-- **Keep the rejected branches** with the reason each lost. Stops silent relitigation; preserves real forks to return to.
-- **Backtrack deliberately** to a recorded fork when a downstream decision invalidates an earlier choice, rather than patching forward.
-
-The tree is written as a compact nested-bullet notation (`✓ chosen — reason`, `✗ rejected — why`) that's scannable in seconds. In plan mode it becomes a `## Design Tree` section in the plan file, with a `Constraints:` line naming the standards the design was drawn under — and the plan itself must be **executor-ready**: exact file paths, conventions settled in place, a verification check per step, no judgment call left for a smaller model in a fresh session to guess at.
-
-Edit `sonu/skills/design-tree/SKILL.md` to make it yours — it's plain Markdown.
-
-### `model-tiering` — route the work, keep the judgment
-
-A skill, not a command — it fires when a plan is being written or executed. On a strong session model (one with a trustworthy tier below it on the capability ladder), it turns planning model-aware: each plan step that clears the executor-ready bar gets graded `[delegate]` (mechanical, transcription-grade → the cheapest trustworthy tier) or `[delegate-heavy]` (substantive-but-contained → the strongest trustworthy tier between the light grade's tier and the session, or a same-tier subagent when that gap is empty — a Fable session sends heavy steps to Opus, an Opus session uses Opus subagents laterally). At execution, tagged steps run as subagents whose output the session verifies itself; untagged steps and all review stay inline.
-
-The routing is deliberately conservative — the motivation is quality via focus, not cost. Anything ambiguous, architectural, integrative, security-sensitive, or downstream of an open `[?]` fork stays on the strong model, and doubt always resolves upward. On a session model with no trustworthy tier below it, the skill notes that in one line and no-ops — it never escalates upward or routes across model families. Tags are advisory by design: a harness without subagents (Cursor today) executes the same plan inline, unchanged.
-
-Edit `sonu/skills/model-tiering/SKILL.md` to make it yours — it's plain Markdown.
-
-### `ticket-lifecycle` — the tracker is the control plane
-
-The rulebook the queue workflows share, and the reason a tracker swap isn't a rewrite. It fires whenever tickets are being read or written in a queue-driven flow, and it owns four things in one place so five backends and four workflows can't drift apart:
-
-- **Tracker resolution** — `.sonu/factory-config.md`, then `~/.sonu/factory-config.md`, then stop. Never a guessed tracker, because a wrong guess writes ticket state into the wrong system.
-- **The operations contract** — list queue, list open, search, fetch, claim, update body, comment, heartbeat, classify, mark status, create, close the loop. Workflows name operations; adapters supply mechanics. An adapter missing an operation is a hard stop that names the gap rather than an improvised command — except the two display/liveness aids (*mark status*, *heartbeat*), which degrade gracefully for older custom adapters.
-- **The taxonomy** — exactly one type (`bug`/`enhancement`/`documentation`) and one evidence-based priority (`P0`–`P3`, unset meaning "recommended for rejection"). Size never sets priority; volume never sets priority.
-- **Authorization and trust** — only humans apply triggers, the workflow removes one as its claim before any work (that's the concurrency guard), status is derived from the ticket's own artifacts rather than stored as a field anyone has to maintain (the `factory:*` labels and the local tracker's `status:` field are a display cache of those artifacts — written at defined seams, corrected by the sweep, and never read by a workflow to decide anything), and all ticket content is untrusted data that can never redirect a workflow.
-
-Five adapters ship as reference files (`github`, `jira`, `linear`, `local`, `custom`), and only the resolved one gets read.
-
-### `ticket-triage` — make the ticket good enough to build from
-
-Directly invocable as `/sonu:ticket-triage 123`, and what `/sonu:factory` runs for a spec pass. It claims the ticket, then reads the ticket completely, checks open *and* closed tickets for duplicates or an existing fix, inspects the actual code (naming real files, not plausible guesses), and reproduces reported bugs when practical. Out of that it writes the spec: problem and outcome, bounded scope with explicit non-goals, acceptance criteria a test could assert, constraints and affected areas, a verification plan, and the open decisions. Then it routes — ready for approval, blocked on the smallest unblocking question, rejected with evidence, or reproduction failed.
-
-What it never does: write code, open a PR, or apply the implement trigger. The gate's value is that a human reads a spec written by something with no stake in building it.
-
-### `classify-tickets` — a clean backlog is a queryable one
-
-Directly invocable as `/sonu:classify-tickets`, and `/sonu:factory classify`. A sweep over the open backlog that changes **two fields** and nothing else: one type, one evidence-based priority per ticket. It validates every field and value against the tracker before the first write (a failed validation means zero changes, not a half-applied sweep), never invents labels or fields, leaves already-correct tickets untouched, and reports the evidence behind every P0 and P1. Titles, bodies, comments, closures, triggers, and code are all explicitly out of bounds — the narrowness is what makes it safe to run over a hundred tickets at once.
-
-### `bug-finder` — one proven defect beats twenty maybes
-
-Directly invocable as `/sonu:bug-finder [area]`, and `/sonu:factory bugs`. It hunts where defects actually concentrate — recently changed code, error and fallback paths, untrusted input boundaries, process and persistence seams, concurrency and cleanup, weak coverage — tracing real execution paths rather than reading for style.
-
-Then it holds a hard evidence bar: observable incorrect behavior, the triggering path and conditions, why the behavior is *wrong* (citing a contract, test, doc, or call-site expectation), a reproduction, the expected behavior, and a verification approach. Speculation, style opinions, and missing features are not reportable. It dedups against open *and* closed work, files at most **one** ticket per pass with type `bug` and no trigger (queueing stays your call), and when nothing clears the bar it files nothing and says where it looked. It never fixes what it finds — discovery and repair are separate decisions with separate gates. Complement to `debugging`: that one diagnoses a symptom you already have, this one goes looking.
-
-### `interface-review` — the whole screen, not six separate audits
-
-Directly invocable as `/sonu:interface-review [quick|full] [scope]`. A cross-discipline review of a screen, flow, or feature that coordinates the six interface skills below, then consolidates everything into **one** ranked findings table with a single severity scale and one verdict (`Block` / `Needs changes` / `Approve`). It owns orchestration only — every rule belongs to the domain skill that owns it, and a finding is assigned to exactly one owner rather than reported six times.
-
-The discipline is in what it refuses to do: `quick` mode caps at 5 findings and drops `LOW`, `full` at 15; every finding cites `path/to/file:line` with the current implementation; a visual claim inferred only from source gets marked **Not verified** rather than promoted to a finding; a domain whose owning skill is unavailable is reported `Not reviewed` by name instead of quietly counted as covered; and a **Considered but Rejected** table makes restraint visible, so you can see what it looked at and deliberately let stand. Reviews are read-only unless you also ask for the fixes.
-
-### The six interface domains — the bars that fire while you build
-
-Skills, not commands. Like `code-standards`, there's nothing to invoke: they fire automatically on interface work, and `/sonu:build` activates them as design constraints in Phase 1 and build bars in Phase 2 whenever the change touches components, screens, styles, templates, or interface copy. Each one is a spine of rules with reference files carrying the depth, and each defers to its siblings rather than duplicating them.
-
-- **`accessibility`** — the floor, not a compliance pass. Native elements before ARIA, `:focus-visible` rings, a keyboard path for every pointer interaction, focus trap-and-restore, hit-area minimums, labeled and typed controls, errors that actually announce, live regions, alt text by purpose, and surviving 200% zoom and 320px reflow.
-- **`layout`** — structure communicates before a word is read. Group with space rather than lines (2× the intra-group gap), controls that look interactive, shared alignment edges, logical properties over physical left/right, visible cues for hidden content, breakpoints that come from the content instead of device presets, and layouts that survive translation and RTL mirroring.
-- **`ui-polish`** — the compounding details. Concentric border radius, optical over geometric alignment, shadows for elevation and borders for structure, interruptible transitions, restrained enter/exit motion, exact icon-animation and press-feedback values, never `transition: all`, and icon stroke weight matched to text weight.
-- **`typography`** — mostly restraint. `.woff2`, high-level CSS properties over raw OpenType tags, a small semantic type scale, line-height by role, a capped measure (60–75 characters), deliberate wrapping and truncation, tabular numbers on changing values, and 16px inputs so iOS doesn't zoom.
-- **`colors`** — OKLCH as a design control, with the project's existing tokens respected rather than converted on sight. Perceptually uniform palettes without hue drift, contrast measured on the rendered pair (APCA and WCAG) and *reported* rather than silently changed, gamut awareness with sRGB fallbacks, and one meaning per color.
-- **`ux-writing`** — copy that disappears into the interface. One voice with tone that flexes to the stakes, verb-first buttons that repeat the consequence ("Delete project", never "OK"), one flow vocabulary, links that describe their destination, toggles labeled for the ON state, errors that say how to fix the problem next to where it broke, and empty states that point forward.
+Twenty-six skills fire automatically as Claude works — nothing to invoke, nothing to configure. Each one is plain Markdown: the one-line summary below is the routing signal, and the full methodology (every rule with its why, worked examples, self-checks) lives in `sonu/skills/<name>/SKILL.md` — read it, fork it, edit it to tune the behavior.
+
+| Skill | What it does |
+|---|---|
+| **accessibility** | Accessibility engineering for product interfaces — keyboard support, focus states, ARIA, forms, screen readers, hit areas, motion and zoom. |
+| **blast-radius** | Consumer-impact discipline for contract changes — enumerate every consumer, flag the ones that degrade silently, verify one downstream path end-to-end before shipping. |
+| **bug-finder** | Hunt for one real, previously unreported defect and file it as a well-evidenced ticket — proactive discovery, not reactive diagnosis. |
+| **classify-tickets** | Backlog hygiene as a sweep — exactly one type and one evidence-based priority per open ticket, and nothing else changes. |
+| **code-standards** | Prabhdeep (Sonu) Singh's personal coding standards — the house rules and quality bar for how code gets written. |
+| **colors** | Color systems for web interfaces — OKLCH conversion and palette generation, contrast measurement (APCA/WCAG), gamut and P3 fallbacks, theming, one meaning per color. |
+| **debugging** | The scientific debugging loop — reproduce first, pull the real event from the repo's observability stack, one hypothesis → one change → one observation, revert failed attempts, escalate instead of thrash. |
+| **design-tree** | Make design decisions as an explicit branching tree — genuine alternatives, decisive rationale, rejected branches preserved. |
+| **infra-standards** | Infrastructure, container, and CI/CD discipline — IaC, Dockerfiles and compose files, CI pipelines, platform deploy config, env/secrets handling. |
+| **intent-interview** | Pre-spec intent extraction — one question at a time, each with a guess attached, until you can predict the user's answers; for when the asked-for artifact itself might be wrong. |
+| **interface-review** | Cross-discipline review of a whole screen, flow, or feature — coordinates [[accessibility]], [[layout]], [[ux-writing]], [[typography]], [[colors]], and [[ui-polish]] into one ranked findings table and a single verdict. |
+| **layout** | Layout structure for web interfaces — grouping, alignment, negative space, reading order, progressive disclosure, breakpoints, direction-aware (RTL) structure. |
+| **model-tiering** | Tag each plan step with the cheapest model tier that can execute it reliably, then delegate tagged steps to subagents at execution — keeping an orchestrator-class session clean for judgment, integration, and review. |
+| **observability** | Producing telemetry worth having — metrics, traces, error capture, health-check endpoints, and alerts that page on user-facing symptoms. |
+| **performance** | Performance work as measurement discipline — baseline first, one change at a time, beat the noise, and a keep/revert verdict where neutral is a revert. |
+| **pr-conventions** | Author PR descriptions from the right per-change-type template (the repo's own PULL_REQUEST_TEMPLATE wins), embed issue-tracker links, keep the description current as fixes land, and reply to human and bot review threads. |
+| **safe-migrations** | Zero-downtime schema and data migration discipline — expand → migrate → contract, never destructive in the release that ships the code, backfills as jobs, every step reversible. |
+| **security** | Build-time security discipline — threat-model before controls, Always/Ask-First/Never boundary tiers, SSRF, supply chain, LLM/agent security, privacy. |
+| **self-review** | Surface the riskiest parts of the current diff so a reviewer knows where to look hardest — one inline pass on small diffs, parallel review lenses with adversarial synthesis on substantial ones. |
+| **seo** | SEO for anything served as a web page — the plumbing (templates, routes, redirects, <head> metadata, JSON-LD, sitemaps, robots.txt) and the prose (posts, guides, landing copy, docs) so pages rank and get cited by AI answer engines. |
+| **tdd** | Test-driven development — the red-green-refactor discipline for code that's correct by design, not by accident. |
+| **ticket-lifecycle** | The ticket-as-control-plane rulebook — the single home for the tracker-operations contract, tracker resolution, the type/priority taxonomy, human-only trigger authorization, derived status, and trust boundaries. |
+| **ticket-triage** | Turn one raw ticket into an implementation-ready spec — or ask the smallest unblocking question — without writing production code. |
+| **typography** | Web typography — typeface choice and pairing, variable fonts and OpenType features, type scales, line-height, letter-spacing, measure, wrapping, truncation, underlines, tabular numbers, iOS input zoom. |
+| **ui-polish** | Design-engineering details that make an interface feel polished — border radius, optical alignment, shadows and elevation, animations and micro-interactions, press feedback, icons. |
+| **ux-writing** | UX writing and interface copy — voice and tone, button and link labels, error messages, settings labels, empty states, placeholders. |
+
+Ten of them double as direct invocations (`/sonu:tdd`, `/sonu:design-tree`, `/sonu:self-review`, `/sonu:interface-review`, `/sonu:ticket-triage`, `/sonu:classify-tickets`, `/sonu:bug-finder`, `/sonu:performance`, `/sonu:intent-interview`, `/sonu:model-tiering`) — same skill, called by name when you want it on demand.
 
 ## Developing this plugin
 

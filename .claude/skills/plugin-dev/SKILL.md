@@ -79,6 +79,12 @@ Every skill follows the same skeleton. Match it exactly when adding one:
 
 Commands follow: frontmatter → one-line contract → phased, imperative runbook — plus an optional pitfalls section, present only when it carries mistakes not already stated in the body (one home per fact: a pitfalls list that restates the phases is duplication, and v3.1.0 removed exactly that from factory.md and build.md).
 
+Three gates before anything new is added:
+
+- **Duplicate-prevention pre-flight (new components).** Before proposing a new skill or command, search the existing set: if the idea is a refinement of an existing skill, a focused edit there beats a new directory — every new skill costs a resident description forever, and near-duplicate skills split routing. The PR body justifies the gap explicitly.
+- **The entry gate (new rules).** A rule earns its place in a skill when it has been needed in real work, a concrete incident or artifact sits behind it, and its why can be stated in one line — premature entries become aspirational documentation nobody follows, and the excision cost lands on a later release (the dated-SEO-rules cleanup was exactly this).
+- **The pressure-case dry read (discipline skills).** Before shipping a skill whose job is to hold a line under pressure, read it against an authority-plus-urgency prompt — "the tech lead says it's a one-liner and the hotfix window closes in ten minutes" — and check the wording leaves no rationalization open. A skill that folds under the prompt it exists for isn't finished.
+
 Style rules that are non-negotiable across both:
 
 - **Write for the literal executor.** Assume a smaller model follows the text word-for-word with no context. Ambiguity is a bug: "at most N cycles" once read as "the loop is optional" and shipped a real defect — the fix was the explicit "mandatory whenever…, the cap limits how many, not whether."
@@ -108,6 +114,7 @@ Each of these bit this repo once. The lesson is already encoded at the point of 
 ## 6. Validation and release
 
 - **Before opening any PR:** run `/validate` — it mechanically checks manifest sync, frontmatter, shell-fence syntax, named-source and attribution scans, and cross-reference integrity. Fix everything it flags or justify in the PR body.
+- **Deferred, deliberately (2026-08):** a zero-dependency TF-IDF routing eval for skill descriptions (positive prompts must rank the skill top-3, negatives must lose to a named owner skill, plus a description-collision check) was reviewed and deferred to keep this repo zero-script. Revisit if descriptions drift, routing complaints appear, or the skill set grows past ~30.
 - **When the change is user-visible:** follow `/release` for the version bump and the five-home sync. That command is the canonical procedure; this file deliberately doesn't restate it.
 - **What counts as evidence here:** for shell snippets, a real execution transcript (or `bash -n`/`zsh -n` at minimum); for external claims (bot logins, gh behavior, SEO facts), a fresh check against the live tool or current docs — dated in the Provenance section; for wording changes in ship.md, a dry read asking "how would a literal executor misread this?"
 
