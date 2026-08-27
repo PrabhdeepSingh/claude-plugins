@@ -32,7 +32,7 @@ Any change made by hand in a cloud console/portal is **drift**: invisible to rev
 
 ## 3. Secrets and config: the artifact never contains them
 
-Config varies per environment; secrets are config with consequences. The discipline (the runtime-code side of this lives in [[code-standards]] sections 8–10):
+Config varies per environment; secrets are config with consequences. The discipline (the runtime-code side of this lives in [[code-standards]] sections 8–10; the day a secret reaches a remote anyway, [[security]] section 4 owns the response — revoke and reissue *before* purging history):
 
 - **Config comes from the environment** — env vars or platform config (App Service settings, Vercel project env), never hardcoded per-environment values inside the artifact. The file taxonomy, stated once: `.env.example` committed (the template), `.env` never committed, `.env.test` committable only with no real secrets, CI secrets in the platform vault, production secrets in the deployment platform — and **CI never holds production secrets**; even a CI-only test database gets its own secret rather than a hardcoded value, so test credentials can't leak into other contexts by habit.
 - **Secrets come from a secret store** — Azure Key Vault, AWS Secrets Manager, Vercel encrypted env, CI's secret mechanism. Never in: source, `.tfvars` committed to the repo, Dockerfile `ENV`/`ARG`, pipeline YAML, or logs (`set -x` in a CI script echoes everything — including the secret you just interpolated).

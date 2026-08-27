@@ -29,7 +29,7 @@ After that, skills auto-apply in every session and `/sonu:build`, `/sonu:ship`, 
 
 ## Commands
 
-`/sonu:build`, `/sonu:ship`, and `/sonu:factory` are commands proper — they sequence phases and hold gates. `/sonu:tdd`, `/sonu:design-tree`, `/sonu:self-review`, `/sonu:interface-review`, `/sonu:ticket-triage`, `/sonu:classify-tickets`, and `/sonu:bug-finder` are the skills themselves invoked directly by name: same syntax, same behavior, but no separate command component (a command and a skill can't share a name — they collide on the harness's one invocation surface).
+`/sonu:build`, `/sonu:ship`, and `/sonu:factory` are commands proper — they sequence phases and hold gates. `/sonu:tdd`, `/sonu:design-tree`, `/sonu:self-review`, `/sonu:interface-review`, `/sonu:ticket-triage`, `/sonu:classify-tickets`, `/sonu:bug-finder`, `/sonu:performance`, and `/sonu:intent-interview` are the skills themselves invoked directly by name: same syntax, same behavior, but no separate command component (a command and a skill can't share a name — they collide on the harness's one invocation surface).
 
 ### `/sonu:build` — decide → build → hand back
 
@@ -37,7 +37,7 @@ The spine of the plugin — a thin conductor that sequences the whole implementa
 
 What it does:
 
-1. **Triage** the working tree — size (trivial vs. substantial), kind (bug vs. feature), surface (web → SEO bars; schema/data → safe-migrations; IaC/containers/CI → infra-standards; new service/endpoint/job → observability; changed data shape another component consumes → blast-radius). One line.
+1. **Triage** the working tree — size (trivial vs. substantial), kind (bug vs. feature vs. optimization → `performance`), surface (web → SEO bars; schema/data → safe-migrations; IaC/containers/CI → infra-standards; new service/endpoint/job → observability; changed data shape another component consumes → blast-radius; auth, personal data, uploads, outbound fetches, new dependencies, or model output → security). One line.
 2. **Design**, in real plan mode — loads `code-standards` (plus the surface-matched bars) as design constraints first, then runs `design-tree` so you interview first and tree the real decision points. The plan must meet design-tree's executor-ready bar — exact paths, conventions settled in place, a verification check per step — before it goes to the gate. **`ExitPlanMode` is the approval gate.** Trivial changes skip this entirely.
 3. **Build test-first** — runs `tdd` under `code-standards` and every bar the triage flagged; **runs the suite via Bash** to confirm green. Never takes green on faith.
 4. **Self-review + hand back** — lists the 3–5 riskiest things in the diff, then stops: *"Green and ready. Review the diff, then run `/sonu:ship`."* Never commits or merges.
@@ -133,7 +133,7 @@ While all this runs, the ticket itself tells the story: each pass posts checkpoi
 
 ### Direct skill invocations
 
-`/sonu:tdd` runs the red-green-refactor loop on a named feature or bug (writes real files, not a plan). `/sonu:design-tree` maps a design as an explicit branching tree — interview, real forks only, rejected branches preserved — into the plan file or in-chat. `/sonu:self-review` lists the 3–5 riskiest spots in the current diff and ends with "a pointer, not an approval"; substantial diffs get independent parallel review lenses. All three are the skills themselves (see the table below) invoked by name; `/sonu:build` and `/sonu:ship` already run them at the right moments.
+`/sonu:tdd` runs the red-green-refactor loop on a named feature or bug (writes real files, not a plan). `/sonu:design-tree` maps a design as an explicit branching tree — interview, real forks only, rejected branches preserved — into the plan file or in-chat. `/sonu:self-review` lists the 3–5 riskiest spots in the current diff and ends with "a pointer, not an approval"; substantial diffs get independent parallel review lenses. `/sonu:performance` runs the measurement loop on a named slowness — baseline, one change, keep or revert, where neutral is a revert. `/sonu:intent-interview` interrogates a vague ask one question at a time, each with a guess attached, until the real outcome surfaces. `/sonu:interface-review` audits a whole screen or flow across every interface bar at once, and `/sonu:ticket-triage`, `/sonu:classify-tickets`, and `/sonu:bug-finder` are the tracker-side entry points `/sonu:factory` routes to on its own. These are the skills themselves (see the table below) invoked by name; `/sonu:build` and `/sonu:ship` already run them at the right moments.
 
 ## Skills
 
@@ -175,7 +175,7 @@ Every skill is also directly invocable by name (`/sonu:<skill>`) — the same me
 Contributor tooling is **repo-local, not shipped** — it lives in this repo's `.claude/` directory, so it loads automatically for anyone working *on* the plugin (a clone of this repo) and never reaches marketplace users, who'd have no use for it:
 
 - **`plugin-dev` skill** (`.claude/skills/plugin-dev/`) — the maintainer's handbook: the architecture contract (which decisions are load-bearing and why), the five house rules, plugin/skill/command mechanics, the house authoring shape, and the trap catalogue mined from this repo's own incident history. It fires automatically when you edit any component here.
-- **`/validate`** (`.claude/commands/validate.md`) — the CI this repo doesn't have: manifests parse and stay in sync, the marketplace description names every shipped component, frontmatter parses, every embedded shell snippet passes `bash -n` **and** `zsh -n`, no named sources, no AI attribution, ship's bot-registry copies identical, cross-references resolve, README inventory complete. Run it before any PR here.
+- **`/validate`** (`.claude/commands/validate.md`) — the CI this repo doesn't have: manifests parse and stay in sync, the marketplace description names every shipped component, frontmatter parses, every embedded shell snippet passes `bash -n` **and** `zsh -n`, no named sources, no AI attribution, ship's bot-registry copies identical, cross-references resolve, README inventory complete, every skill reachable from a command or a sibling. Run it before any PR here.
 - **`/release`** (`.claude/commands/release.md`) — the five-home version sync: semver decision, the description sync across both `plugin.json` and both `marketplace.json` files plus this README, `/validate`, hand-off to `/sonu:ship`, and the post-merge tag. Exists because both failure modes it prevents have actually happened here.
 
 ## Requirements

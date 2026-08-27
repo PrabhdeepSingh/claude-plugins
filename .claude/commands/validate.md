@@ -1,5 +1,5 @@
 ---
-description: Mechanically validate the sonu plugin repo before a PR — manifest sync, YAML frontmatter, shell-fence syntax, named-source and AI-attribution scans, cross-reference integrity. Only meaningful inside the claude-plugins repo; in any other repo, say so and stop.
+description: Mechanically validate the sonu plugin repo before a PR — manifest sync, YAML frontmatter, shell-fence syntax, named-source and AI-attribution scans, cross-reference integrity, skill reachability. Only meaningful inside the claude-plugins repo; in any other repo, say so and stop.
 argument-hint: ""
 allowed-tools: Bash, Read, Grep, Glob
 ---
@@ -210,6 +210,45 @@ for s in sonu/skills/*/; do
   grep -q "$name" README.md || echo "FAIL: README never mentions skill '$name'"
 done
 echo "(README inventory scan done — silence above means OK)"
+```
+
+## 10. Skill reachability (no orphans)
+
+Every skill must be reachable **from a command** — invoked directly as `sonu:<name>`, or arrived at by following double-bracket references from a skill that is. A skill no workflow can ever load is an orphan: shipped, documented, and dead. Reachability is computed as a transitive closure, not a one-hop test, because a closed cycle of skills that only cite each other is exactly the shape a batch of skills added in one release takes — and every one of them is still unloadable. Invocations are matched so a name cannot be credited from inside a longer one — a hyphenated superset such as `security-review` must not satisfy `security`; a double-bracket reference is already delimited by its own brackets. References are matched with fenced code blocks stripped first, exactly as in check 7: a double-bracket reference quoted inside an example fence is illustration, not a real reference, and must neither satisfy nor fail this check.
+```bash
+python3 - <<'PYEOF'
+import glob, os, re, sys
+
+def body(path):
+    return re.sub(r'^ *```.*?^ *```', '', open(path).read(), flags=re.S | re.M)
+
+skills = sorted(os.path.basename(d.rstrip('/')) for d in glob.glob('sonu/skills/*/'))
+commands = [body(p) for p in sorted(glob.glob('sonu/commands/*.md'))]
+docs = {n: '\n'.join(body(p) for p in sorted(
+    glob.glob(f'sonu/skills/{n}/*.md') + glob.glob(f'sonu/skills/{n}/references/*.md')))
+    for n in skills}
+
+# Anchored: a name must not be credited from inside a longer one.
+def invoked(name):
+    return any(re.search(rf'sonu:{re.escape(name)}(?![a-z0-9-])', t) for t in commands)
+
+# Seed from the commands, then close transitively over [[links]]. A one-hop test
+# would pass a closed cycle of skills that only cite each other — all unloadable.
+reachable = {n for n in skills if invoked(n)}
+frontier = set(reachable)
+while frontier:
+    nxt = {n for n in skills if n not in reachable
+           and any(f'[[{n}]]' in docs[src] for src in frontier)}
+    reachable |= nxt
+    frontier = nxt
+
+orphans = [n for n in skills if n not in reachable]
+for n in orphans:
+    print(f"FAIL: skill '{n}' is unreachable — no command invokes it, and no chain of [[links]] reaches it from one that does")
+if not orphans:
+    print(f'OK: all {len(skills)} skills reachable from a command')
+sys.exit(1 if orphans else 0)
+PYEOF
 ```
 
 ## Report
