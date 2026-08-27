@@ -115,7 +115,7 @@ Separate concerns by layer — business logic doesn't belong in UI components; d
 
 ## 5. Data access: ask for exactly what you need
 
-Queries are where code meets scale — something instant against 50 rows in development can take down production at 50,000. Write every query as if the table is already huge.
+Queries are where code meets scale — something instant against 50 rows in development can take down production at 50,000. Write every query as if the table is already huge. That is hygiene applied while you write — a change made *in order to* be faster is a different discipline: [[performance]] takes a baseline first and reverts anything that doesn't beat the noise.
 
 - **Select only the columns you actually use** — `SELECT *` drags every column over the wire, silently changes behavior when a column is added, and hides what the code truly depends on.
 - **Paginate by default; never load an unbounded result set into memory.** Bulk pulls (exports, batch jobs) are fine only when deliberate, bounded, and streamed/chunked.
@@ -158,7 +158,7 @@ Logs are how you understand a system you can't step through — in production th
 
 ## 9. Trust nothing from the outside: validate inputs, parameterize queries
 
-Every value crossing a trust boundary — request body, query string, headers, third-party responses — is hostile until proven otherwise. Two defenses, always together:
+Every value crossing a trust boundary — request body, query string, headers, third-party responses — is hostile until proven otherwise; naming *which* boundaries exist and what is reachable through them is [[security]]'s threat-model step, and this section is the mechanics that step assumes. Two defenses, always together:
 
 **Validate at the boundary, before the value touches any logic.** Check type, shape, length, range, and allowed values the moment input enters; prefer allow-lists over deny-lists; validate on the *server* even when the client already did (client checks are UX, not security). Use a schema validator (zod, Joi, pydantic) rather than a pile of hand-rolled `if`s. **And know where the boundary ends**: don't re-validate between internal functions that share a type contract, inside utilities only ever called by validated code, or on data read back from your own database — validation everywhere is noise that buries the boundaries that matter.
 

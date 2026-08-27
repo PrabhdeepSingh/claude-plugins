@@ -14,6 +14,8 @@ Run the loop in order: reproduce (for a production report, pull the real event f
 
 **And stop the line.** When something unexpected breaks mid-task, this loop preempts the feature work — don't push past a failing test or broken build to keep building. Errors compound: an unfixed bug in step 3 makes steps 4–6 wrong, and the wreckage multiplies the diagnosis.
 
+**And know what isn't a defect.** A system that is slow but correct hasn't failed, and running this loop at it produces hypotheses no reproduction can settle — that is [[performance]], which borrows the one-change rule below and adds the baseline that decides whether a change was worth keeping.
+
 ---
 
 ## 1. Reproduce it first — no reproduction, no fix

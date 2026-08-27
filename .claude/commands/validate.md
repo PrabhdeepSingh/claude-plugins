@@ -1,5 +1,5 @@
 ---
-description: Mechanically validate the sonu plugin repo before a PR — manifest sync, YAML frontmatter, shell-fence syntax, named-source and AI-attribution scans, cross-reference integrity. Only meaningful inside the claude-plugins repo; in any other repo, say so and stop.
+description: Mechanically validate the sonu plugin repo before a PR — manifest sync, YAML frontmatter, shell-fence syntax, named-source and AI-attribution scans, cross-reference integrity, skill reachability. Only meaningful inside the claude-plugins repo; in any other repo, say so and stop.
 argument-hint: ""
 allowed-tools: Bash, Read, Grep, Glob
 ---
@@ -210,6 +210,34 @@ for s in sonu/skills/*/; do
   grep -q "$name" README.md || echo "FAIL: README never mentions skill '$name'"
 done
 echo "(README inventory scan done — silence above means OK)"
+```
+
+## 10. Skill reachability (no orphans)
+
+Every skill must be reachable from somewhere: either a command under `sonu/commands/` invokes it by `sonu:<name>`, or another skill points at it with a double-bracket reference. A skill nobody invokes and nobody links to is an orphan — shipped, documented, and never loaded. References are matched with fenced code blocks stripped first, exactly as in check 7: a double-bracket reference quoted inside an example fence is illustration, not a real reference, and must neither satisfy nor fail this check.
+```bash
+python3 - <<'PYEOF'
+import glob, os, re, sys
+
+def body(path):
+    return re.sub(r'^ *```.*?^ *```', '', open(path).read(), flags=re.S | re.M)
+
+commands = [body(p) for p in sorted(glob.glob('sonu/commands/*.md'))]
+skill_docs = {p: body(p) for p in sorted(glob.glob('sonu/skills/**/*.md', recursive=True))}
+skills = sorted(os.path.basename(d.rstrip('/')) for d in glob.glob('sonu/skills/*/'))
+
+fails = 0
+for name in skills:
+    invoked = any(f'sonu:{name}' in text for text in commands)
+    linked = any(f'[[{name}]]' in text for path, text in skill_docs.items()
+                 if not path.startswith(f'sonu/skills/{name}/'))
+    if not (invoked or linked):
+        print(f"FAIL: skill '{name}' is unreachable — no command invokes it and no sibling links to it")
+        fails += 1
+if not fails:
+    print(f'OK: all {len(skills)} skills reachable')
+sys.exit(1 if fails else 0)
+PYEOF
 ```
 
 ## Report
