@@ -1,11 +1,11 @@
 # Lens dispatch templates — the step-3b fan-out
 
-Six lenses, one subagent each, plus a seventh **interface** lens dispatched only when the diff touches user-facing interface files — all **in parallel in a single turn** on the cheapest trustworthy executor tier below the session (per the model-tiering ladder). Every lens is read-only and context-free: it gets the prompt below with the placeholders filled — never a summary of the conversation, never the author's intent. **Every lens prompt is self-contained:** the criteria live in the block itself. Do not tell a subagent to `Skill(…)` load or read plugin skill files — those live outside the customer repo root the shared frame supplies, and many harnesses give subagents no Skill tool.
+Two tiers of lens — three **code lenses** and four **domain lenses** — one subagent each, dispatched **in parallel in a single turn** on the cheapest trustworthy executor tier below the session (per the model-tiering ladder). This file carries the prompts; **which lenses go out is decided by the dispatch conditions in `SKILL.md` step 3b**, which is their one home — don't restate or re-derive them here. Every lens is read-only and context-free: it gets the prompt below with the placeholders filled — never a summary of the conversation, never the author's intent. **Every lens prompt is self-contained:** the criteria live in the block itself. Do not tell a subagent to `Skill(…)` load or read plugin skill files — those live outside the customer repo root the shared frame supplies, and many harnesses give subagents no Skill tool.
 
 ## The shared frame (include in every lens prompt)
 
 ```
-You are reviewing a code diff as an independent reviewer. You have no context
+You are reviewing a diff as an independent reviewer. You have no context
 on why this change was made — that is deliberate. Read cold.
 
 Repo root: <absolute path>
@@ -28,7 +28,27 @@ exactly: "Nothing in my lens." Do NOT invent findings to seem useful — an
 empty report is a good report. Do not report style or preference issues.
 ```
 
-## The six lenses (append one per subagent)
+## The prose frame (prepend on a prose-only diff, in place of the code framing)
+
+`SKILL.md` step 3b routes a diff with no executable code down its prose path. The lens prompts below hunt code constructs, so on that path prepend this block to whichever lenses that step says are live — it replaces the code framing, and without it a lens has nothing usable to read.
+
+```
+This repo's product IS its documents: it ships Markdown that instructs a
+model, so the prose in this diff is the behavior. Read a changed rule the
+way you would read changed code — it is executed, by a reader, word for
+word.
+
+Read your lens's criteria below as being about the BEHAVIOUR THE PROSE
+GOVERNS, not about program syntax: a "logic error" is a rule that
+contradicts another rule or can never fire; a "silent behavior change" is
+a rule whose default flipped with nothing announcing it; a "consumer" is
+another file that cites this one's rules, sections, fields, or output
+format. Report nothing about wording, tone, or formatting.
+```
+
+## The code lenses (append one per subagent)
+
+Dispatched whenever the diff contains executable code — see `SKILL.md` step 3b, including what to do when it contains none.
 
 **1. Correctness**
 ```
@@ -46,7 +66,30 @@ of separators or defaults) and report the pair plus the input on which
 they diverge — flag pairs, not instances.
 ```
 
-**2. Security surfaces**
+**2. Test adequacy**
+```
+Your lens: TESTS. New or changed behavior with no test exercising it,
+tests asserting too weakly to catch the plausible regression, boundary
+cases the tests skip, tests that pass for the wrong reason (over-mocked
+seams, tautological assertions), thresholds/limits configured but never
+tripped in any test. Name the specific untested input or path.
+```
+
+**3. Silent behavior change**
+```
+Your lens: SILENT CHANGES. Behavior that differs from before in a way no
+error will ever surface — changed defaults, reordered operations with
+observable effects, altered rounding/precision/timezone/locale handling,
+different iteration or sort order callers may depend on, a caught-and-
+defaulted failure path whose default now means something else. Compare
+old and new behavior explicitly and name what a caller observes.
+```
+
+## The domain lenses (append one per subagent)
+
+Dispatched only when the diff carries the lens's domain. The four conditions live in `SKILL.md` step 3b — read them there; a lens whose condition is not met is not dispatched at all, because there is nothing in its lens by construction.
+
+**4. Security surfaces**
 ```
 Your lens: SECURITY. Auth and permission checks (missing, reordered,
 bypassable), input reaching a sink unsanitized (SQL, shell, path, HTML),
@@ -55,7 +98,7 @@ needs, unsafe defaults on security-relevant config. Name the attacker input
 or sequence that exploits it.
 ```
 
-**3. Data integrity & migration**
+**5. Data integrity & migration**
 ```
 Your lens: DATA INTEGRITY. Schema changes and their compatibility with the
 previous release's code, destructive or non-reversible writes, backfills
@@ -64,7 +107,7 @@ truncation/precision/encoding loss, deletes without a recovery path. Name
 what data is lost or corrupted and when.
 ```
 
-**4. Blast radius & consumer impact**
+**6. Blast radius & consumer impact**
 ```
 Your lens: CONSUMERS. The diff changes things other code reads: return
 shapes, response bodies, serialized payloads, DB columns read elsewhere,
@@ -76,29 +119,7 @@ catches failure and returns a default breaks with no error at all; those
 rank highest).
 ```
 
-**5. Test adequacy**
-```
-Your lens: TESTS. New or changed behavior with no test exercising it,
-tests asserting too weakly to catch the plausible regression, boundary
-cases the tests skip, tests that pass for the wrong reason (over-mocked
-seams, tautological assertions), thresholds/limits configured but never
-tripped in any test. Name the specific untested input or path.
-```
-
-**6. Silent behavior change**
-```
-Your lens: SILENT CHANGES. Behavior that differs from before in a way no
-error will ever surface — changed defaults, reordered operations with
-observable effects, altered rounding/precision/timezone/locale handling,
-different iteration or sort order callers may depend on, a caught-and-
-defaulted failure path whose default now means something else. Compare
-old and new behavior explicitly and name what a caller observes.
-```
-
-## The conditional seventh lens — interface
-
-Dispatch this one **only when** the diff touches user-facing interface files: components, screens, templates, stylesheets, or interface copy. On a diff with no such files, don't dispatch it — there is nothing in its lens by construction.
-
+**7. Interface**
 ```
 Your lens: INTERFACE. On interface files in this diff only (components,
 screens, templates, stylesheets, interface copy), report regressions the
@@ -150,7 +171,8 @@ pre-existing interface problem the diff merely sits near is not a finding.
 
 ## Dispatch mechanics
 
-- All lenses go out in one turn; they have no dependencies on each other. The interface lens joins the same batch when its condition is met.
+- All dispatched lenses go out in one turn; they have no dependencies on each other. Every lens whose `SKILL.md` step-3b condition is met joins that same single batch, code and domain alike; one whose condition is not met is not dispatched at all.
+- **A gated skip is not a degraded lens.** A degraded lens ran and came back unusable (next bullet); a gated lens never ran, because its domain is absent from the diff. Both are reported — the gated skips on `SKILL.md` step 5's single dispatch line, the degraded ones as their own risk entry — and they are reported as different things, because conflating them hides a real failure inside a routine one.
 - Model: cheapest trustworthy executor tier below the session on the model-tiering ladder (its Provenance table is authoritative). No such tier → don't dispatch; the skill's step-2 rule already routed to the inline pass.
 - A lens that errors or returns garbage is treated as "Nothing in my lens" **plus** a note in the final output that the lens was degraded — never silently counted as a clean pass.
 - Lens replies are evidence, not verdicts. Every accept/reject happens in the session (SKILL.md step 4).
