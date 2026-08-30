@@ -36,10 +36,10 @@ Notes on what made this a good synthesis:
 A 140-line wording change across two skill files in a plugin repo, where the product *is* the documents. No executable code changed, so no lens ran its code prompt; the conditions were judged against what the prose governs:
 
 ```
-Risk: the new dispatch rule contradicts the size gate two sections above — one counts prose lines, the other reads that same count as "is there code here", so a docs diff dispatches all three code lenses [skills/self-review/SKILL.md:71]
-Risk: the ledger field is described as write-once here but re-evaluated every pass below — an executor reading the contract first treats the re-evaluation as optional [commands/ship.md:36]
+Risk: the new dispatch rule contradicts the size gate two sections above — one counts prose lines, the other reads that same count as "is there code here", so a docs diff dispatches every lens anyway [skills/reviewer/SKILL.md:71]
+Risk: the ledger field is described as write-once here but re-evaluated every pass below — an executor reading the contract first treats the re-evaluation as optional [commands/deploy.md:36]
 
-Domain lenses: security (changes when a security check runs) · blast-radius (ship.md and build.md both consume this skill's output contract) · data-integrity, interface — no clause matched.
+Domain lenses: security (changes when a security check runs) · blast-radius (two commands consume this skill's output contract) · data-integrity, interface — no clause matched.
 Code lenses: correctness, silent-behavior-change dispatched on the prose frame; test-adequacy skipped — this repo has no test suite whose adequacy the prose changes.
 ```
 > *This is a pointer for your review, not an approval. Read the diff yourself.*
