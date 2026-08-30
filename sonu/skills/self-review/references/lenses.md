@@ -5,7 +5,7 @@ Two tiers of lens — three **code lenses** and four **domain lenses** — one s
 ## The shared frame (include in every lens prompt)
 
 ```
-You are reviewing a code diff as an independent reviewer. You have no context
+You are reviewing a diff as an independent reviewer. You have no context
 on why this change was made — that is deliberate. Read cold.
 
 Repo root: <absolute path>
