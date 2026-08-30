@@ -75,7 +75,7 @@ Dispatch independent read-only lenses **in parallel, in one turn**, using the ha
 
 **Why gating is safe:** a lens whose domain is absent from the diff is *structurally* empty, not luckily empty — a security lens cannot find an injection sink in a file that has no sink, and a consumer lens cannot find a broken consumer of a contract the diff never changed. This is the same reasoning that declines to load [[safe-migrations]] for a stylesheet change.
 
-**The no-code case — a diff that is entirely prose.** You reach this fan-out on a prose-only diff through step 2's docs-product rule (a skills repo, plugin repo, or docs site counts all its changed lines). Here the code lenses have no domain either: a lens hunting off-by-ones and unhandled boundaries finds nothing in prose, and test-adequacy is empty in any repo with no test suite. Do not dispatch any lens on its code prompt. Ask instead **what the prose governs** — because in a repo whose product is its documents, a skill or command file *is* the behavior:
+**The no-code case — a diff that is entirely prose.** You reach this fan-out on a prose-only diff through step 2's docs-product rule (a skills repo, plugin repo, or docs site counts all its changed lines). Here the code lenses have no domain either: a lens hunting off-by-ones and unhandled boundaries finds nothing in prose, and test-adequacy is empty in any repo with no test suite. The lens prompts in `references/lenses.md` are written for code and would send a reader hunting off-by-ones through paragraphs, so **no lens goes out on its code prompt alone** — every prose-path dispatch prepends that file's prose frame, which replaces the code framing and tells the lens it is reading instructions that govern behavior. Ask **what the prose governs** — because in a repo whose product is its documents, a skill or command file *is* the behavior:
 
 Apply **the same four domain conditions below, unchanged** — reading "the diff" as the prose *and the behavior it governs*, because in a repo whose product is its documents a skill or command file **is** the behavior. Prose that alters what another component does is a change "read or addressed by code outside the diff"; prose that alters when a security check runs moves a trust boundary as surely as a middleware edit does. **Do not invent a second, looser test for the prose case** — a domain with two dispatch tests has two answers, and this skill has already had that bug.
 
@@ -120,7 +120,7 @@ Format:
 Risk: <what> — <why it's risky> [file:line]
 ```
 
-**On the fan-out path, end with one line naming what each domain lens did** — for every one of the four, either the clause that matched (so it was dispatched) or that none did (so it was not), e.g. `Domain lenses: interface (stylesheets + components) · security, data-integrity, blast-radius — no clause matched.` Report both directions, not just the skips: an over-firing gate quietly eats the saving, an under-firing one quietly eats a finding, and a guard that only makes skips visible catches only the second. A skip nobody can see is indistinguishable from a coverage gap.
+**On the fan-out path, end with one line naming what every gated lens did** — each of the four domain lenses, plus the three code lenses whenever the prose path gated them too. Give either the clause that matched (so it was dispatched) or state that none did, e.g. `Domain lenses: interface (stylesheets + components) · security, data-integrity, blast-radius — no clause matched.` Report both directions, not just the skips: an over-firing gate quietly eats the saving, an under-firing one quietly eats a finding, and a guard that only makes skips visible catches only the second. A skip nobody can see is indistinguishable from a coverage gap.
 
 Worked examples — inline, fan-out synthesis, and the low-risk case — live in `references/examples.md`; read it when unsure what good output looks like.
 
@@ -134,7 +134,7 @@ End the list with a single line:
 - Did you actually read the diff, or are you working from memory? Did it include untracked files and, for a branch review, every commit since the merge base?
 - Was the size gate computed on code lines with docs excluded — and did an uncomputable count fail open to the fan-out, not closed to the cheap path?
 - On the fan-out path: did every lens run without conversation context, and did synthesis — every accept/reject — happen in this session, not in a subagent?
-- Did the output name, for each of the four domain lenses, the clause that matched or that none did — so both an over-firing and an under-firing gate are visible?
+- Did the output name, for every gated lens — the four domain lenses always, the code lenses too when the prose path gated them — the clause that matched or that none did, so both an over-firing and an under-firing gate are visible?
 - Is every surviving risk concrete — a specific `file:line` and an articulable failure mechanism — not a vague "this could be better"?
 - Did rejected findings stay rejected? A list padded with nit-churn to reach five items is a worse pointer than a list of two real risks.
 - Did you avoid inventing risks just to fill the list? If it's low-risk, say so.

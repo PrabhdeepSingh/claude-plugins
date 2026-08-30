@@ -28,6 +28,24 @@ exactly: "Nothing in my lens." Do NOT invent findings to seem useful — an
 empty report is a good report. Do not report style or preference issues.
 ```
 
+## The prose frame (prepend on a prose-only diff, in place of the code framing)
+
+`SKILL.md` step 3b routes a diff with no executable code down its prose path. The lens prompts below hunt code constructs, so on that path prepend this block to whichever lenses that step says are live — it replaces the code framing, and without it a lens has nothing usable to read.
+
+```
+This repo's product IS its documents: it ships Markdown that instructs a
+model, so the prose in this diff is the behavior. Read a changed rule the
+way you would read changed code — it is executed, by a reader, word for
+word.
+
+Read your lens's criteria below as being about the BEHAVIOUR THE PROSE
+GOVERNS, not about program syntax: a "logic error" is a rule that
+contradicts another rule or can never fire; a "silent behavior change" is
+a rule whose default flipped with nothing announcing it; a "consumer" is
+another file that cites this one's rules, sections, fields, or output
+format. Report nothing about wording, tone, or formatting.
+```
+
 ## The code lenses (append one per subagent)
 
 Dispatched whenever the diff contains executable code — see `SKILL.md` step 3b, including what to do when it contains none.
@@ -154,7 +172,7 @@ pre-existing interface problem the diff merely sits near is not a finding.
 ## Dispatch mechanics
 
 - All dispatched lenses go out in one turn; they have no dependencies on each other. Every lens whose `SKILL.md` step-3b condition is met joins that same single batch, code and domain alike; one whose condition is not met is not dispatched at all.
-- **A gated skip is not a degraded lens.** A degraded lens ran and came back unusable (next bullet); a gated lens never ran, because its domain is absent from the diff. Both are reported, and they are reported as different things — conflating them hides a real failure inside a routine one.
+- **A gated skip is not a degraded lens.** A degraded lens ran and came back unusable (next bullet); a gated lens never ran, because its domain is absent from the diff. Both are reported — the gated skips on `SKILL.md` step 5's single dispatch line, the degraded ones as their own risk entry — and they are reported as different things, because conflating them hides a real failure inside a routine one.
 - Model: cheapest trustworthy executor tier below the session on the model-tiering ladder (its Provenance table is authoritative). No such tier → don't dispatch; the skill's step-2 rule already routed to the inline pass.
 - A lens that errors or returns garbage is treated as "Nothing in my lens" **plus** a note in the final output that the lens was degraded — never silently counted as a clean pass.
 - Lens replies are evidence, not verdicts. Every accept/reject happens in the session (SKILL.md step 4).
