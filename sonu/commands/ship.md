@@ -48,13 +48,13 @@ fi
 - **`full`** ← also `thorough` (and misspellings like `thurough`/`thourough`), `deep`, `max`, `heavy`.
 - **no arg → `auto`**: decide from the diff (see below).
 
+Record the parsed mode in the ledger as `mode:`. On a resumed run: **a mode typed in *this* invocation wins and overwrites the field**, and a typed `full` additionally **clears any recorded `security_surface:`, forcing a fresh evaluation** — re-invoking with `full` is precisely how a human overrides a verdict they believe is wrong, so a stale `not-met` must not survive it. No mode typed → adopt the ledger's `mode:`. (The delegation flag below gets the same treatment.)
+
 `$ARGUMENTS` may also carry a **delegation flag**, in any order relative to the mode word (parse it as forgivingly as the mode — `--orchestrate` includes obvious misspellings like `--orchestreate`; a repeated flag is just that flag; if both flags appear, `--solo` wins — keeping work in-session is the safe direction):
 
 - **`--orchestrate`** — pre-authorize delegation: at the two fix-apply points (Phase 1.5 step 3 and Phase 4), every `FIX` item that clears `Skill(sonu:model-tiering)`'s four criteria routes to a subagent, with ties broken toward delegating. This never relaxes that skill's rules — its categorical exclusions still hold, and on a session with no trustworthy tier below it the flag no-ops entirely.
 - **`--solo`** — nothing delegates; every fix applies in-session.
 - **neither** — `Skill(sonu:model-tiering)`'s own balanced judgment (the default).
-
-Record the parsed mode in the ledger as `mode:`, and on a resumed run apply the same precedence `disposition:` gets below: **a mode typed in *this* invocation wins and overwrites the field**, and a typed `full` additionally **clears any recorded `security_surface:`, forcing a fresh evaluation** — re-invoking with `full` is precisely how a human overrides a verdict they believe is wrong, so a stale `not-met` must not survive it. No mode typed → adopt the ledger's `mode:`.
 
 Record the parsed delegation flag in the ledger as `disposition:` (`orchestrate` / `solo` / `auto`). On a resumed run the precedence is: an explicit flag typed in *this* invocation wins and overwrites the field; no flag typed → adopt the ledger's non-empty `disposition:` rather than re-deriving (that is what makes the owner's choice survive); a legacy ledger without the field → parse fresh from `$ARGUMENTS` and add it.
 
