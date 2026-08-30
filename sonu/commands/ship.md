@@ -70,7 +70,7 @@ The mode scales **only the reviews you pay for** — your own `/code-review` and
 |------|---------------------|--------------------------|----------------|
 | **light** | low effort; skip entirely if the diff is trivial (≤ ~10 lines, only CSS/markup/docs/config/comments, no logic) | run only when the security-surface test (below) passes | exactly 1 |
 | **auto** | trivial diff → treat as **light**; > 200 lines or the security-surface test passes → treat as **full**; otherwise medium effort | run only when the security-surface test (below) passes — **including when this row promotes itself to full** | up to 3 cycles |
-| **full** (typed by a human) | high effort | **always** | up to 3 cycles |
+| **`full (typed)`** — a human typed a `full` synonym; this exact token is what the ledger records and what Phase 2B matches | high effort | **always** | up to 3 cycles |
 
 **The security-surface test** is the security lens's `dispatch when:` condition in `Skill(sonu:self-review)` step 3b. That is its one home — this command does not keep a second copy, because two lists of the same test are how the lens gate and this gate come to disagree about the same diff. Record its verdict in the ledger as `security_surface:` (`met` / `not-met`) so Phase 2B and Phase 6 read one recorded answer instead of re-judging it independently. Phase 1.5 writes it and keeps it current (see there). **A missing field is never `not-met`:** an adopted ledger without it — including one adopted *past* Phase 1.5, which does not re-run — derives it at the point of first use, by evaluating the condition against the branch diff and writing it before reading it.
 
