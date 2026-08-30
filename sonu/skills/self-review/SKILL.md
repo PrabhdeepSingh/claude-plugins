@@ -68,7 +68,31 @@ Then go to step 5.
 
 **3b. Lens fan-out (substantial diffs).**
 
-Dispatch six independent read-only lenses **in parallel, in one turn**, using the harness's subagent tool — the prompt templates live in `references/lenses.md` (read it when dispatching; the six lenses are correctness, security surfaces, data-integrity & migration, blast-radius & consumer-impact, test-adequacy, and silent-behavior-change — one subagent each). A **seventh interface lens** joins the same batch **only when** the diff touches user-facing interface files (components, screens, templates, stylesheets, or interface copy — judge from the diff's file list); on a diff with no such files it is not dispatched at all. Rules the templates encode, which hold even if you compose prompts yourself:
+Dispatch independent read-only lenses **in parallel, in one turn**, using the harness's subagent tool — one subagent per dispatched lens, prompt templates in `references/lenses.md` (read it when dispatching). Two tiers decide who goes out:
+
+- **The code lenses — correctness, test-adequacy, silent-behavior-change — dispatch whenever the diff changes executable code**, meaning changed lines in non-doc files. Any code diff can carry a logic error, an untested path, or a changed default, so these three have no narrower precondition than "there is code here." One carve-out, because it decides the common case: a non-doc file changed **only** in metadata — a version string, a lockfile hash, a copyright year — is not code for this purpose. Nearly every release rides a version bump alongside its real change, and counting those two lines as code would make the prose path below unreachable in exactly the repos that need it. **Read this off the diff, not off step 2's number:** in a docs-product repo step 2 deliberately counts *all* changed lines including prose, and that count answers "is this diff big enough to fan out," never "is there code here." Confusing the two dispatches all three lenses against a pure prose diff, which is exactly the waste this gate exists to stop.
+- **The domain lenses — security, data-integrity, blast-radius, interface — dispatch only when the diff contains their domain**, per the four conditions below.
+
+**Why gating is safe:** a lens whose domain is absent from the diff is *structurally* empty, not luckily empty — a security lens cannot find an injection sink in a file that has no sink, and a consumer lens cannot find a broken consumer of a contract the diff never changed. This is the same reasoning that declines to load [[safe-migrations]] for a stylesheet change.
+
+**The no-code case — a diff that is entirely prose.** You reach this fan-out on a prose-only diff through step 2's docs-product rule (a skills repo, plugin repo, or docs site counts all its changed lines). Here the code lenses have no domain either: a lens hunting off-by-ones and unhandled boundaries finds nothing in prose, and test-adequacy is empty in any repo with no test suite. Do not dispatch any lens on its code prompt. Ask instead **what the prose governs** — because in a repo whose product is its documents, a skill or command file *is* the behavior:
+
+Apply **the same four domain conditions below, unchanged** — reading "the diff" as the prose *and the behavior it governs*, because in a repo whose product is its documents a skill or command file **is** the behavior. Prose that alters what another component does is a change "read or addressed by code outside the diff"; prose that alters when a security check runs moves a trust boundary as surely as a middleware edit does. **Do not invent a second, looser test for the prose case** — a domain with two dispatch tests has two answers, and this skill has already had that bug.
+
+The three code lenses come back only where the prose carries their domain: **correctness** when it states rules, thresholds, or branches an executor follows; **silent-behavior-change** when it changes what a component does without announcing it; **test-adequacy** only when the repo has a suite whose adequacy this prose changes — usually it does not.
+
+If nothing above fires — a typo pass, a wording cleanup, a README polish — say the diff is low-risk and fall back to the inline pass (3a) rather than dispatching anything at all. Seven agents on a doc edit is the failure this gate exists to prevent.
+
+The four domain conditions:
+
+- **Security — dispatch when:** the diff **moves or weakens a trust boundary** — untrusted input reaching a sink, a control that protects a boundary being added/changed/removed, or a secret crossing one. *That sentence is the test.* The list below is examples that speed up the common case; it is **never the whole test**, because an enumeration of attack surfaces is never finished and treating a closed list as the test turns every unlisted class into a silent skip. **A change that fits the principle but matches no example still dispatches.** Examples: auth or authorization, including a route or render guard enforced only on the client; an API, route, or endpoint handler; SQL or any constructed query, command, or path; deserialization or dynamic evaluation of untrusted data; middleware; crypto, secret, token, or credential handling; payments; env vars or config that gates runtime behavior or names an outbound destination; session, header, CORS, `postMessage`, or frame-isolation handling; file I/O, uploads, or downloads; subprocess or shell invocation; outbound requests to user-influenced destinations; dependency manifests, lockfiles, or a newly included third-party script or asset; untrusted input interpolated into HTML, a URL, a navigation target, or a log line (`dangerouslySetInnerHTML`, `innerHTML`, an `href`/`src` built from input, a redirect); a regex applied to user input; a recursive merge or dynamic property assignment from user-controlled data; or model/tool output reaching an executable sink. **This condition is the canonical security-surface test** — `/sonu:ship`'s effort-mode table cites it rather than keeping a second copy, so the two gates can never disagree about the same diff.
+- **Data integrity — dispatch when:** the diff touches migrations, schema, serialization or deserialization, backfills, bulk or destructive writes, or **persisted state that other code or a later release reads back** — not scratch state written and read entirely inside the diff.
+- **Blast radius — dispatch when:** the diff changes something **read or addressed by code outside the diff** — a return shape or type, response body, serialized payload, DB column, log or telemetry field, event or queue message, config key or env var, parsed CLI/stdout output, or a published identifier (route, tool name, command, exported symbol) **that has consumers outside this change**. Skip purely internal changes and strictly additive optional fields; a newly-added export nothing calls yet is not a contract change. This is the same test [[blast-radius]] itself states — which this skill previously did not honour.
+- **Interface — dispatch when:** the diff touches user-facing interface files — components, screens, templates, stylesheets, or interface copy. Judge from the diff's file list.
+
+**You may skip a domain lens only when you can state, in one sentence, the specific reason its domain is absent** — "nothing here touches persisted state," not "probably fine." If you cannot write that sentence, dispatch. Do not treat "unsure" as a feeling to introspect on: it is simply the absence of an articulable reason, and everything above about saving cost is never one. This is step 4's default-reject bar pointed the other way, and it exists because a gate written to save money will be read by someone who wants to save money.
+
+Rules the templates encode, which hold even if you compose prompts yourself:
 
 - **Each lens gets the diff command and the repo — never this conversation.** Independence is the entire value; a lens that knows the author's intent inherits the author's blind spots.
 - **Each lens prompt is self-contained.** Criteria live in the lens block. Never tell a subagent to `Skill(…)` load domain skills or to read files from the plugin install — the shared frame only gives the customer repo root, and many harnesses give subagents no Skill tool. The interface lens inlines its six-domain checklist for that reason; it does not orchestrate [[interface-review]].
@@ -96,6 +120,8 @@ Format:
 Risk: <what> — <why it's risky> [file:line]
 ```
 
+**On the fan-out path, end with one line naming what each domain lens did** — for every one of the four, either the clause that matched (so it was dispatched) or that none did (so it was not), e.g. `Domain lenses: interface (stylesheets + components) · security, data-integrity, blast-radius — no clause matched.` Report both directions, not just the skips: an over-firing gate quietly eats the saving, an under-firing one quietly eats a finding, and a guard that only makes skips visible catches only the second. A skip nobody can see is indistinguishable from a coverage gap.
+
 Worked examples — inline, fan-out synthesis, and the low-risk case — live in `references/examples.md`; read it when unsure what good output looks like.
 
 **6. Explicitly state what this is NOT.**
@@ -108,6 +134,7 @@ End the list with a single line:
 - Did you actually read the diff, or are you working from memory? Did it include untracked files and, for a branch review, every commit since the merge base?
 - Was the size gate computed on code lines with docs excluded — and did an uncomputable count fail open to the fan-out, not closed to the cheap path?
 - On the fan-out path: did every lens run without conversation context, and did synthesis — every accept/reject — happen in this session, not in a subagent?
+- Did the output name, for each of the four domain lenses, the clause that matched or that none did — so both an over-firing and an under-firing gate are visible?
 - Is every surviving risk concrete — a specific `file:line` and an articulable failure mechanism — not a vague "this could be better"?
 - Did rejected findings stay rejected? A list padded with nit-churn to reach five items is a worse pointer than a list of two real risks.
 - Did you avoid inventing risks just to fill the list? If it's low-risk, say so.
@@ -118,5 +145,5 @@ End the list with a single line:
 
 | File | What it answers |
 |---|---|
-| `references/lenses.md` | The six lens dispatch prompt templates, plus the conditional interface lens — read when dispatching the step-3b fan-out. |
+| `references/lenses.md` | The dispatch prompt templates for both tiers — the three code lenses and the four domain lenses — read when dispatching the step-3b fan-out. The conditions themselves live in step 3b, not here. |
 | `references/examples.md` | Worked output examples (inline pass, fan-out synthesis, low-risk case) — read when unsure of the output shape. |
