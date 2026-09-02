@@ -216,6 +216,10 @@ Commits are how *you* track change; a **version** is how your *consumers* track 
 - **A changelog is not `git log`.** It's the curated, consumer-facing answer to "what changed and do I care?" — grouped Added / Changed / Fixed / Deprecated / Removed / Security, phrased by user impact. Write the entry **in the same change that makes the change**, while the impact is fresh; reconstructed at release time, half of it is missing.
 - **Derive the version from the tag** where the ecosystem allows, so the artifact, the tag, and the changelog can never disagree — every hand-edited version file is a place for them to drift apart.
 
+## F — When the loop won't converge: tune the reviewers
+
+`/sonu:ship` can only work within the reviewers' own settings. When its final report shows two or more re-review cycles on a PR, the treadmill is usually the reviewers' configuration, not the code: a bot set to re-review on every push re-rolls unchanged code and surfaces new nits each round, and a bot with no severity floor reports everything it notices. Two knobs end most of it — review **once per PR** instead of on every push (safe for every reviewer ship can re-request or mention after a fix lands; the reference names the two it cannot), and **Important-only after the first review**. The per-bot settings, and where each lives, are in `references/reviewer-tuning.md` — read it when ship reports two or more cycles, or when setting up a repo's reviewers for the first time.
+
 ## Provenance and maintenance
 
 Volatile facts in this file, last verified 2026-07:
@@ -223,9 +227,11 @@ Volatile facts in this file, last verified 2026-07:
 - **PR template locations** (Section A) — re-verify against GitHub's "Creating a pull request template" docs if template discovery ever misses a team's template.
 - **Tracker URL formats** (Section B: `atlassian.net/browse/`, `linear.app/<workspace>/issue/`, `app.shortcut.com/<workspace>/story/`) — re-verify by opening a known ticket in each tracker.
 - **AI-reviewer registry** — not stored here; the canonical home is `/sonu:ship` Phase 2.
+- **Per-reviewer tuning settings** (Section F) — vendor setting names and defaults, last verified 2026-09 in `references/reviewer-tuning.md`, which carries its own re-verification URLs.
 
 ## Reference files
 
 | File | What it answers |
 |------|-----------------|
 | `references/templates.md` | The 8 per-change-type PR body templates (feature, bugfix, hotfix, chore, refactor, docs, perf, release) |
+| `references/reviewer-tuning.md` | Per-reviewer settings for review-once and Important-only (Claude Code Review, claude-code-action, Copilot, CodeRabbit) and how they interact with ship's re-review loop (Section F) |

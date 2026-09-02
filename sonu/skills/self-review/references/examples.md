@@ -13,10 +13,10 @@ Risk: the retry loop has no backoff — under load this will hammer the upstream
 
 ## Fan-out synthesis (substantial diff)
 
-A 600-line billing change. The three code lenses went out, and of the four domain lenses only data-integrity and blast-radius matched a clause — six lenses, reporting nine raw findings. Synthesis rejected four (two style preferences, one finding that misread an unchanged line, one with no articulable failure mechanism), merged two co-flagged duplicates, and kept:
+A 600-line billing change. The code lens went out, and of the four domain lenses only data-integrity and blast-radius matched a clause — three lenses, reporting nine raw Risk lines: five from the code lens (each tagged with the checklist that caught it, `CODE/correctness` or `CODE/silent-change`) and four from the two domain lenses. The code lens also closed with `Withheld: 2 more.` — two findings beyond its cap that it never reported, so they are not among the nine and synthesis never saw them; the line is a cue to read that lens's domain yourself. Synthesis rejected four (two style preferences, one finding that misread an unchanged line, one with no articulable failure mechanism), merged two co-flagged duplicates, and kept:
 
 ```
-Risk: `computeInvoiceTotal` rounds per-line instead of per-invoice — totals drift by cents vs the old behavior and downstream reconciliation compares exact amounts (co-flagged by correctness + silent-change) [billing/invoice.ts:88]
+Risk: `computeInvoiceTotal` rounds per-line instead of per-invoice — totals drift by cents vs the old behavior and downstream reconciliation compares exact amounts (co-flagged by CODE/silent-change and data-integrity) [billing/invoice.ts:88]
 Risk: the new `amount_minor` column is read by the export job, which still expects `amount` — export degrades silently because its reader catches the missing field and emits 0 [export/rows.ts:31]
 Risk: migration 014 backfills in one UPDATE with no batching — table-locks a hot table for the whole backfill [migrations/014_amount_minor.sql:9]
 Risk: no test trips the new per-customer invoice cap — the limit is configured but both sides of the threshold are unasserted [billing/cap.test.ts]
@@ -40,11 +40,11 @@ Risk: the new dispatch rule contradicts the size gate two sections above — one
 Risk: the ledger field is described as write-once here but re-evaluated every pass below — an executor reading the contract first treats the re-evaluation as optional [commands/deploy.md:36]
 
 Domain lenses: security (changes when a security check runs) · blast-radius (two commands consume this skill's output contract) · data-integrity, interface — no clause matched.
-Code lenses: correctness, silent-behavior-change dispatched on the prose frame; test-adequacy skipped — this repo has no test suite whose adequacy the prose changes.
+Code lens: dispatched on the prose frame with the correctness and silent-behavior-change checklists; test-adequacy checklist dropped — this repo has no test suite whose adequacy the prose changes.
 ```
 > *This is a pointer for your review, not an approval. Read the diff yourself.*
 
-A typo or wording pass in the same repo implicates none of the seven, and the honest output is the low-risk line below plus the inline pass — not a fan-out.
+A typo or wording pass in the same repo implicates none of the five, and the honest output is the low-risk line below plus the inline pass — not a fan-out.
 
 ## Low-risk case
 

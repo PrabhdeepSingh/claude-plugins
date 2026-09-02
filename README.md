@@ -60,8 +60,8 @@ Takes a finished change from working tree to a clean, merged PR — autonomously
 
 What it does:
 
-1. **Branch, commit, run the pre-PR fix loop, open a PR** with the right per-change-type description (feature / bugfix / hotfix / chore / refactor / docs / perf / release) — reusing the repo's own `PULL_REQUEST_TEMPLATE` if one exists. The pre-PR loop (Phase 1.5) reviews the branch with `self-review`, fixes what it finds, re-reviews the fix delta, and repeats until a pass comes back dry (cap: 3 passes) — so external reviewers see pre-hardened code instead of generating rounds of findings against bugs you could have caught locally. No AI-attribution trailers — commits and the PR body read as your own.
-2. **Gathers every review source**: its own Claude `/code-review` + `/security-review`, plus **every AI reviewer bot enabled on the repo** — detected by who actually posts on the PR (Copilot, CodeRabbit, and the rest of the registry maintained in `ship.md` Phase 2). No config needed; it adapts per-repo. Copilot is requested automatically since it's the one that doesn't auto-fire.
+1. **Branch, commit, run the pre-PR fix loop, open a PR** with the right per-change-type description (feature / bugfix / hotfix / chore / refactor / docs / perf / release) — reusing the repo's own `PULL_REQUEST_TEMPLATE` if one exists. The pre-PR loop (Phase 1.5) reviews the branch with `self-review` plus its own Claude `/code-review` and `/security-review`, fixes what it finds, re-reviews the fix delta, and repeats until a pass comes back dry (cap: 3 passes) — so external reviewers see pre-hardened code instead of generating rounds of findings against bugs you could have caught locally. No AI-attribution trailers — commits and the PR body read as your own.
+2. **Gathers the bot reviews**: **every AI reviewer bot enabled on the repo** — detected by who actually posts on the PR (Copilot, CodeRabbit, and the rest of the registry maintained in `ship.md` Phase 2). No config needed; it adapts per-repo. Copilot is requested automatically since it's the one that doesn't auto-fire.
 3. **Dedups, fixes, or justifies** every finding. Replies to **bot threads** (with resolve) and **human reviewer threads** (reply only — never auto-resolves a human's comment). Keeps the PR description current as fixes land.
 4. **Loops** through re-reviews until clean.
 5. **Merges** once the safety checks (everything but deploy previews) pass.
@@ -233,7 +233,7 @@ claude-plugins/
     └── skills/              # auto-applied; tdd, design-tree, self-review, interface-review, and the ticket skills also invoke directly as /sonu:<name>
         ├── code-standards/
         │   ├── SKILL.md     # how code gets written
-        │   └── references/  # data & API examples, security examples
+        │   └── references/  # data & API examples, security examples, the comment budget worked example
         ├── tdd/
         │   ├── SKILL.md     # test-driven development — red-green-refactor
         │   └── references/  # worked code for every rule — the loop, AAA, seams, thresholds
@@ -285,7 +285,7 @@ claude-plugins/
         │   └── references/  # lens dispatch templates, worked output examples
         ├── pr-conventions/
         │   ├── SKILL.md     # per-type PR templates, living description, reply wording
-        │   └── references/  # the 8 per-change-type PR body templates
+        │   └── references/  # the 8 per-change-type PR body templates, reviewer tuning (review-once, Important-only)
         ├── ticket-lifecycle/
         │   ├── SKILL.md     # ticket-as-control-plane rulebook — taxonomy, triggers, claim rules, tracker resolution
         │   └── references/  # one adapter per tracker (github, jira, linear, local, custom) + the optional liveness Action
