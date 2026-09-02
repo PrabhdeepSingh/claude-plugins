@@ -104,13 +104,13 @@ function getDiscount(user) {
 **Comments: the default is none, and the limits below are hard.** The reader is a senior engineer who will not wade through a hundred comment lines on a three-line function, and who reads comments scattered through a body as noise, not help. The names (§1) and the small functions (§4) carry the meaning; a comment exists only for what the code *cannot* say. These are limits applied while writing — nothing is written to be trimmed later. Before writing a comment, it must pass all four checks; if it fails any, do not write it:
 
 1. **It says one of these, and nothing else:** a hidden constraint, an invariant, a unit or format, a workaround with its issue link, a keep-in-sync-with pointer, or a non-obvious algorithm choice. Never what the next line does (`// parse the hours` above `parseHours()`), and never the edit or the task ("added", "fixed", "updated", "now uses", "as requested", "per the ticket") — that is commit-message material.
-2. **Budget: at most one inline comment per function.** Needing a second means the function wants splitting or a better name — fix that instead (§4's tripwire). Backstop: comment lines never outnumber code lines in any function.
+2. **Budget: at most one inline comment per function.** Needing a second means the function wants splitting or a better name — fix that instead (§4's tripwire). Two comment kinds other rules *require* count as zero against this budget and are exempt from check 3: the `// Arrange` / `// Act` / `// Assert` markers in a test body ([[tdd]]'s structure) and the justifying comment a suppression must carry (§12). Backstop: comment lines, docstrings included, never outnumber code lines in any function.
 3. **Placement: above the function or above a block — never interleaved line-by-line inside the body.** A body reads straight down as code.
 4. **Length: one line.** A why that needs more is a docstring or a doc file.
 
 No dividers, no end-of-block markers, no commented-out code.
 
-**Docstrings follow the language, not the one-line rule.** Public or exported API gets a docstring in the language's own convention (godoc, rustdoc, PEP 257, JSDoc); private and unexported helpers get none unless the logic is non-obvious. The summary line says what the thing does for the caller — never restates the signature — and in a typed language never repeats parameter or return types the signature already declares. Structural test-phase markers (`// Arrange` / `// Act` / `// Assert`) are convention labels, not restatements; [[tdd]]'s AAA structure is legal under this rule. Keep `TODO`s actionable and attributed, with enough context that someone could actually act on them. Delete dead code instead of commenting it out; that's what version control is for.
+**Docstrings follow the language, not the one-line rule.** Public or exported API gets a docstring in the language's own convention (godoc, rustdoc, PEP 257, JSDoc); private and unexported helpers get none unless the logic is non-obvious. The summary line says what the thing does for the caller — never restates the signature — and in a typed language never repeats parameter or return types the signature already declares. Keep `TODO`s actionable and attributed, with enough context that someone could actually act on them. Delete dead code instead of commenting it out; that's what version control is for.
 
 → `references/comments.md` — the four checks applied to one real function, and the public-vs-private docstring line, read the first time this session writes a comment in a file you did not author.
 
@@ -246,7 +246,7 @@ Run this against your own diff — the numbered sections above are the rest of t
 - Zero new bare suppressions — narrowest scope plus a justifying comment on any that remain?
 - Is every claim in your report something you actually observed this session?
 - Searched the codebase, stdlib, and existing dependencies before writing any new helper or algorithm?
-- Does every comment in the diff pass §3's four checks — whitelisted content, at most one per function, above a block rather than interleaved, one line — with docstrings on public API only? (A scan of the comments, not a rewrite pass.)
+- Does every comment in the diff pass §3's four checks — whitelisted content, at most one per function, above a block rather than interleaved, one line — with docstrings on public API only, and AAA markers and suppression justifications exempt? (A scan of the comments, not a rewrite pass.)
 
 ## Reference files
 

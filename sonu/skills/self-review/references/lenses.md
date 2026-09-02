@@ -19,9 +19,13 @@ READ BUDGET. Start from the diff. Open a file only to read the enclosing
 function or block of a hunk you are about to flag, or the definition of a
 function that hunk calls (one hop — a sink hidden behind a helper is still
 your finding), as a bounded range (`sed -n '<start>,<end>p' <file>`), at
-most ~150 lines per read and at most 10 reads in total. Never read a whole file. Do not search the repo — the
-CONSUMERS lens is the one exception, and it caps every search with
-`| head -100`.
+most ~150 lines per read and at most 10 reads in total. Never read a whole
+tracked file — the untracked files named above are the one exception: they
+ARE the diff, read them in full. Do not search the repo, with two capped
+exceptions: the CONSUMERS lens greps for consumers of each changed contract,
+and the CODE lens's TESTS checklist greps a changed function's name under
+the repo's test directories to learn whether any test exercises it — every
+search ends in `| head -100`.
 
 OUTPUT CAP. Report at most 5 Risk lines, highest confidence first, and
 only confidence high or medium — a finding you cannot back with a concrete
@@ -29,7 +33,10 @@ mechanism is not a finding. If you found more than 5, end with exactly one
 extra line: Withheld: N more.
 
 Report each finding on its own line, exactly:
-Risk: <what> — <why it goes wrong, the concrete mechanism> [file:line] (confidence: high|medium)
+Risk (<tag>): <what> — <why it goes wrong, the concrete mechanism> [file:line] (confidence: high|medium)
+where <tag> is your lens name (SECURITY, DATA INTEGRITY, CONSUMERS,
+INTERFACE) or, for the code lens, CODE/<checklist> — the caller reads the
+tag to know which reader found it.
 
 Your ENTIRE final reply must be those Risk lines alone (or exactly
 "Nothing in my lens."), plus the single Withheld line when the cap was hit
@@ -65,9 +72,8 @@ Dispatched whenever the diff contains executable code — see `SKILL.md` step 3b
 
 **1. Code**
 ```
-Your lens: CODE. Three checklists — report against any of them, and tag
-each Risk line with the checklist that caught it, e.g.
-Risk (CODE/correctness): …
+Your lens: CODE. Three checklists — report against any of them; your <tag>
+is CODE/correctness, CODE/tests, or CODE/silent-change, whichever caught it.
 
 CORRECTNESS — logic errors only: wrong branch conditions, off-by-ones,
 inverted comparisons, unhandled edge cases (empty, zero, nil, boundary),

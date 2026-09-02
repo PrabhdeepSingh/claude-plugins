@@ -1,17 +1,17 @@
 # Comments — the budget applied to one function
 
-The four checks from §3, applied to a function the way a coding agent typically emits it. Read the generated version first and count: twelve lines of code, eleven lines of comment, and not one of them tells the reader something the code does not.
+The four checks from §3, applied to a function the way a coding agent typically emits it. Read the generated version first and count: nine lines of code, fifteen lines of comment (six of doc block, nine inline), and not one of them tells the reader something the code does not.
 
 ## As generated
 
-```js
+```ts
 /**
  * Calculates the total for an invoice.
- * @param {Invoice} invoice - The invoice to calculate the total for.
- * @param {number} taxRate - The tax rate to apply.
- * @returns {number} The total amount in cents.
+ * @param invoice - The invoice to calculate the total for.
+ * @param taxRate - The tax rate to apply.
+ * @returns The total amount in cents.
  */
-function calculateInvoiceTotal(invoice, taxRate) {
+function calculateInvoiceTotal(invoice: Invoice, taxRate: number): number {
   // Start with a subtotal of zero
   let subtotalCents = 0;
   // Loop through each line item and add its amount
@@ -59,7 +59,7 @@ One comment survived. It names an invariant the code cannot state (whole cents, 
 | `Updated to use the new discount field as requested in the ticket` | 1 — narrates the edit and the task; commit-message material |
 | `Calculate tax by multiplying…` + two more lines | 1 — first line restates the code; 4 — three lines for one why |
 | `Return the discounted amount plus tax` | 1 — restates `return` |
-| The five-line JSDoc block | Docstring rule — a module-private helper gets none; the `@param`/`@returns` types repeat what the typed signature already declares |
+| The six-line doc block | Docstring rule — a module-private helper gets none; and its `@param`/`@returns` lines only restate names and types the signature already declares |
 
 Had a second why been genuinely needed inside this body, check 2 says the answer is a split (`applyDiscount`, `roundedTax`) with the why moving to the smaller function's single line — not a second comment.
 

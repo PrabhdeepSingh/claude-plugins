@@ -2,11 +2,11 @@
 
 Section F's two knobs, per reviewer in `/sonu:ship`'s registry. Each entry names the setting and where it lives; nothing here changes how ship runs — it changes how much the reviewers give ship to do.
 
-**How this interacts with ship.** Ship's Phase 6 already re-requests Copilot explicitly (`gh pr edit --add-reviewer "@copilot"`) and drops each other bot's re-review mention after a fix push. So turning off review-on-every-push costs no coverage inside a ship run: the one re-review ship wants, it asks for. What the setting removes is the *unasked* re-review that fires on every fix commit and re-rolls code nobody touched.
+**How this interacts with ship.** After a fix push, ship's Phase 6 re-requests Copilot explicitly (`gh pr edit --add-reviewer "@copilot"`) and drops the re-review mention for **every** bot that participated in Phase 2 — the mentions it knows are listed there (CodeRabbit, Sourcery, Greptile, Ellipsis, Cubic, Qodo). For those reviewers, turning off review-on-every-push costs no coverage inside a ship run: the one re-review ship wants, it asks for; what the setting removes is the *unasked* re-review on every fix commit. Two reviewers are outside that guarantee, and the entries below say so: ship posts no `@claude review`, and Aikido and Korbit have no mention at all — keep those on their default trigger.
 
 ## Claude Code Review (hosted)
 
-- **Review behavior → "Once after PR creation"** (runs when the PR opens or leaves draft), or **Manual** and trigger with `@claude review`. "After every push" is the most expensive mode and the one that produces re-rolls.
+- **Review behavior → "Once after PR creation"** (runs when the PR opens or leaves draft). Not **Manual**: ship never posts `@claude review`, so a manual-only reviewer would see the first push and nothing after it. "After every push" is the most expensive mode and the one that produces re-rolls.
 - **`REVIEW.md` at the repo root** — the reviewer reads it. Four clauses do the work:
   - After the first review, suppress new nits and post Important findings only.
   - Report at most five nits; mention the rest as a count.
@@ -47,7 +47,7 @@ reviews:
 
 ## Everything else in the registry (Aikido, Qodo, Greptile, Ellipsis, Sourcery, Cubic, Korbit)
 
-Each has an equivalent pair of settings — an on-open-only or draft-skipping trigger and a severity or profile floor. Find them in the tool's repo config file or org dashboard, apply the same two rules, and keep the re-review mention ship already knows (`/review`, `@greptileai`, `@ellipsis-dev`, `@sourcery-ai review`, `@cubic-dev-ai`).
+Each has an equivalent pair of settings — an on-open-only or draft-skipping trigger and a severity or profile floor. Find them in the tool's repo config file or org dashboard and apply the same two rules **only where ship has a re-review mention for the tool** (`/review` for Qodo, `@greptileai`, `@ellipsis-dev`, `@sourcery-ai review`, `@cubic-dev-ai`). Aikido and Korbit have none — leave their review-on-push trigger on, or a fix commit goes unreviewed by them.
 
 ## Provenance
 

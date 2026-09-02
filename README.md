@@ -233,7 +233,7 @@ claude-plugins/
     └── skills/              # auto-applied; tdd, design-tree, self-review, interface-review, and the ticket skills also invoke directly as /sonu:<name>
         ├── code-standards/
         │   ├── SKILL.md     # how code gets written
-        │   └── references/  # data & API examples, security examples
+        │   └── references/  # data & API examples, security examples, the comment budget worked example
         ├── tdd/
         │   ├── SKILL.md     # test-driven development — red-green-refactor
         │   └── references/  # worked code for every rule — the loop, AAA, seams, thresholds
@@ -285,7 +285,7 @@ claude-plugins/
         │   └── references/  # lens dispatch templates, worked output examples
         ├── pr-conventions/
         │   ├── SKILL.md     # per-type PR templates, living description, reply wording
-        │   └── references/  # the 8 per-change-type PR body templates
+        │   └── references/  # the 8 per-change-type PR body templates, reviewer tuning (review-once, Important-only)
         ├── ticket-lifecycle/
         │   ├── SKILL.md     # ticket-as-control-plane rulebook — taxonomy, triggers, claim rules, tracker resolution
         │   └── references/  # one adapter per tracker (github, jira, linear, local, custom) + the optional liveness Action
