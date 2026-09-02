@@ -13,7 +13,7 @@ Risk: the retry loop has no backoff — under load this will hammer the upstream
 
 ## Fan-out synthesis (substantial diff)
 
-A 600-line billing change. The code lens went out, and of the four domain lenses only data-integrity and blast-radius matched a clause — three lenses, reporting nine raw findings (the code lens tagged its five with the checklist that caught each, `CODE/correctness` and `CODE/silent-change`, and closed with `Withheld: 2 more.`). Synthesis rejected four (two style preferences, one finding that misread an unchanged line, one with no articulable failure mechanism), merged two co-flagged duplicates, and kept:
+A 600-line billing change. The code lens went out, and of the four domain lenses only data-integrity and blast-radius matched a clause — three lenses, reporting nine raw Risk lines: five from the code lens (each tagged with the checklist that caught it, `CODE/correctness` or `CODE/silent-change`) and four from the two domain lenses. The code lens also closed with `Withheld: 2 more.` — two findings beyond its cap that it never reported, so they are not among the nine and synthesis never saw them; the line is a cue to read that lens's domain yourself. Synthesis rejected four (two style preferences, one finding that misread an unchanged line, one with no articulable failure mechanism), merged two co-flagged duplicates, and kept:
 
 ```
 Risk: `computeInvoiceTotal` rounds per-line instead of per-invoice — totals drift by cents vs the old behavior and downstream reconciliation compares exact amounts (co-flagged by CODE/silent-change and data-integrity) [billing/invoice.ts:88]
