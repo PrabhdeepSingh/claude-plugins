@@ -13,7 +13,7 @@ Risk: the retry loop has no backoff — under load this will hammer the upstream
 
 ## Fan-out synthesis (substantial diff)
 
-A 600-line billing change. The three code lenses went out, and of the four domain lenses only data-integrity and blast-radius matched a clause — six lenses, reporting nine raw findings. Synthesis rejected four (two style preferences, one finding that misread an unchanged line, one with no articulable failure mechanism), merged two co-flagged duplicates, and kept:
+A 600-line billing change. The code lens went out, and of the four domain lenses only data-integrity and blast-radius matched a clause — three lenses, reporting nine raw findings (the code lens tagged its five with the checklist that caught each, `CODE/correctness` and `CODE/silent-change`, and closed with `Withheld: 2 more.`). Synthesis rejected four (two style preferences, one finding that misread an unchanged line, one with no articulable failure mechanism), merged two co-flagged duplicates, and kept:
 
 ```
 Risk: `computeInvoiceTotal` rounds per-line instead of per-invoice — totals drift by cents vs the old behavior and downstream reconciliation compares exact amounts (co-flagged by correctness + silent-change) [billing/invoice.ts:88]
@@ -40,7 +40,7 @@ Risk: the new dispatch rule contradicts the size gate two sections above — one
 Risk: the ledger field is described as write-once here but re-evaluated every pass below — an executor reading the contract first treats the re-evaluation as optional [commands/deploy.md:36]
 
 Domain lenses: security (changes when a security check runs) · blast-radius (two commands consume this skill's output contract) · data-integrity, interface — no clause matched.
-Code lenses: correctness, silent-behavior-change dispatched on the prose frame; test-adequacy skipped — this repo has no test suite whose adequacy the prose changes.
+Code lens: dispatched on the prose frame with the correctness and silent-behavior-change checklists; test-adequacy checklist dropped — this repo has no test suite whose adequacy the prose changes.
 ```
 > *This is a pointer for your review, not an approval. Read the diff yourself.*
 
