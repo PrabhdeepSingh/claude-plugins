@@ -233,7 +233,7 @@ claude-plugins/
     └── skills/              # auto-applied; tdd, design-tree, self-review, interface-review, and the ticket skills also invoke directly as /sonu:<name>
         ├── code-standards/
         │   ├── SKILL.md     # how code gets written
-        │   └── references/  # data & API examples, security examples, the comment budget worked example
+        │   └── references/  # data & API examples, security examples, the comment budget worked example, the platform-primitive lookup
         ├── tdd/
         │   ├── SKILL.md     # test-driven development — red-green-refactor
         │   └── references/  # worked code for every rule — the loop, AAA, seams, thresholds

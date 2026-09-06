@@ -71,6 +71,8 @@ When a hypothesis dies, put the code back exactly as it was before you tested it
 
 A fix is proven when: the reproduction from section 1 now passes, **and** you can say *why* in one sentence that connects cause to symptom ("the parser dropped the final chunk because X; feeding it Y exposed it"). If you can't say why it works, it probably doesn't — you've suppressed the symptom, not the cause.
 
+**Fix where every caller routes through, not where the report pointed.** A report names one symptom on one path. Before editing, list every caller of the function you are about to change — grep the symbol, follow the imports. If the cause is shared, the guard goes in the shared function once: a smaller diff than one per caller, and the only fix that doesn't leave a sibling path still broken. A fix that patches only the reported path has treated the symptom in one place and proven nothing about the others.
+
 Then pin it with a regression test written *before* you consider the work done — the failing-test-first mechanics live in [[tdd]]'s bug-fix reflex; don't restate them here, follow them there. And per [[tdd]]'s "the test is innocent" rule: if your investigation started from a failing test, the test is not the thing to fix.
 
 ## 9. Know when to stop
@@ -84,6 +86,7 @@ Three consecutive dead hypotheses means the problem is misframed — stop genera
 - Can you make the failure happen on demand — and did the fix make that exact reproduction pass?
 - If this was a production report: did you pull the actual event from the observability stack (or explicitly ask for access / the pasted event) rather than debugging the reporter's paraphrase — and did no PII from it leak into code, tests, commits, or PRs?
 - Did you read the actual error text and trace to the *origin* of the bad state, or did you patch where it exploded?
+- Did you enumerate every caller of what you changed, and does the fix cover all of them — not just the path the report named?
 - Was every experiment one hypothesis → one change → one observation — never two variables at once?
 - Are all dead-end attempts fully reverted, and all hunt-time instrumentation removed?
 - Can you state in one sentence why the fix works, connecting cause to symptom?

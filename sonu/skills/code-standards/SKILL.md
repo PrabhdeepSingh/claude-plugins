@@ -16,13 +16,22 @@ When you finish a change, run the self-check at the bottom against your own diff
 
 ## How you work — discipline before output
 
-The numbered sections below describe what finished code should look like. These five habits describe how to get there, and they head off the most common ways an AI coding session goes off the rails: confidently building the wrong thing, over-engineering, re-implementing what already exists, and leaving collateral damage in the diff. They bias toward care over raw speed — on a genuinely trivial change, use judgment.
+The numbered sections below describe what finished code should look like. These four habits describe how to get there, and they head off the most common ways an AI coding session goes off the rails: confidently building the wrong thing, over-engineering, re-implementing what already exists, and leaving collateral damage in the diff. They bias toward care over raw speed — on a genuinely trivial change, use judgment.
 
 **Think before you code.** Don't assume your way past ambiguity — surface the options when a request has more than one reasonable reading, state the assumptions you're working from, and say so if a simpler approach exists. When something is genuinely unclear and a wrong guess would be expensive to unwind, stop and ask rather than building on the guess. That includes the requester's premises: if the request assumes something the codebase contradicts, surface the mismatch before implementing.
 
-**Build the minimum that solves the problem.** Write the least code that fully does what was asked — no abstractions for single-use code, no configurability nobody requested, no error handling for cases that can't occur. (The rule of three from section 4 applies here too.) If a senior engineer would call it overcomplicated, simplify.
+**Climb the ladder before you write.** Ten lines become two hundred in two ways — building what nobody needs, and re-implementing what already exists — and a model is pulled toward both, because generating fresh code is easier than reading existing code. So before writing any helper, utility, algorithm, or component, run these rungs in order and stop at the first one that holds:
 
-**Look before you write.** The most common way ten lines becomes two hundred is re-implementing something that already exists. Before writing any helper, utility, or algorithm, search in order: the codebase (grep the concept; read `utils`/`lib`/shared folders), the language's standard library, then the project's existing dependencies. Write it fresh only when that search comes up empty — generating new code is *easier* than reading existing code for a model, so the pull toward a fresh implementation is strong; resist it.
+1. **Does it need to exist?** A speculative need — a case that can't occur, configurability nobody asked for, an abstraction with one use — is skipped, and the skip is named in one line: what was left out and what would warrant adding it. (The rule of three from §4 applies here too.)
+2. **Already in this codebase?** Grep the concept; read `utils`/`lib`/shared folders. A helper a few files over is reused, not rewritten.
+3. **In the standard library?** Use it.
+4. **A platform primitive?** A native element over a component library, CSS over JavaScript, a database constraint over application code — the platform's version ships free, stays maintained, and was built by people whose whole job was that problem.
+5. **An installed dependency?** Use it — and never add a new one for what a few lines can do.
+6. **Only then: the minimum code that fully does what was asked.** If a senior engineer would call it overcomplicated, simplify.
+
+Two rungs hold? Take the earlier one — the lower number — and move on. The ladder shortens the solution, never the reading: it runs *after* you have read the code the change touches and traced the real flow, because the smallest diff in the wrong place is a second bug, not efficiency. And nothing on the ladder cuts what only code can supply — validation at a trust boundary (§9), error handling that prevents data loss (§7), a security or accessibility requirement, or anything explicitly requested stays in, however few lines the rest became.
+
+→ `references/platform-native.md` — the rung-4 lookup by stack (HTML, CSS, browser APIs, Node, Python, SQL); read when about to add a dependency, or to write interface behavior, formatting, or data-integrity logic a browser, runtime, or database might already provide.
 
 ```js
 // Avoid: hand-rolling what the platform (or a nearby helper) already does
@@ -35,11 +44,11 @@ function groupUsersByRole(users) {
   return grouped;
 }
 
-// Prefer: found by checking the stdlib first
+// Prefer: rung 3 — the standard library already ships it
 const usersByRole = Object.groupBy(users, user => user.role);
 ```
 
-Two corollaries: **don't guess APIs** — verify a method/signature against the *installed* version, not memory, before calling anything beyond the language's core; and **the inverse of reuse is dependency discipline** — a new package is an architectural decision (maintenance, security surface, upgrade treadmill), so don't install one for what the stdlib or an existing dependency already does.
+Two corollaries: **don't guess APIs** — verify a method/signature against the *installed* version, not memory, before calling anything beyond the language's core; and **the inverse of reuse is dependency discipline** — a new package is an architectural decision (maintenance, security surface, upgrade treadmill), so don't install one for what the stdlib, the platform, or an existing dependency already does.
 
 **Make surgical changes.** Touch only what the task requires. Resist "improving" adjacent lines or reformatting; match the surrounding style even where you'd do it differently. Clean up what *your* change orphaned, but flag out-of-scope dead code to the reviewer instead of deleting it. When an approach fails, revert it fully before trying the next one — a diff must never carry the fossils of abandoned attempts layered under the fix that finally worked.
 
@@ -103,14 +112,14 @@ function getDiscount(user) {
 
 **Comments: the default is none, and the limits below are hard.** The reader is a senior engineer who will not wade through a hundred comment lines on a three-line function, and who reads comments scattered through a body as noise, not help. The names (§1) and the small functions (§4) carry the meaning; a comment exists only for what the code *cannot* say. These are limits applied while writing — nothing is written to be trimmed later. Before writing a comment, it must pass all four checks; if it fails any, do not write it:
 
-1. **It says one of these, and nothing else:** a hidden constraint, an invariant, a unit or format, a workaround with its issue link, a keep-in-sync-with pointer, or a non-obvious algorithm choice. Never what the next line does (`// parse the hours` above `parseHours()`), and never the edit or the task ("added", "fixed", "updated", "now uses", "as requested", "per the ticket") — that is commit-message material.
+1. **It says one of these, and nothing else:** a hidden constraint, an invariant, a unit or format, a workaround with its issue link, a keep-in-sync-with pointer, a non-obvious algorithm choice, or a `TODO` in the ceiling-plus-trigger shape below. Never what the next line does (`// parse the hours` above `parseHours()`), and never the edit or the task ("added", "fixed", "updated", "now uses", "as requested", "per the ticket") — that is commit-message material.
 2. **Budget: at most one inline comment per function.** Needing a second means the function wants splitting or a better name — fix that instead (§4's tripwire). Two comment kinds other rules *require* count as zero against this budget and are exempt from check 3: the `// Arrange` / `// Act` / `// Assert` markers in a test body ([[tdd]]'s structure) and the justifying comment a suppression must carry (§12). Backstop: inline comment lines never outnumber code lines in any function; a public docstring is bounded by its own rule below, not by this count.
 3. **Placement: above the function or above a block — never interleaved line-by-line inside the body.** A body reads straight down as code.
 4. **Length: one line.** A why that needs more is a docstring or a doc file.
 
 No dividers, no end-of-block markers, no commented-out code.
 
-**Docstrings follow the language, not the one-line rule.** Public or exported API gets a docstring in the language's own convention (godoc, rustdoc, PEP 257, JSDoc); private and unexported helpers get none unless the logic is non-obvious. The summary line says what the thing does for the caller — never restates the signature — and in a typed language never repeats parameter or return types the signature already declares. That is also the docstring's size bound: the summary line, plus only what the signature cannot say (a unit, an invariant, a failure mode) — a docstring longer than the function it documents has restated the code. Keep `TODO`s actionable and attributed, with enough context that someone could actually act on them. Delete dead code instead of commenting it out; that's what version control is for.
+**Docstrings follow the language, not the one-line rule.** Public or exported API gets a docstring in the language's own convention (godoc, rustdoc, PEP 257, JSDoc); private and unexported helpers get none unless the logic is non-obvious. The summary line says what the thing does for the caller — never restates the signature — and in a typed language never repeats parameter or return types the signature already declares. That is also the docstring's size bound: the summary line, plus only what the signature cannot say (a unit, an invariant, a failure mode) — a docstring longer than the function it documents has restated the code. A `TODO` is attributed and names two things: the ceiling — the known limit of the shortcut it marks (a global lock, an O(n²) scan, a naive heuristic) — and the trigger that upgrades it (`// TODO(owner): global lock; per-account locks when throughput matters`). `grep TODO` is the debt ledger, and a row with no trigger is one nobody ever acts on. Delete dead code instead of commenting it out; that's what version control is for.
 
 → `references/comments.md` — the four checks applied to one real function, and the public-vs-private docstring line, read the first time this session writes a comment in a file you did not author.
 
@@ -245,7 +254,7 @@ Run this against your own diff — the numbered sections above are the rest of t
 - Zero debugging debris (`console.log`/`print`, `debugger`, temp scripts, commented-out experiments)?
 - Zero new bare suppressions — narrowest scope plus a justifying comment on any that remain?
 - Is every claim in your report something you actually observed this session?
-- Searched the codebase, stdlib, and existing dependencies before writing any new helper or algorithm?
+- Climbed the ladder — need, codebase, stdlib, platform primitive, installed dependency — before writing any new helper, component, or algorithm, and named every rung-1 skip in one line?
 - Does every comment in the diff pass §3's four checks — whitelisted content, at most one per function, above a block rather than interleaved, one line — with docstrings on public API only, and AAA markers and suppression justifications exempt? (A scan of the comments, not a rewrite pass.)
 
 ## Reference files
@@ -255,3 +264,4 @@ Run this against your own diff — the numbered sections above are the rest of t
 | `references/data-and-api.md` | A full example record (§2), worked SQL/ORM query examples (§5), the API allowlist example, status-code list, and migration detail (§13), and the idempotency contract (§13) |
 | `references/security.md` | The silent-fallback example (§7), SQL-injection and boundary-validation examples (§9), and the login-enumeration example (§10) |
 | `references/comments.md` | The comment budget applied to one function — every generated comment mapped to the check it fails — and the public-vs-private docstring pair (§3) |
+| `references/platform-native.md` | The rung-4 lookup — what the browser, CSS, the JS runtime, Node, Python, and the database already provide, by the library or hand-rolled code people reach for instead |
