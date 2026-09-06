@@ -27,23 +27,18 @@ Reach for these before writing JavaScript to do what a stylesheet already does.
 | Responsive font size | `font-size: clamp(1rem, 2.5vw, 2rem)` |
 | Fluid spacing | `padding: clamp(1rem, 5vw, 3rem)` |
 | Dark mode | `@media (prefers-color-scheme: dark)` |
-| Reduced motion | `@media (prefers-reduced-motion: reduce)` |
+| Motion that respects the OS reduce-motion setting | wrap motion in `@media (prefers-reduced-motion: no-preference)` so it is opt-in |
 | Responsive layout without breakpoints | `grid-template-columns: repeat(auto-fill, minmax(250px, 1fr))` |
-| Component-level responsive design | `@container` queries |
+| Component-level responsive design | `container-type: inline-size` on the ancestor + `@container (min-width: 40rem)` |
 | Global design tokens / theming | CSS custom properties (`--color-primary: #7c3aed`) |
 | Smooth scroll | `scroll-behavior: smooth` |
 | Sticky header | `position: sticky; top: 0` |
 | Scroll-snap carousel | `scroll-snap-type: x mandatory` + `scroll-snap-align: start` |
 | Aspect ratio enforcement | `aspect-ratio: 16 / 9` |
-| Truncate text with ellipsis | `overflow: hidden; text-overflow: ellipsis; white-space: nowrap` |
-| Multi-line text clamp | `-webkit-line-clamp: 3` |
-| CSS cascade layers (style isolation) | `@layer base, components, utilities` |
-| Nested CSS selectors | Native CSS nesting (no preprocessor needed) |
-| `has()` parent selector | `:has(input:checked)` |
 
 ## JavaScript and browser APIs
 
-Runtime and browser APIs that make an installed package redundant.
+Language built-ins and browser APIs that make an installed package redundant. The language's own built-ins here (`structuredClone`, `Object.groupBy`, `Intl`, `crypto.randomUUID`) are rung 3, the browser APIs rung 4 — either way the halt is the same: before a dependency.
 
 | You reach for | The platform has |
 |---|---|
@@ -59,7 +54,6 @@ Runtime and browser APIs that make an installed package redundant.
 | Infinite scroll library | `new IntersectionObserver(cb).observe(sentinel)` |
 | Resize listener library | `new ResizeObserver(cb).observe(element)` |
 | DOM mutation watcher | `new MutationObserver(cb).observe(el, options)` |
-| `is-online` / `connectivity check` | `navigator.onLine` + `online`/`offline` events |
 | `store.js` / `localForage` (simple case) | `localStorage.setItem(key, JSON.stringify(val))` |
 | Abort fetch on timeout | `AbortSignal.timeout(5000)` passed to `fetch` |
 | Custom event bus | `new EventTarget()` / `dispatchEvent(new CustomEvent("x", { detail }))` |
@@ -73,9 +67,7 @@ Built-ins that make a wrapper package redundant.
 | `mkdirp` | `fs.mkdirSync(path, { recursive: true })` |
 | `rimraf` | `fs.rmSync(path, { recursive: true, force: true })` |
 | `make-dir` | `fs.mkdirSync(path, { recursive: true })` |
-| `slash` (win paths) | `path.posix` or `path.normalize()` |
 | `uuid` (v4) | `crypto.randomUUID()` |
-| `is-stream` | `val instanceof stream.Readable` |
 | `object-assign` | `Object.assign()` / spread |
 | `array-uniq` | `[...new Set(arr)]` |
 | `array-flatten` | `arr.flat(Infinity)` |
@@ -83,7 +75,6 @@ Built-ins that make a wrapper package redundant.
 | `path-exists` | `fs.existsSync(path)` |
 | `load-json-file` | `JSON.parse(fs.readFileSync(path, "utf8"))` |
 | `write-json-file` | `fs.writeFileSync(path, JSON.stringify(obj, null, 2))` |
-| `pkg-dir` | `path.resolve(__dirname, "..")` / `import.meta.dirname` |
 
 ## Python standard library
 
@@ -100,7 +91,6 @@ Standard-library equivalents for packages that wrap what Python already ships.
 | `typing_extensions` (common types) | `from __future__ import annotations` + built-in generics |
 | `simplejson` (basic use) | `json` (stdlib) |
 | `click` (single command) | `argparse` (stdlib) |
-| `mergedeep` | `dict \| other_dict` (Python 3.9+) |
 | `more-itertools` (basic) | `itertools` (stdlib): `chain`, `islice`, `groupby`, `product` |
 | `toolz` (basic) | `functools`: `lru_cache`, `partial`, `reduce` |
 

@@ -49,6 +49,8 @@ Read the message verbatim, the full stack trace, and the *first* error in the lo
 
 Where the error *explodes* is rarely where things went *wrong* — a null blows up three calls after the function that returned it. Trace backward from the explosion to the first place the state became wrong; that first place is the bug's home, and the only place a fix belongs. Patching at the surface (a null check where it crashed) silences this crash and leaves the wrong state free to surface somewhere else. Ask "where did this bad value come from?" repeatedly until the answer is "here — this is where it was made wrong."
 
+**The origin decides where the fix goes; the callers decide how wide it reaches.** A report names one symptom on one path. Before editing, list every caller of the function you are about to change — grep the symbol, follow the imports. When the origin is the shared function, one guard there covers every caller and is a smaller diff than one per caller; when the origin is one caller passing a bad value, the fix is that caller — a guard in the shared function would be the surface check above — but the sibling callers still get checked for the same defect. A fix that touches only the path the report named has treated the symptom in one place and proven nothing about the others.
+
 ## 5. One hypothesis, one change, one observation
 
 State the hypothesis so it predicts something: *"If the parser drops the last chunk when input isn't newline-terminated, then adding a trailing newline to this failing input will make it pass."* Then make exactly the one change the prediction requires, run, and observe.
@@ -70,8 +72,6 @@ When a hypothesis dies, put the code back exactly as it was before you tested it
 ## 8. Prove the fix — and pin it
 
 A fix is proven when: the reproduction from section 1 now passes, **and** you can say *why* in one sentence that connects cause to symptom ("the parser dropped the final chunk because X; feeding it Y exposed it"). If you can't say why it works, it probably doesn't — you've suppressed the symptom, not the cause.
-
-**Fix where every caller routes through, not where the report pointed.** A report names one symptom on one path. Before editing, list every caller of the function you are about to change — grep the symbol, follow the imports. If the cause is shared, the guard goes in the shared function once: a smaller diff than one per caller, and the only fix that doesn't leave a sibling path still broken. A fix that patches only the reported path has treated the symptom in one place and proven nothing about the others.
 
 Then pin it with a regression test written *before* you consider the work done — the failing-test-first mechanics live in [[tdd]]'s bug-fix reflex; don't restate them here, follow them there. And per [[tdd]]'s "the test is innocent" rule: if your investigation started from a failing test, the test is not the thing to fix.
 
