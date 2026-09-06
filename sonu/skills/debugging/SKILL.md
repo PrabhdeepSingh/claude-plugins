@@ -49,6 +49,8 @@ Read the message verbatim, the full stack trace, and the *first* error in the lo
 
 Where the error *explodes* is rarely where things went *wrong* — a null blows up three calls after the function that returned it. Trace backward from the explosion to the first place the state became wrong; that first place is the bug's home, and the only place a fix belongs. Patching at the surface (a null check where it crashed) silences this crash and leaves the wrong state free to surface somewhere else. Ask "where did this bad value come from?" repeatedly until the answer is "here — this is where it was made wrong."
 
+**The origin decides where the fix goes; the callers decide how wide it reaches.** A report names one symptom on one path. Before editing, list every caller of the function you are about to change — grep the symbol, follow the imports. When the origin is the shared function, one guard there covers every caller and is a smaller diff than one per caller; when the origin is one caller passing a bad value, the fix is that caller — a guard in the shared function would be the surface check above — but the sibling callers still get checked for the same defect. A fix that touches only the path the report named has treated the symptom in one place and proven nothing about the others.
+
 ## 5. One hypothesis, one change, one observation
 
 State the hypothesis so it predicts something: *"If the parser drops the last chunk when input isn't newline-terminated, then adding a trailing newline to this failing input will make it pass."* Then make exactly the one change the prediction requires, run, and observe.
@@ -84,6 +86,7 @@ Three consecutive dead hypotheses means the problem is misframed — stop genera
 - Can you make the failure happen on demand — and did the fix make that exact reproduction pass?
 - If this was a production report: did you pull the actual event from the observability stack (or explicitly ask for access / the pasted event) rather than debugging the reporter's paraphrase — and did no PII from it leak into code, tests, commits, or PRs?
 - Did you read the actual error text and trace to the *origin* of the bad state, or did you patch where it exploded?
+- Did you enumerate every caller of what you changed, and does the fix cover all of them — not just the path the report named?
 - Was every experiment one hypothesis → one change → one observation — never two variables at once?
 - Are all dead-end attempts fully reverted, and all hunt-time instrumentation removed?
 - Can you state in one sentence why the fix works, connecting cause to symptom?
