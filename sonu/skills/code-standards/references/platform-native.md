@@ -31,7 +31,7 @@ Reach for these before writing JavaScript to do what a stylesheet already does.
 | Responsive layout without breakpoints | `grid-template-columns: repeat(auto-fill, minmax(250px, 1fr))` |
 | Component-level responsive design | `container-type: inline-size` on the ancestor + `@container (min-width: 40rem)` |
 | Global design tokens / theming | CSS custom properties (`--color-primary: #7c3aed`) |
-| Smooth scroll | `scroll-behavior: smooth` |
+| Smooth scroll | `scroll-behavior: smooth`, inside the same `prefers-reduced-motion: no-preference` query as the row above |
 | Sticky header | `position: sticky; top: 0` |
 | Scroll-snap carousel | `scroll-snap-type: x mandatory` + `scroll-snap-align: start` |
 | Aspect ratio enforcement | `aspect-ratio: 16 / 9` |
