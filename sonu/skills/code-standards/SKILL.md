@@ -261,7 +261,7 @@ Run this against your own diff — the numbered sections above are the rest of t
 - Zero new bare suppressions — narrowest scope plus a justifying comment on any that remain?
 - Is every claim in your report something you actually observed this session?
 - Climbed the ladder — need, codebase, stdlib, platform primitive, installed dependency — before writing any new helper, component, or algorithm, and named every rung-1 skip in one line?
-- Every new or changed function at most 40 lines or justified in one line of the hand-off; no one-caller helper without a concept-carrying name; no forwarding wrapper; new behavior in the module that owns its data (§4)?
+- All five of §4's size limits held against the diff — every new or changed function at most 40 lines or justified in one line of the hand-off; one responsibility per new file; no one-caller helper without a concept-carrying name and no forwarding wrapper; new behavior in the module that owns its data; no line a senior engineer could delete without losing behavior or a name?
 - Does every comment in the diff pass §3's four checks — whitelisted content, at most one per function, above a block rather than interleaved, one line — with docstrings on public API only, and AAA markers and suppression justifications exempt? (A scan of the comments, not a rewrite pass.)
 
 ## Reference files

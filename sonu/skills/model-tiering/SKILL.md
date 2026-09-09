@@ -93,9 +93,9 @@ If the check fails: fix the specification if the failure was a specification gap
 
 ## Provenance and maintenance
 
-The methodology above — tier by ladder position, the four-part delegation bar, orchestrator-verifies, absence-is-safe — is durable. The table below is not: model names, ladder order, and the subagent tool's accepted model values drift with harness releases. Last verified 2026-07; re-verify against the harness's current model listing and its subagent-tool documentation whenever a new model generation lands.
+The methodology above — tier by ladder position, the four-part delegation bar, orchestrator-verifies, absence-is-safe — is durable. The table below is not: model names, ladder order, and the subagent tool's accepted model values drift with harness releases. Last verified 2026-07; re-verify against the harness's current model listing and its subagent-tool documentation whenever a new model generation lands. One ladder per model family; only the Claude family ships today — another family (OpenAI, Gemini) is added by appending its verified ladder here, with no change to the sections above.
 
-- **An Agent call with no `model` argument inherits the session's model** (Section 5) — verified 2026-09 against the Agent tool's own description in Claude Code ("inherits from the parent unless a default subagent model is configured"). Re-verify when the harness's subagent tool changes; if a future harness defaults subagents to a cheaper tier, the rule in Section 5 becomes belt-and-braces rather than wrong. One ladder per model family; only the Claude family ships today — another family (OpenAI, Gemini) is added by appending its verified ladder here, with no change to the sections above.
+- **An Agent call with no `model` argument inherits the session's model** (Section 5) — verified 2026-09 against the Agent tool's own description in Claude Code ("inherits from the parent unless a default subagent model is configured"). Re-verify when the harness's subagent tool changes; if a future harness defaults subagents to a cheaper tier, the rule in Section 5 becomes belt-and-braces rather than wrong.
 
 **Claude family ladder:**
 

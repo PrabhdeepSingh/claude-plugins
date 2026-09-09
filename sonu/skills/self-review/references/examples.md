@@ -63,6 +63,6 @@ When a reader errors or returns garbage, the output names every checklist it car
 Risk: `parseWindow` accepts a negative duration and schedules the job in the past — the scheduler drops past jobs without logging [scheduler/window.go:54]
 Risk: the domain reader (security, data-integrity) failed to complete — auth/ and the new token path in session.go got NO independent security or data-integrity read; review those yourself [auth/, session.go]
 
-Domain lenses: security (auth middleware) · data-integrity (session store schema) · blast-radius, interface — no clause matched. Readers: 2 (sonnet), domain reader degraded
+Domain lenses: security (auth middleware) · data-integrity (session store schema) · blast-radius, interface — no clause matched. Readers: 2 (sonnet)
 ```
 > *This is a pointer for your review, not an approval. Read the diff yourself.*

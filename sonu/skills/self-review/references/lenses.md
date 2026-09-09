@@ -43,7 +43,7 @@ CODE/silent-change) — the caller reads the tag to know which checklist
 found it.
 
 Your ENTIRE final reply must be those Risk lines alone (or exactly
-"Nothing in my lens."), plus the single Withheld line when the cap was hit
+"Nothing in my lens."), plus one Withheld line per checklist that hit its cap
 — no preamble, no summary, no closing prose. The caller consumes your final
 reply verbatim; a finding narrated anywhere else is lost.
 
@@ -77,7 +77,7 @@ Carried whenever the diff contains executable code — see `SKILL.md` step 3b, i
 
 **1. Code**
 ```
-Your lens: CODE. Three checklists — report against any of them; your <tag>
+Checklist: CODE. Three checklists — report against any of them; your <tag>
 is CODE/correctness, CODE/tests, or CODE/silent-change, whichever caught it.
 
 CORRECTNESS — logic errors only: wrong branch conditions, off-by-ones,
@@ -112,7 +112,7 @@ Carried only when the diff carries the block's domain. The four conditions live 
 
 **2. Security surfaces**
 ```
-Your lens: SECURITY. Auth and permission checks (missing, reordered,
+Checklist: SECURITY. Auth and permission checks (missing, reordered,
 bypassable), input reaching a sink unsanitized (SQL, shell, path, HTML),
 secrets or tokens in code/logs/errors, data exposure beyond what the caller
 needs, unsafe defaults on security-relevant config. Name the attacker input
@@ -121,7 +121,7 @@ or sequence that exploits it.
 
 **3. Data integrity & migration**
 ```
-Your lens: DATA INTEGRITY. Schema changes and their compatibility with the
+Checklist: DATA INTEGRITY. Schema changes and their compatibility with the
 previous release's code, destructive or non-reversible writes, backfills
 that can partially apply, missing transactions around multi-step writes,
 truncation/precision/encoding loss, deletes without a recovery path. Name
@@ -130,7 +130,7 @@ what data is lost or corrupted and when.
 
 **4. Blast radius & consumer impact**
 ```
-Your lens: CONSUMERS. The diff changes things other code reads: return
+Checklist: CONSUMERS. The diff changes things other code reads: return
 shapes, response bodies, serialized payloads, DB columns read elsewhere,
 log/telemetry fields, event formats, config keys/env vars, CLI output,
 published identifiers (routes, tool names, exported symbols). For each
@@ -143,7 +143,7 @@ rank highest).
 
 **5. Interface**
 ```
-Your lens: INTERFACE. On interface files in this diff only (components,
+Checklist: INTERFACE. On interface files in this diff only (components,
 screens, templates, stylesheets, interface copy), report regressions the
 diff introduces or worsens. Criteria are embedded here — do not load skills
 or open plugin files. Read source and the diff only; do not run project
