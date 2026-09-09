@@ -47,7 +47,7 @@ git diff --numstat "origin/$BASE...HEAD" \
 
 - **Under ~100 changed production code lines** → the inline pass (step 3a). Small diffs don't earn a subagent's cost.
 - **At or above ~100** → the cold read (step 3b): one reader.
-- **Above ~500** → the cold read with two readers (step 3b says how they split). This is the only place that number lives.
+- **Above ~500, with at least one domain checklist live** → the cold read with two readers (step 3b says how they split; a diff that size with no domain matched stays at one reader). This is the only place that number lives.
 - **Count uncomputable** (weird state, no git) → the cold read. Fail toward more review, never less.
 - **Judgment override:** a small diff touching a high-risk surface may get the cold read anyway. Checkable markers of high-risk: it introduces or modifies branching logic, crosses a module or service boundary, asserts a property the type system cannot verify (thread safety, idempotence, ordering, an invariant), or has an irreversible blast radius — a migration, an auth path, a contract other code consumes. The threshold is a floor on cheapness, not a ceiling on caution. And in a repo whose product *is* its documents (a skills or plugin repo, a docs site), count all changed lines — prose and its examples alike — because the doc-exclusion above otherwise makes the cold read unreachable exactly where the diffs are largest.
 
@@ -123,7 +123,7 @@ Format:
 Risk: <what> — <why it's risky> [file:line]
 ```
 
-**On the cold-read path, end with one line naming what every gated lens did** — each of the four domain lenses (a lens here is a checklist the reader carried), plus the code checklists whenever the prose path gated them too — followed by the reader count and tier. Give either the clause that matched (so the checklist was carried) or state that none did, e.g. `Domain lenses: interface (stylesheets + components) · security, data-integrity, blast-radius — no clause matched. Readers: 1 (sonnet)`. The `Domain lenses:` prefix and its per-domain shape are read by `/sonu:ship` to set its security verdict — keep them exactly. Report both directions, not just the skips: an over-firing gate quietly eats the reader's attention, an under-firing one quietly eats a finding, and a guard that only makes skips visible catches only the second. A skip nobody can see is indistinguishable from a coverage gap.
+**On the cold-read path, end with a dispatch line naming what every gated domain lens did** (a lens here is a checklist the reader carried), followed by the reader count and tier — and, on the prose path only, a second `Code checklists:` line saying which of the three were carried and why the rest were dropped. Give either the clause that matched (so the checklist was carried) or state that none did, e.g. `Domain lenses: interface (stylesheets + components) · security, data-integrity, blast-radius — no clause matched. Readers: 1 (sonnet)`. The `Domain lenses:` prefix and its per-domain shape are read by `/sonu:ship` to set its security verdict — keep them exactly. Report both directions, not just the skips: an over-firing gate quietly eats the reader's attention, an under-firing one quietly eats a finding, and a guard that only makes skips visible catches only the second. A skip nobody can see is indistinguishable from a coverage gap.
 
 Worked examples — inline, cold-read synthesis, and the low-risk case — live in `references/examples.md`; read it when unsure what good output looks like.
 
