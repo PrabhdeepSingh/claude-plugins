@@ -91,6 +91,7 @@ Build the change test-first under the active quality bars:
    - What was built (one sentence).
    - Diff stat: `git diff --stat HEAD` **plus** the untracked files from `git status --porcelain` — brand-new files (the common case for a fresh feature) do not appear in `git diff HEAD` at all, and a summary that omits them under-reports the change.
    - The self-review risk list from step 1.
+   - **Largest new or changed function**: its line count and `file:function`; any function over code-standards §4's 40-line limit carries its one-line reason here — the limit is enforced by being visible, so this line is never omitted.
    - **What was deliberately not touched**: adjacent problems noticed but out of scope (an unused import in a file you only read, a similar gap in a sibling module), each with "separate task?" — this line proves scope discipline rather than asserting it, and hands the owner the follow-ups instead of silently absorbing or silently dropping them.
 3. Stop with:
 

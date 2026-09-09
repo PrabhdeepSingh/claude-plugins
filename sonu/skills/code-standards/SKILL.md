@@ -125,7 +125,13 @@ No dividers, no end-of-block markers, no commented-out code.
 
 ## 4. Small, single-purpose, modular pieces
 
-A function should do one thing at one level of abstraction — if you need "and" to describe it, it's three functions. **Concrete tripwire: a function pushing past ~30–40 lines, or one that needs blank-line "sections" to stay readable, is asking to be split.** It's a heuristic, not a law, but once you cross it the burden of proof flips: justify keeping it whole rather than assuming it's fine.
+A function should do one thing at one level of abstraction — if you need "and" to describe it, it's three functions. **The size limits below are hard, and they are applied while writing** — the same shape as §3's comment budget: nothing is written large to be split later, because a split-later pass spends the tokens twice and usually never runs. The reader is a senior engineer who writes the fewest lines that do the exact job and keeps each piece swappable; the limits are what that instinct looks like as countable rules:
+
+1. **A function is at most 40 lines.** Past that: split it, or spend one line in the hand-off saying why it stays whole. A function that needs blank-line "sections" to stay readable has already crossed it.
+2. **A new file has one responsibility**, and its primary export's name states it. A second responsibility is a second file.
+3. **A helper with one caller exists only if its name carries a concept the reader needs** — otherwise inline it. A wrapper that only forwards its arguments is always inlined.
+4. **New behavior lands in the module that owns the data it touches**, never in the caller — the caller grows a one-line call, not a block. That is what keeps a piece replaceable without editing everything that uses it.
+5. **The fewest lines that fully do the job** — the ladder's rung 6 as a limit: if a senior engineer could delete a line and keep both the behavior and the names, delete it first. (The clarity rule in §3 still wins over compression — three obvious lines beat one dense one.)
 
 Separate concerns by layer — business logic doesn't belong in UI components; data access doesn't belong in controllers or views. Prefer pure functions (same input, same output, no hidden side effects) wherever the work is a calculation, and push side effects to the edges. Don't repeat yourself, but don't abstract prematurely either — reach for a shared abstraction on the third occurrence (the rule of three), once you know what actually varies.
 
@@ -255,6 +261,7 @@ Run this against your own diff — the numbered sections above are the rest of t
 - Zero new bare suppressions — narrowest scope plus a justifying comment on any that remain?
 - Is every claim in your report something you actually observed this session?
 - Climbed the ladder — need, codebase, stdlib, platform primitive, installed dependency — before writing any new helper, component, or algorithm, and named every rung-1 skip in one line?
+- Every new or changed function at most 40 lines or justified in one line of the hand-off; no one-caller helper without a concept-carrying name; no forwarding wrapper; new behavior in the module that owns its data (§4)?
 - Does every comment in the diff pass §3's four checks — whitelisted content, at most one per function, above a block rather than interleaved, one line — with docstrings on public API only, and AAA markers and suppression justifications exempt? (A scan of the comments, not a rewrite pass.)
 
 ## Reference files

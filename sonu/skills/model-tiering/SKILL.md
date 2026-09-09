@@ -75,7 +75,7 @@ Categorical — no tag, regardless of Section 3 score:
 
 ## 5. Honoring tags at execution
 
-For each tagged step, spawn a subagent (the Agent tool in Claude Code), model set per Section 2's mapping against the Provenance ladder. The prompt is the step's text verbatim plus the exact paths and settled conventions it names — nothing more. When it returns, **run the step's verification yourself**; never accept the subagent's own report. Delegation changes who types, not the bars: any discipline in force for the build — a failing test observed before the implementation, a standards constraint — still applies, and observing it stays in the session.
+For each tagged step, spawn a subagent (the Agent tool in Claude Code), model set per Section 2's mapping against the Provenance ladder — **and pass that tier's `model` value explicitly on every Agent call.** Omitted, the harness runs the subagent on the session's own model: the subagent then costs exactly what the session costs and this skill has done nothing. An Agent call without `model` is a bug, not a default. The prompt is the step's text verbatim plus the exact paths and settled conventions it names — nothing more. When it returns, **run the step's verification yourself**; never accept the subagent's own report. Delegation changes who types, not the bars: any discipline in force for the build — a failing test observed before the implementation, a standards constraint — still applies, and observing it stays in the session.
 
 **Scheduling:** adjacent tagged steps with no dependency between them may run in parallel — independent slices, tests for already-implemented behavior, docs. Migrations, shared-state changes, and dependency chains stay sequential. Steps that share an API contract need the contract defined first; then they parallelize against it.
 
@@ -93,7 +93,9 @@ If the check fails: fix the specification if the failure was a specification gap
 
 ## Provenance and maintenance
 
-The methodology above — tier by ladder position, the four-part delegation bar, orchestrator-verifies, absence-is-safe — is durable. The table below is not: model names, ladder order, and the subagent tool's accepted model values drift with harness releases. Last verified 2026-07; re-verify against the harness's current model listing and its subagent-tool documentation whenever a new model generation lands. One ladder per model family; only the Claude family ships today — another family (OpenAI, Gemini) is added by appending its verified ladder here, with no change to the sections above.
+The methodology above — tier by ladder position, the four-part delegation bar, orchestrator-verifies, absence-is-safe — is durable. The table below is not: model names, ladder order, and the subagent tool's accepted model values drift with harness releases. Last verified 2026-07; re-verify against the harness's current model listing and its subagent-tool documentation whenever a new model generation lands.
+
+- **An Agent call with no `model` argument inherits the session's model** (Section 5) — verified 2026-09 against the Agent tool's own description in Claude Code ("inherits from the parent unless a default subagent model is configured"). Re-verify when the harness's subagent tool changes; if a future harness defaults subagents to a cheaper tier, the rule in Section 5 becomes belt-and-braces rather than wrong. One ladder per model family; only the Claude family ships today — another family (OpenAI, Gemini) is added by appending its verified ladder here, with no change to the sections above.
 
 **Claude family ladder:**
 

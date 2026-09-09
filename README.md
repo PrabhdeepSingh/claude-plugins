@@ -72,7 +72,7 @@ The change's review depth scales to the diff. You can force it:
 
 | Command | Behavior |
 |---------|----------|
-| `/sonu:ship` | Auto — light touch on trivial diffs, full panel on big or security-relevant ones. |
+| `/sonu:ship` | Auto — light touch on trivial diffs, full on security-relevant ones (with a medium-effort code review), medium otherwise. Only a typed `full` buys the high-effort code review. |
 | `/sonu:ship light` | Minimal Claude review (skips on truly trivial changes); still collects whatever the repo's bots post. |
 | `/sonu:ship full` | Deep Claude code + security review, full re-review loop. |
 
@@ -133,7 +133,7 @@ While all this runs, the ticket itself tells the story: each pass posts checkpoi
 
 ### Direct skill invocations
 
-`/sonu:tdd` runs the red-green-refactor loop on a named feature or bug (writes real files, not a plan). `/sonu:design-tree` maps a design as an explicit branching tree — interview, real forks only, rejected branches preserved — into the plan file or in-chat. `/sonu:self-review` lists the 3–5 riskiest spots in the current diff and ends with "a pointer, not an approval"; substantial diffs get independent parallel review lenses. `/sonu:performance` runs the measurement loop on a named slowness — baseline, one change, keep or revert, where neutral is a revert. `/sonu:intent-interview` interrogates a vague ask one question at a time, each with a guess attached, until the real outcome surfaces. `/sonu:interface-review` audits a whole screen or flow across every interface bar at once, and `/sonu:ticket-triage`, `/sonu:classify-tickets`, and `/sonu:bug-finder` are the tracker-side entry points `/sonu:factory` routes to on its own. These are the skills themselves (see the table below) invoked by name; `/sonu:build` and `/sonu:ship` already run them at the right moments.
+`/sonu:tdd` runs the red-green-refactor loop on a named feature or bug (writes real files, not a plan). `/sonu:design-tree` maps a design as an explicit branching tree — interview, real forks only, rejected branches preserved — into the plan file or in-chat. `/sonu:self-review` lists the 3–5 riskiest spots in the current diff and ends with "a pointer, not an approval"; substantial diffs get one cold read by an independent reader on a cheaper model tier (two readers above ~500 production code lines, never more), with every accept/reject judged in-session. `/sonu:performance` runs the measurement loop on a named slowness — baseline, one change, keep or revert, where neutral is a revert. `/sonu:intent-interview` interrogates a vague ask one question at a time, each with a guess attached, until the real outcome surfaces. `/sonu:interface-review` audits a whole screen or flow across every interface bar at once, and `/sonu:ticket-triage`, `/sonu:classify-tickets`, and `/sonu:bug-finder` are the tracker-side entry points `/sonu:factory` routes to on its own. These are the skills themselves (see the table below) invoked by name; `/sonu:build` and `/sonu:ship` already run them at the right moments.
 
 ## Skills
 
@@ -159,7 +159,7 @@ Twenty-six skills fire automatically as Claude works — nothing to invoke, noth
 | **pr-conventions** | Author PR descriptions from the right per-change-type template (the repo's own PULL_REQUEST_TEMPLATE wins), embed issue-tracker links, keep the description current as fixes land, and reply to human and bot review threads. |
 | **safe-migrations** | Zero-downtime schema and data migration discipline — expand → migrate → contract, never destructive in the release that ships the code, backfills as jobs, every step reversible. |
 | **security** | Build-time security discipline — threat-model before controls, Always/Ask-First/Never boundary tiers, SSRF, supply chain, LLM/agent security, privacy. |
-| **self-review** | Surface the riskiest parts of the current diff so a reviewer knows where to look hardest — one inline pass on small diffs, parallel review lenses with adversarial synthesis on substantial ones. |
+| **self-review** | Surface the riskiest parts of the current diff so a reviewer knows where to look hardest — one inline pass on small diffs, one cold read on a cheaper model tier with in-session synthesis on substantial ones. |
 | **seo** | SEO for anything served as a web page — the plumbing (templates, routes, redirects, `<head>` metadata, JSON-LD, sitemaps, robots.txt) and the prose (posts, guides, landing copy, docs) so pages rank and get cited by AI answer engines. |
 | **tdd** | Test-driven development — the red-green-refactor discipline for code that's correct by design, not by accident. |
 | **ticket-lifecycle** | The ticket-as-control-plane rulebook — the single home for the tracker-operations contract, tracker resolution, the type/priority taxonomy, human-only trigger authorization, derived status, and trust boundaries. |
@@ -281,7 +281,7 @@ claude-plugins/
         ├── model-tiering/
         │   └── SKILL.md     # grade plan steps for cheaper model tiers; verify their output up top
         ├── self-review/
-        │   ├── SKILL.md     # riskiest things in the diff — parallel lenses + adversarial synthesis; pointer, not a score
+        │   ├── SKILL.md     # riskiest things in the diff — one cheap cold read + in-session synthesis; pointer, not a score
         │   └── references/  # lens dispatch templates, worked output examples
         ├── pr-conventions/
         │   ├── SKILL.md     # per-type PR templates, living description, reply wording
