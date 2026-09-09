@@ -1,8 +1,8 @@
-# Lens dispatch templates — the step-3b fan-out
+# Reader prompt templates — the step-3b cold read
 
-Two tiers of lens — one **code lens** carrying three checklists, and four **domain lenses** — one subagent each, dispatched **in parallel in a single turn** on the cheapest trustworthy executor tier below the session (per the model-tiering ladder). This file carries the prompts; **which lenses go out is decided by the dispatch conditions in `SKILL.md` step 3b**, which is their one home — don't restate or re-derive them here. Every lens is read-only and context-free: it gets the prompt below with the placeholders filled — never a summary of the conversation, never the author's intent. **Every lens prompt is self-contained:** the criteria live in the block itself. Do not tell a subagent to `Skill(…)` load or read plugin skill files — those live outside the customer repo root the shared frame supplies, and many harnesses give subagents no Skill tool.
+Five **checklist blocks** — one code block carrying three checklists, and four domain blocks — composed into the prompt of **one reader** (two on a large diff; never more — see Dispatch mechanics). A "lens" is a checklist a reader carries, not a subagent of its own. This file carries the blocks; **which checklists a reader carries, and whether there are one or two readers, is decided in `SKILL.md` step 3b**, which is their one home — don't restate or re-derive the conditions here. Every reader is read-only and context-free: it gets the composed prompt with the placeholders filled — never a summary of the conversation, never the author's intent. **Every reader prompt is self-contained:** the criteria live in the blocks themselves. Do not tell a subagent to `Skill(…)` load or read plugin skill files — those live outside the customer repo root the shared frame supplies, and many harnesses give subagents no Skill tool.
 
-## The shared frame (include in every lens prompt)
+## The shared frame (opens every reader prompt)
 
 ```
 You are reviewing a diff as an independent reviewer. You have no context
@@ -27,30 +27,35 @@ and the CODE lens's TESTS checklist greps a changed function's name under
 the repo's test directories to learn whether any test exercises it — every
 search ends in `| head -100`.
 
-OUTPUT CAP. Report at most 5 Risk lines, highest confidence first, and
-only confidence high or medium — a finding you cannot back with a concrete
-mechanism is not a finding. If you found more than 5, end with exactly one
-extra line: Withheld: N more.
+You may be carrying several checklists below. Work through every one of
+them; tag each finding with the checklist that caught it.
+
+OUTPUT CAP. Report at most 5 Risk lines PER CHECKLIST YOU CARRY, highest
+confidence first, and only confidence high or medium — a finding you cannot
+back with a concrete mechanism is not a finding. If a checklist found more
+than 5, end with exactly one extra line for it: Withheld (<tag>): N more.
 
 Report each finding on its own line, exactly:
 Risk (<tag>): <what> — <why it goes wrong, the concrete mechanism> [file:line] (confidence: high|medium)
-where <tag> is your lens name (SECURITY, DATA INTEGRITY, CONSUMERS,
-INTERFACE) or, for the code lens, CODE/<checklist> — the caller reads the
-tag to know which reader found it.
+where <tag> is the checklist that caught it: SECURITY, DATA INTEGRITY,
+CONSUMERS, INTERFACE, or CODE/<checklist> (CODE/correctness, CODE/tests,
+CODE/silent-change) — the caller reads the tag to know which checklist
+found it.
 
 Your ENTIRE final reply must be those Risk lines alone (or exactly
-"Nothing in my lens."), plus the single Withheld line when the cap was hit
+"Nothing in my lens."), plus one Withheld line per checklist that hit its cap
 — no preamble, no summary, no closing prose. The caller consumes your final
 reply verbatim; a finding narrated anywhere else is lost.
 
-Only report findings inside your lens (below). If you find nothing, reply
-exactly: "Nothing in my lens." Do NOT invent findings to seem useful — an
-empty report is a good report. Do not report style or preference issues.
+Only report findings inside the checklists below. If you find nothing in
+any of them, reply exactly: "Nothing in my lens." Do NOT invent findings to
+seem useful — an empty report is a good report. Do not report style or
+preference issues.
 ```
 
 ## The prose frame (prepend on a prose-only diff, in place of the code framing)
 
-`SKILL.md` step 3b routes a diff with no executable code down its prose path. The lens prompts below hunt code constructs, so on that path prepend this block to whichever lenses that step says are live — it replaces the code framing, and without it a lens has nothing usable to read.
+`SKILL.md` step 3b routes a diff with no executable code down its prose path. The checklist blocks below hunt code constructs, so on that path insert this block after the shared frame — it replaces the code framing, and without it a reader has nothing usable to read.
 
 ```
 This repo's product IS its documents: it ships Markdown that instructs a
@@ -66,13 +71,13 @@ another file that cites this one's rules, sections, fields, or output
 format. Report nothing about wording, tone, or formatting.
 ```
 
-## The code lens (one subagent, three checklists)
+## The code checklists (one block, three checklists)
 
-Dispatched whenever the diff contains executable code — see `SKILL.md` step 3b, including what to do when it contains none. On the prose path, keep only the checklist paragraphs whose domain step 3b says is present and delete the others from the prompt.
+Carried whenever the diff contains executable code — see `SKILL.md` step 3b, including what to do when it contains none. On the prose path, keep only the checklist paragraphs whose domain step 3b says is present and delete the others from the block.
 
 **1. Code**
 ```
-Your lens: CODE. Three checklists — report against any of them; your <tag>
+Checklist: CODE. Three checklists — report against any of them; your <tag>
 is CODE/correctness, CODE/tests, or CODE/silent-change, whichever caught it.
 
 CORRECTNESS — logic errors only: wrong branch conditions, off-by-ones,
@@ -101,13 +106,13 @@ failure path whose default now means something else. Compare old and new
 behavior explicitly and name what a caller observes.
 ```
 
-## The domain lenses (append one per subagent)
+## The domain checklists (append each matched block)
 
-Dispatched only when the diff carries the lens's domain. The four conditions live in `SKILL.md` step 3b — read them there; a lens whose condition is not met is not dispatched at all, because there is nothing in its lens by construction.
+Carried only when the diff carries the block's domain. The four conditions live in `SKILL.md` step 3b — read them there; a block whose condition is not met is left out of the prompt entirely, because there is nothing in its lens by construction.
 
 **2. Security surfaces**
 ```
-Your lens: SECURITY. Auth and permission checks (missing, reordered,
+Checklist: SECURITY. Auth and permission checks (missing, reordered,
 bypassable), input reaching a sink unsanitized (SQL, shell, path, HTML),
 secrets or tokens in code/logs/errors, data exposure beyond what the caller
 needs, unsafe defaults on security-relevant config. Name the attacker input
@@ -116,7 +121,7 @@ or sequence that exploits it.
 
 **3. Data integrity & migration**
 ```
-Your lens: DATA INTEGRITY. Schema changes and their compatibility with the
+Checklist: DATA INTEGRITY. Schema changes and their compatibility with the
 previous release's code, destructive or non-reversible writes, backfills
 that can partially apply, missing transactions around multi-step writes,
 truncation/precision/encoding loss, deletes without a recovery path. Name
@@ -125,7 +130,7 @@ what data is lost or corrupted and when.
 
 **4. Blast radius & consumer impact**
 ```
-Your lens: CONSUMERS. The diff changes things other code reads: return
+Checklist: CONSUMERS. The diff changes things other code reads: return
 shapes, response bodies, serialized payloads, DB columns read elsewhere,
 log/telemetry fields, event formats, config keys/env vars, CLI output,
 published identifiers (routes, tool names, exported symbols). For each
@@ -138,7 +143,7 @@ rank highest).
 
 **5. Interface**
 ```
-Your lens: INTERFACE. On interface files in this diff only (components,
+Checklist: INTERFACE. On interface files in this diff only (components,
 screens, templates, stylesheets, interface copy), report regressions the
 diff introduces or worsens. Criteria are embedded here — do not load skills
 or open plugin files. Read source and the diff only; do not run project
@@ -188,8 +193,7 @@ pre-existing interface problem the diff merely sits near is not a finding.
 
 ## Dispatch mechanics
 
-- All dispatched lenses go out in one turn; they have no dependencies on each other. Every lens whose `SKILL.md` step-3b condition is met joins that same single batch, code and domain alike; one whose condition is not met is not dispatched at all.
-- **A gated skip is not a degraded lens.** A degraded lens ran and came back unusable (next bullet); a gated lens never ran, because its domain is absent from the diff. Both are reported — the gated skips on `SKILL.md` step 5's single dispatch line, the degraded ones as their own risk entry — and they are reported as different things, because conflating them hides a real failure inside a routine one.
-- Model: cheapest trustworthy executor tier below the session on the model-tiering ladder (its Provenance table is authoritative). No such tier → don't dispatch; the skill's step-2 rule already routed to the inline pass.
-- A lens that errors or returns garbage is treated as "Nothing in my lens" **plus** a note in the final output that the lens was degraded — never silently counted as a clean pass.
-- Lens replies are evidence, not verdicts. Every accept/reject happens in the session (SKILL.md step 4).
+- **Compose the prompt in this order:** the shared frame → the prose frame (prose path only) → the code checklists block, when `SKILL.md` step 3b says code is present → each domain block whose step-3b condition matched. **One reader by default.** Only when step 3b's split threshold is crossed *and* at least one domain block matched, two readers — one carrying the code block, one carrying every matched domain block — dispatched in the same turn; a reader carrying no block is never dispatched. **Never more than two**, however many domains are live and however large the diff: a reader with four checklists costs one read of the diff; four readers cost four, and the extra reads buy nothing the in-session synthesis does not already supply.
+- **`model` is mandatory on every Agent call.** Set it to the cheapest trustworthy executor tier below the session, read off the model-tiering ladder table's `Agent tool model value` column (its Provenance table is authoritative — look the value up there rather than remembering it; the ladder moves). An Agent call with no `model` runs the reader on the session's own model, at the session's price — a review that costs what the author costs is the failure this file exists to prevent. `subagent_type` is the harness's general-purpose or read-only agent. No trustworthy tier below the session → don't dispatch; the skill's step-2 rule already routed to the inline pass.
+- **A gated skip is not a degraded reader.** A checklist left out of the prompt is a gated skip — its domain is absent from the diff — and is reported on `SKILL.md` step 5's dispatch lines (`Domain lenses:` always; `Code checklists:` on the prose path). A reader that errors or returns garbage is degraded: treat it as "Nothing in my lens" **plus** a risk entry naming every checklist it carried as unread — never silently counted as a clean pass. The two are reported as different things, because conflating them hides a real failure inside a routine one.
+- Reader replies are evidence, not verdicts. Every accept/reject happens in the session (SKILL.md step 4).
