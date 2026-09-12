@@ -21,7 +21,7 @@ function that hunk calls (one hop — a sink hidden behind a helper is still
 your finding), as a bounded range (`sed -n '<start>,<end>p' <file>`), at
 most ~150 lines per read and at most 10 reads in total. Never read a whole
 tracked file — the untracked files named above are the one exception: they
-ARE the diff, read them in full. Do not search the repo, with two capped
+ARE the diff, read them in full. Do not search the repo, with three capped
 exceptions: the CONSUMERS lens greps for consumers of each changed contract,
 and the CODE lens's TESTS checklist greps a changed function's name under
 the repo's test directories to learn whether any test exercises it, and its
