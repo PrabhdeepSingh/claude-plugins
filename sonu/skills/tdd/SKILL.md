@@ -36,6 +36,8 @@ Every increment of behavior follows three steps, in order:
 
 Keep steps small. A step that feels too big is too big — shrink it.
 
+**When the same step fails twice, shrink the step rather than trying harder.** A green that will not arrive after two honest attempts at one increment is telling you the increment is too big — the test asserts several behaviors at once, or the implementation it demands spans two decisions. Revert to the last green, split the behavior in half, take the smaller half first. If the split also stalls, stop and hand it over: a plain statement of the last green state, the two attempts, and what each ruled out is worth more than a third attempt at the same size — it is the escalation summary [[debugging]] §9 asks for. The tell that you are over the line is reaching for a bigger move than the step needs: an extracted collaborator when the test asked for a constant.
+
 → `references/examples.md` §1 — a full step-by-step example building an `Account.withdraw` method, read when you want to see the loop applied end-to-end.
 
 ## 2. Test-first is the default — honest carve-outs
@@ -43,6 +45,8 @@ Keep steps small. A step that feels too big is too big — shrink it.
 Writing the test before the code is the rule, not a suggestion. **Spikes are the one exception**: when exploring an unfamiliar API or approach, throwaway spike code is fine to learn the shape of the problem — but a spike is **disposable by definition**. Once you understand the territory, throw it away entirely and build the real thing test-first. Never let the spike become the production code with tests retrofitted onto it.
 
 Everything else ships test-first — bug fixes, new features, refactors that change behavior. "I'll add tests later" is a promissory note that almost never gets paid.
+
+**Changing code that already exists and has no test: pin it before you touch it.** Test-first assumes the behavior is yours to specify; when the code already runs in production, the behavior is already the de facto spec and your job is to record it, not invent it. Write a *characterization* test: call the code in a harness, assert something deliberately absurd (`expect(total).toBe(-1)`), run it, and read the failure — it tells you what the code actually returns. Replace the absurd value with the observed one and you have a passing test that pins today's behavior, quirks included. Now make the change; the pinned test fails exactly when and where you altered existing behavior, which is the point. Two rules keep it honest. If characterizing reveals a bug, do not quietly fix it in the same breath — downstream callers may depend on the wrong answer; pin the wrong behavior, note it, and fix it as its own deliberate change. And a characterization test is the safety net you build before you climb, never a substitute for the real test of the behavior you are adding, which still arrives red-green-refactor.
 
 ## 3. Test behavior, not implementation
 
@@ -53,6 +57,8 @@ A test that reaches into private internals couples itself to *how* the code work
 ## 4. Arrange-Act-Assert
 
 Every test has three phases, in order: set up the starting state, perform the one action under test, assert the outcome. One behavior per test; one reason to fail. If a test needs more than one Act-Assert pair to make a point, split it into two tests.
+
+**Assert the blast radius, not just the return value.** An action that changes state changes more than one thing: the call returns, a total is recomputed, a flag flips, neighbours are left alone. A test that asserts only the obvious output passes while the rest silently rots — so after writing the Act line, ask what *else* changed and assert the one or two of those a regression would break. On error paths the same rule means the error's type or message plus whatever cleanup was supposed to run; "it threw" is satisfied by throwing for the wrong reason. And never put an assertion inside a `try`/`catch` or an `if`: an assertion that can be skipped makes the test pass whether or not the behavior works, which is worse than no test because it reports as coverage.
 
 → `references/examples.md` §4 — interleaved-vs-phased example — read when a test interleaves its phases.
 
@@ -83,6 +89,10 @@ Non-negotiable — a test suite without these isn't a safety net, it's noise you
 
 → `references/examples.md` §6 — injecting a frozen clock instead of depending on real time — read when a test depends on time, randomness, or I/O.
 
+## 6a. A flake is fixed at the cause, and proven by repetition
+
+A test that sometimes fails has a source of nondeterminism — order dependence, a real clock, an unseeded RNG, an unawaited race, an unordered collection, a leaked resource — and the fix removes that source. Before fixing, establish the failure rate empirically rather than by report: run **that test** on repeat (shuffled, in parallel, under the race detector where one exists), record the rate as a measurement — "fails 23 of 1,000 runs" — and for anything randomized print and pin the seed so the failing scenario replays. After fixing, prove it the same way: one green run is not proof, because a test that fails once in forty passes thirty-nine times without help. Run roughly 20 randomized repeats of the test — never the whole suite — plus the suite once, then remove the `retry`/`skip`/`flaky` annotation that was masking it, because a fix that leaves the mask in place is indistinguishable from no fix. Two things are never the fix: a sleep, a raised timeout, a retry wrapper, or a skip (§11 bans them as a first response; this section bans them as a last one), and stabilising a test whose flakiness is the *product* racing — when the interleaving that breaks the test can happen in production, the test is the messenger; fix the code and say so in the hand-off.
+
 ## 7. Test doubles — mock only at the seams
 
 A test double is a stand-in for a real collaborator: **stubs** return canned data, **mocks** assert call behavior, **fakes** are working lightweight implementations, **spies** record what was called. **Mock only at architectural seams** — things that cross a process boundary: a real database, a payment gateway, the network, the clock. These are slow, unreliable, or have real-world consequences you don't want tests to trigger. **Don't mock your own domain objects** — a test that mocks the unit under test or its value objects tests nothing. The rule of thumb: the more you mock, the less you're testing. Preference order when a double is genuinely needed: **real implementation → fake → stub → mock** — reach for the next rung only when the previous one is too slow, nondeterministic, or side-effecting.
@@ -106,6 +116,12 @@ Coverage tells you which lines ran, not whether the behavior was verified. A tes
 Test **behavior** (what happens when things go right), **boundaries** (empty, max, zero, null), **error paths** (collaborator failure, invalid input), and **business rules** (non-obvious domain logic). Skip trivial pass-throughs and generated code.
 
 **The bug-fix reflex.** Before fixing any bug, write a test that reproduces it. Confirm it fails. Then fix the bug. Confirm it passes. This is non-negotiable — it proves the fix works, prevents the regression's return, and often reveals the bug was more general than it first appeared. (Finding the root cause is [[debugging]]'s territory; this reflex is how the found fix gets pinned.)
+
+**A test written after the code is proven by breaking the code, not by passing.** The red-green loop proves a test by construction — you watched it fail before anything existed to pass it. A test added *after* the implementation (the bug-fix reflex, a review-driven test) has no such proof, and a test that has never been red is indistinguishable from a comment. Four moves, in order: run it green; revert the implementation line it covers (`git stash`, invert the condition, or return the empty value); run it again and **confirm it fails, for the reason the test names** — not on a missing import or a setup error; restore and run green. If it stayed green, the assertion is not reaching the behavior — rewrite it before moving on. The proof is per behavior, not per parametrized row. One cheap reading of any test: name what the implementation would have to return for it to pass — if `null`, `""`, `[]`, or "no exception" passes it, it asserts nothing. And when an existing test changed in the same diff, read that change first, against §11: a widened tolerance, an assertion downgraded to "an error exists", or a new skip is the definition of correct moving.
+
+**Test data has to be able to tell the answers apart.** A test can exercise the right line and still be unable to fail, because the fixture makes two different behaviors look identical. Four shapes cause almost all of it, each with a mechanical fix applied while writing: a boolean or flag exercised in only one of its two states (test the other); a collection fixture with exactly one element, which makes "the first", "the last", and "each" behave the same (use two, with different values); two collaborators or fields stubbed to the *same* value, so the test passes whichever one the code reads (make them differ); and a parameter with a default that every test passes explicitly, leaving the default path never executed (add a call that omits it). The question of a finished test is not "does it cover this line" but "if I changed one constant, flipped one branch, or read the other field, would this go red?"
+
+**Boundaries the code does not own get a table before green.** When a function touches an external ceiling (an API's address limit), an encoding (bytes versus code units), a timezone or calendar rule, a documented limit, or a platform difference (path separators, shell quoting), write the boundary rows first as parametrized cases: the maximum, the maximum plus one, both ends of any interval (inclusive and exclusive), an impossible value, and for time a DST transition and a non-UTC zone. This is scoped on purpose — "any function handling strings or collections" is every function in a service; the table is for the boundaries some other system defines and this code merely meets.
 
 **Visible behavior needs behavioral evidence.** A green unit suite does not prove that a screen renders, a button works, or a flow completes — it proves the units it covers behave as asserted. When a change alters visible or interactive behavior (UI, a CLI's output, an end-to-end flow), **exercise the real flow** and capture evidence the environment supports: a screenshot, a recording, the actual terminal output, or the observed response. Why: the most confident wrong claim in software is "tests pass, so it works" about a surface no test ever rendered — and the gap between a passing unit and a broken screen is invisible from the test report alone. When the environment genuinely cannot exercise the flow, say so explicitly and name what remains unverified rather than letting green stand in for proof.
 
@@ -146,8 +162,12 @@ Run this against your own diff — the numbered sections above are the rest of t
 - If the change enforces a threshold (limit, quota, timeout, cap): does a test configure a value small enough to trip it, asserting both sides of the boundary?
 - If the change alters visible or interactive behavior: real flow exercised with evidence, or the unverified gap stated plainly — never a green suite standing in for proof?
 - If any existing test changed: which legitimate case applies (spec change or implementation-detail cleanup), with zero weakening?
+- Was every new test seen red for the reason it names — including any written after the code, proven by reverting the line it covers?
+- Can the fixture tell the two behaviors apart, or would flipping one branch leave it green?
+- If a flake was fixed: what was the measured rate before, and how many randomized repeats proved it after?
 
 A passing test suite is only as trustworthy as the discipline behind it. If you're not confident the tests would catch a regression, they wouldn't.
+
 
 ## Reference files
 
