@@ -160,7 +160,7 @@ Every open inline thread deserves a reply that closes the loop. Pick the wording
 | **False positive** | `I think this is a false positive — <why>; left a \`// TODO(review): <note>\` in the code marking it safe.` |
 | **Partially addressed** | `Addressed <X> in <SHA>; deferring <Y> because <reason>.` |
 | **Batched finding (one thread naming N locations)** | One reply for the whole thread, enumerating each location: `Fixed in <SHA> — line 87: <what>, line 162: <what>, line 203: <what>.` Never one reply per location, and never a reply covering fewer locations than the finding names — the resolve applies to the thread, so the reply must account for all of it. |
-| **Re-rolled or duplicate** (the ledger's `justified:` already holds this finding at this path, or a second bot raised the same point) | `Same as <link to the first thread> — <the recorded reply, verbatim>.` Never re-argue it. |
+| **Re-rolled or duplicate** (the ledger's `justified:` already holds this finding at this path, or a second bot raised the same point) | `Same as <the first thread's URL, from the justified: line> — <the recorded reply, verbatim>.` Never re-argue it. |
 | **Human question / need-info** | Answer directly. Offer the alternative if relevant, or ask the clarifying question back. |
 
 No AI attribution in any reply. Bot replies: one or two lines — and a `JUSTIFY` on a Minor-labeled finding, or on one the plugin itself classed as a nitpick, is **one sentence**; the fuller form is for Major and above. Human replies: slightly more explanatory on the justification "why."
