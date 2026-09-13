@@ -68,17 +68,20 @@ This command never commits or merges (house rule 5 — everything goes through a
 # BASE is derived, not hardcoded (matches ship.md/validate.md's convention), and
 # every step is chained with && so a failed checkout/pull can't fall through into
 # tagging the wrong commit, and a failed tag push can't publish a release for a
-# tag that doesn't exist on the remote.
+# tag that doesn't exist on the remote. The chain is re-runnable: if the release
+# step fails after the tag landed (auth, network), a second run skips the tag it
+# already created — a bare `git tag` would abort on "already exists" and leave
+# exactly the tag-without-release gap this step exists to close.
 BASE=$(gh repo view --json defaultBranchRef -q .defaultBranchRef.name)
 git checkout "$BASE" && git pull && \
 NEW=$(python3 -c "import json; print(json.load(open('sonu/.claude-plugin/plugin.json'))['version'])") && \
-PREV=$(git describe --tags --abbrev=0) && \
-git tag "v$NEW" && git push origin "v$NEW" && \
+PREV=$(git describe --tags --abbrev=0 --exclude "v$NEW") && \
+{ git rev-parse -q --verify "refs/tags/v$NEW" >/dev/null || git tag "v$NEW"; } && git push origin "v$NEW" && \
 NOTES=$(printf "## What's changed since %s\n\n%s\n" "$PREV" "$(git log --format='- %s' --first-parent "$PREV..v$NEW")") && \
 gh release create "v$NEW" --title "v$NEW" --notes "$NOTES" --verify-tag
 ```
 
-The notes body is the first-parent commit subjects since the previous tag — the same shape every existing release carries, so the Releases page reads as one series. `--verify-tag` refuses to invent a tag the push didn't land.
+The notes body is the first-parent commit subjects since the previous tag — the same shape every existing release carries, so the Releases page reads as one series. `--exclude "v$NEW"` keeps `PREV` pointing at the prior release on a re-run, when the new tag already exists on HEAD. `--verify-tag` refuses to invent a tag the push didn't land.
 
 Then remind the user: installed copies pick this up on their next `/plugin marketplace update prabhdeep-tools` — nothing propagates automatically.
 
