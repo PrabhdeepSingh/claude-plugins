@@ -59,18 +59,33 @@ This command never commits or merges (house rule 5 — everything goes through a
 
 > **Release prepared and validated.** Review the five-home diff, then run `/sonu:ship` to open and merge the PR. Come back with `/release tag` once it's merged.
 
-## Phase 5 — Tag (run after the user's PR has merged)
+## Phase 5 — Tag and release (run after the user's PR has merged)
 
 ```bash
-# Tag the release so versions are traceable without archaeology. BASE is derived,
-# not hardcoded (matches ship.md/validate.md's convention) — and every step is
-# chained with && so a failed checkout/pull can't fall through into tagging the
-# wrong commit.
+# Tag the release so versions are traceable without archaeology, then publish a
+# GitHub Release on that tag — a tag alone leaves the repo's Releases page frozen
+# at whatever was last published by hand (that drift once reached 14 versions).
+# BASE is derived, not hardcoded (matches ship.md/validate.md's convention), and
+# every step is chained with && so a failed checkout/pull can't fall through into
+# tagging the wrong commit, and a failed tag push can't publish a release for a
+# tag that doesn't exist on the remote. The chain is re-runnable: if the release
+# step fails after the tag landed (auth, network), a second run reuses the tag it
+# already created — a bare `git tag` would abort on "already exists" and leave
+# exactly the tag-without-release gap this step exists to close. Reuse is allowed
+# only when that tag points at HEAD: a stale local tag from an earlier attempt,
+# left behind while the base branch moved on, would otherwise be pushed and
+# released against the wrong commit with nothing failing.
 BASE=$(gh repo view --json defaultBranchRef -q .defaultBranchRef.name)
 git checkout "$BASE" && git pull && \
 NEW=$(python3 -c "import json; print(json.load(open('sonu/.claude-plugin/plugin.json'))['version'])") && \
-git tag "v$NEW" && git push origin "v$NEW"
+PREV=$(git describe --tags --abbrev=0 --exclude "v$NEW") && \
+if T=$(git rev-parse -q --verify "refs/tags/v$NEW^{commit}"); then [ "$T" = "$(git rev-parse HEAD)" ] || { echo "STOP: v$NEW already exists and points at $T, not HEAD — resolve by hand"; exit 1; }; else git tag "v$NEW"; fi && \
+git push origin "v$NEW" && \
+NOTES=$(printf "## What's changed since %s\n\n%s\n" "$PREV" "$(git log --format='- %s' --first-parent "$PREV..v$NEW")") && \
+gh release create "v$NEW" --title "v$NEW" --notes "$NOTES" --verify-tag
 ```
+
+The notes body is the first-parent commit subjects since the previous tag — the same shape every existing release carries, so the Releases page reads as one series. `--exclude "v$NEW"` keeps `PREV` pointing at the prior release on a re-run, when the new tag already exists on HEAD. An existing tag that points anywhere but HEAD stops the run rather than being reused — deleting it (`git tag -d "v$NEW"`) and re-running is the recovery. `--verify-tag` refuses to invent a tag the push didn't land.
 
 Then remind the user: installed copies pick this up on their next `/plugin marketplace update prabhdeep-tools` — nothing propagates automatically.
 
