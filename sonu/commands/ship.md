@@ -39,14 +39,15 @@ fi
   ```bash
   REPO=$(gh repo view --json nameWithOwner -q .nameWithOwner)
   PR=<PR number from Phase 1>   # substitute the literal number
-  CREATED_AT=$(gh pr view $PR --json createdAt -q .createdAt)
+  CREATED_AT=$(gh pr view $PR --json createdAt -q .createdAt) && [ -n "$CREATED_AT" ] \
+    || { echo "createdAt lookup failed — an empty timestamp would match every commit; stop"; exit 1; }
   # --paginate runs --jq once per page, so print one line per matching commit and count lines —
   # never `| length` inside the filter, which would print one number per page. Capture the API
   # output FIRST and check its exit status: a failed call piped straight into wc prints 0, and a
   # 0 written to cycles_used removes the cap this fence exists to make durable.
   if SHAS=$(gh api "/repos/$REPO/pulls/$PR/commits" --paginate \
       --jq ".[] | select(.commit.committer.date > \"$CREATED_AT\") | select(.commit.message | startswith(\"fix: address cycle\")) | .sha"); then
-    printf '%s\n' "$SHAS" | grep -c . || echo 0    # = cycles used, one integer
+    printf '%s\n' "$SHAS" | grep -c . || true    # = cycles used, one integer (grep -c prints 0 itself; its exit 1 on zero matches is expected)
   else
     echo "COUNT FAILED — do not write cycles_used; retry once, then stop owner-visibly"; exit 1
   fi
@@ -178,7 +179,7 @@ A PR whose base is not `$BASE` is **stacked**: it merges into another PR's branc
 
    Update it at the end of every phase from here on.
 
-   **Adopt build's handoff in the same step.** `/sonu:build` Phase 3 writes `sonu-build-handoff.md` beside the ledger (same two-home rule: inside `.git/` in a main checkout, a `.sonu-build-handoff.md` dotfile at the root of a linked worktree). If it exists, read its `Branch:` and `Head:` lines first: a handoff for another branch, or for a head that is not an ancestor of this one, is leftover state from an abandoned build — delete it and say so, never adopt it. When it matches, its `Digest:` line — a hash over the working-tree diff and the untracked files' contents, which build computes at hand-back and this step recomputes the same way, with the handoff and ledger files excluded — is what Phase 1.5's adopt-build's-review test compares; equal digests prove the content is byte-identical, which the diff stat alone cannot. Its other sections its **Decisions and who made them** and **Abandoned approaches** sections are the context Phase 3's two triage rules and every `JUSTIFY` reply draw on, and its **Verification still owed** list goes into `RISKS` unchanged. Never stage or commit it; delete it with the ledger after the merge.
+   **Adopt build's handoff in the same step.** `/sonu:build` Phase 3 writes `sonu-build-handoff.md` beside the ledger (same two-home rule: inside `.git/` in a main checkout, a `.sonu-build-handoff.md` dotfile at the root of a linked worktree). If it exists, read its `Branch:` and `Head:` lines first: a handoff for another branch, or for a head that is not an ancestor of this one, is leftover state from an abandoned build — delete it and say so, never adopt it. When it matches, its `Digest:` line — a hash over the working-tree diff and the untracked files' contents, which build computes at hand-back and this step recomputes the same way, with the handoff and ledger files excluded — is what Phase 1.5's adopt-build's-review test compares; equal digests prove the content is byte-identical, which the diff stat alone cannot. Its **Decisions and who made them** and **Abandoned approaches** sections are the context Phase 3's two triage rules and every `JUSTIFY` reply draw on, and its **Verification still owed** list goes into `RISKS` unchanged. Never stage or commit it; delete it with the ledger after the merge.
 3. `git status --porcelain` and `git diff --stat HEAD` — understand what changed, untracked files included. Then pick the effort mode by the **Effort mode** section above: its ordered `auto` clauses and its code-line count — **not** the raw line total `--stat` prints here. That total counts prose and generated churn alike, which is the over-classification the code-line count exists to remove; this step is for reading the change, not for measuring it.
 4. If on the default branch (`$BASE`), branch: `git checkout -b <kebab-name-matching-task>`.
 5. Existing PR on this branch? `gh pr list --head "$(git branch --show-current)" --json number,url`. If one exists, record its number as `PR` and skip **only the `gh pr create` call (Phase 1 step 5)** — then immediately do two things that call would have done or checked:
@@ -248,7 +249,7 @@ A PR whose base is not `$BASE` is **stacked**: it merges into another PR's branc
    - **1b. Claude code review — pass 1 only.** Per the effort mode, invoke `/code-review low` in `light`, `auto`, and on a promoted `full`; `/code-review high` only on `full (typed)` — or skip in `light` on a trivial diff, recording the skip in `reviews_skipped:`. Capture findings as `{file, line, description, severity}`. Passes 2+ do not re-run it: self-review's delta pass covers the fix commits, and re-running a whole-branch review on every pass is the spend this loop exists to avoid.
    - **1c. Claude security review — once pre-PR.** When the diff contains executable code (the no-code rule in the Effort mode section skips this sub-step otherwise, at every mode), invoke `/security-review` on the whole branch diff (`git diff origin/<base>...HEAD`) in the first pass whose `security_surface:` reads `met`, or in pass 1 whenever `mode:` is `full (typed)`. **Skip it when the verdict reads `not-met` and the mode is not `full (typed)`**, recording the skip in `reviews_skipped:`. Because the verdict is monotonic (step 6), a pass that first flips it to `met` runs this sub-step then — a later pass never does; Phase 6 re-runs it per cycle on its own terms. Capture findings in the same shape as 1b; no external comment, no thread.
 2. **Partition the findings** — from all three sources — exactly as Phase 3 does, by its bullets: valid *and consequential* → `FIX`; valid-but-harmless / already-correct / intentional / nitpick → `JUSTIFY` (keep the justifications — they seed the PR body and any later bot rebuttals). Worth restating here because this loop commits what it fixes: **cosmetic findings — docstrings, comments, naming polish, formatting with no behavior change — are `JUSTIFY`, not `FIX`**, unless they violate a convention the repo actually states (`CODING.md` / `CONTRIBUTING.md`). Each cosmetic fix commit is fresh material for the next pass and for every bot, so a loop that "fixes" nitpicks re-arms itself.
-3. **Apply every `FIX`** — in-session by default; a `FIX` item that clears the delegation bar routes to a subagent per the Delegation disposition (Effort mode section). The *judgment* never delegates — grading the item, running the suite, and verifying a delegated fix all stay in this session — only the typing may go down. Then re-run the repo's test suite yourself. **Green gates the loop** — do not proceed to the next pass, and do not open the PR, with a red suite. Commit the fixes in the repo style (imperative, ≤72-char subject, no AI attribution — the Phase 1 rules apply to these commits too).
+3. **Apply every `FIX`** — in-session by default; a `FIX` item that clears the delegation bar routes to a subagent per the Delegation disposition (Effort mode section). The *judgment* never delegates — grading the item, running the suite, and verifying a delegated fix all stay in this session — only the typing may go down. Then run the repo's gate ladder yourself — the plan's `Gates:` block or the commands `/sonu:build` Phase 2 step 4 discovers, in that order; in a repo whose only gate is its own validate command, that command. **Green gates the loop** — do not proceed to the next pass, and do not open the PR, with a red suite. Commit the fixes in the repo style (imperative, ≤72-char subject, no AI attribution — the Phase 1 rules apply to these commits too).
 
    **A new guard must be seen to fail before it counts.** Every new test, assertion, CI check, or validation this loop adds is proven red per `Skill(sonu:tdd)` §1's rule — including a test written *after* the fix it covers, which is proven by reverting the covered line, watching it fail for the reason the test names, and restoring. That skill is the one home for the mechanic; this loop only insists on it, because twice in one run a brand-new guard passed against exactly the state it claimed to forbid (a substring match satisfied by a comment naming the token; an assertion exercised with an unrelated key), and a green-from-birth guard reads as protection while protecting nothing. Record one line per new guard in `RISKS`: `guard <name>: verified red against <state>`.
 4. **Re-review the delta.** Run `Skill(sonu:self-review)` again scoped to what changed since the last reviewed state: `git diff <prepr_reviewed_sha>..HEAD` plus the full content of any file the fixes touched. Then re-evaluate and write `security_surface:` (the pass order above) and apply sub-step 1c on its own terms. New findings → back to step 2 with only those.
@@ -328,10 +329,17 @@ gh api "/repos/$REPO/pulls/$PR/reviews" --paginate \
 PR=<PR number from Phase 1>   # substitute the literal number
 # Run ONLY when the harvest above showed a CodeRabbit review with an actionable finding — never on an
 # empty approval, never when CodeRabbit did not participate (write coderabbit_paused: no instead).
-# Order is load-bearing: write `coderabbit_paused: requested` to the ledger FIRST, post, and write
-# `yes` only when the POST returns an id — a failed or denied post keeps `requested`, which the next
-# step (or a resumed run) reconciles by reading the PR's comments rather than assuming either way.
-if ID=$(gh pr comment $PR --body "@coderabbitai pause" 2>&1); then echo "paused: $ID"; else echo "PAUSE FAILED: $ID — keep requested, stop owner-visibly"; fi
+# Order is load-bearing: `requested` is written to the ledger BEFORE the post, `yes` only when the
+# POST returns a comment URL. A failed or denied post keeps `requested` and STOPS — the next step
+# or a resumed run reconciles it by reading the PR's comments rather than assuming either way.
+GD=$(git rev-parse --git-dir); CD=$(git rev-parse --git-common-dir)
+if [ "$GD" = "$CD" ]; then LEDGER="$GD/sonu-ship-ledger.md"; else LEDGER="$(git rev-parse --show-toplevel)/.sonu-ship-ledger.md"; fi
+sed -i.bak 's/^coderabbit_paused:.*/coderabbit_paused: requested/' "$LEDGER" && rm -f "$LEDGER.bak"
+if URL=$(gh pr comment $PR --body "@coderabbitai pause" 2>&1) && [ -n "$URL" ]; then
+  sed -i.bak 's/^coderabbit_paused:.*/coderabbit_paused: yes/' "$LEDGER" && rm -f "$LEDGER.bak"; echo "paused: $URL"
+else
+  echo "PAUSE FAILED: $URL — ledger keeps requested; stop owner-visibly"; exit 1
+fi
 ```
 
 Also harvest **human inline review comments** for Phase 5 reply handling:
@@ -430,7 +438,7 @@ mutation($id:ID!){ resolveReviewThread(input:{threadId:$id}){ thread{ isResolved
 | `light` | exactly 1 |
 | `auto` / `full` | up to 3 |
 
-Cycles are counted **per PR over its lifetime**, not per invocation — `cycles_used:` accumulates in the ledger across resumed runs, exactly like Phase 1.5's `prepr_passes:`, and only the merge that deletes the ledger resets it. A resumed run that adopts `cycles_used: 3` is already at the cap: stop, summarize the open items, and hand to the owner rather than starting a fourth cycle that a fresh ledger would have hidden.
+Cycles are counted **per PR over its lifetime**, not per invocation, and the count is **recomputed from the PR** by the ledger contract's fence at the start of every cycle — `cycles_used:` is that fence's cache, never the decision. A resumed run does not trust an adopted `cycles_used:`; it reruns the fence, and when the PR says the cap is reached it stops, summarizes the open items, and hands to the owner rather than starting a cycle the cap forbids. Only the merge that deletes the ledger ends the count.
 
 **From cycle 2 on, Phase 3's `FIX` bar applies exactly as written — nothing lowers it and nothing raises it.** A fix commit does not make a nit on one of its lines `FIX`, and a first-time finding on code no cycle touched does not become `FIX` for being new. Reviewers are non-deterministic and re-roll unchanged code on every pass; treating each re-roll as new work is the treadmill the cycle cap exists to stop.
 
@@ -446,7 +454,7 @@ Cycles are counted **per PR over its lifetime**, not per invocation — `cycles_
      --jq "[.reviews[] | select(.author.login | ascii_downcase | test(\"$BOT_RE\"))] | (map(.submittedAt) | max) // \"\"")
    echo "PREV_AT=$PREV_AT"
    ```
-   Then re-trigger the bots:
+   Then — **after** the allowance scan two paragraphs below has run and any wait it found has elapsed — re-trigger the bots:
    - **Copilot:** `gh pr edit $PR --add-reviewer "@copilot"` (fallback if it errors: GraphQL `requestReviews` with `botIds:["BOT_kgDOCnlnWA"]` — Copilot's node id — and `union:true`).
    - **Every other bot that participated in Phase 2: exactly one mention, the incremental form.** Post `@coderabbitai review` once (`@sourcery-ai review`, `@greptileai`, `@ellipsis-dev`, `@cubic-dev-ai`, `/review` for Qodo — Aikido and Korbit have no mention and re-run on push or not at all). Never `@coderabbitai full review` inside this loop unless CodeRabbit answered the previous request with "head commit changed": a full review discards every comment already made and re-rolls unchanged code, at the same allowance cost. Never post a second mention while the first has no newer review — the step 2 wait is the remedy, and a re-mention neither hurries the bot nor proves anything; one audited PR posted nine, seven of which came back "already reviewed". The mention is `@coderabbitai`; `@coderabbit` is an unrelated account. A bot that never answers within the wait is noted as absent in the final report and does not block.
 
@@ -455,16 +463,23 @@ Cycles are counted **per PR over its lifetime**, not per invocation — `cycles_
    REPO=$(gh repo view --json nameWithOwner -q .nameWithOwner)
    PR=<PR number from Phase 1>
    PREV_AT='<literal value echoed in step 1>'
+   GD=$(git rev-parse --git-dir); CD=$(git rev-parse --git-common-dir)
+   if [ "$GD" = "$CD" ]; then LEDGER="$GD/sonu-ship-ledger.md"; else LEDGER="$(git rev-parse --show-toplevel)/.sonu-ship-ledger.md"; fi
+   # An in-force wait recorded by an earlier cycle (or before a compaction) is honored before anything else:
+   UNTIL=$(grep '^rate_limit_waits:' "$LEDGER" | grep -oE '→[^,]+$' | tr -d '→ ')
+   [ -n "$UNTIL" ] && [[ "$UNTIL" > "$(date -u +%Y-%m-%dT%H:%M:%SZ)" ]] && { echo "WAIT_IN_FORCE_UNTIL:$UNTIL"; exit 0; }
+   # "paused" is a notice only when this flow did not pause CodeRabbit itself:
+   if grep -q '^coderabbit_paused: no' "$LEDGER"; then PAT="included reviews|available in [0-9]+ minutes|paused"; else PAT="included reviews|available in [0-9]+ minutes"; fi
    # Capture first, then scan — a failed API call must never read as "no notice".
    if NOTICES=$(gh api "/repos/$REPO/issues/$PR/comments" --paginate \
        --jq ".[] | select(.user.login | test(\"coderabbit\"; \"i\")) | select(.created_at > \"$PREV_AT\") | \"\(.created_at) \(.body)\"" 2>&1); then
-     printf '%s\n' "$NOTICES" | grep -iE "included reviews|available in [0-9]+ minutes|paused" || echo "NO_NOTICE"
+     printf '%s\n' "$NOTICES" | grep -iE "$PAT" || echo "NO_NOTICE"
    else
      echo "SCAN FAILED: $NOTICES — do not request a review on an unobserved allowance; retry once, then stop owner-visibly"; exit 1
    fi
    # Each printed line starts with the notice's timestamp: a notice whose timestamp already appears in
    # rate_limit_waits: was honored — skip it, or the same notice is waited on again at every timeout.
-   # "paused" is a notice only if the ledger reads coderabbit_paused: no — otherwise it is the ack of our own pause
+   # A recorded notice whose `until` is past was honored; only a notice with an unrecorded timestamp is new.
    ```
 2. Wait for activity **newer than `$PREV_AT`** using the explicit loop below. Run it as a background until-loop (do NOT foreground-sleep).
 
@@ -617,7 +632,7 @@ gh pr view $PR --json mergeStateStatus,mergeable --jq '{mergeStateStatus, mergea
 ```
 - **`SAFETY_RED` (any safety check failing or cancelled)** → stop, fix it (loop back to Phase 4 — CodeRabbit stays paused, the next push is a cycle like any other) or hand to the owner (resuming CodeRabbit first, per the resume rule below). Never merge red or cancelled CI.
 - **Loop timed out with checks still pending** → keep waiting; do not merge yet.
-- **Resume CodeRabbit before you merge, and before every exit.** When the ledger reads `coderabbit_paused: yes`, post `@coderabbitai resume` (`gh pr comment $PR --body "@coderabbitai resume"`) and, **only once that POST has returned a comment id**, write `coderabbit_paused: resumed` — a failed or denied post keeps `yes` and is an owner-visible stop, because a PR left paused under a request-changes workflow stays blocked — before the merge command, and on every owner-visible stop in this flow (the autonomy contract's stops a–d, the cycle cap, the trend stop), so a human's later push is reviewed normally. A resumed run that adopts a ledger reading `coderabbit_paused: yes` with no PR activity in the last hour resumes first, then decides. A crash leaves the PR paused and, under a request-changes workflow, blocked; that residual is why the flag lives in the ledger rather than in memory.
+- **Resume CodeRabbit before you merge, and before every exit.** When the ledger reads `coderabbit_paused: requested`, reconcile it first — read the PR's issue comments for this flow's `@coderabbitai pause` posted by your own login: found → treat as `yes`; not found → write `no`. When it then reads `coderabbit_paused: yes`, post `@coderabbitai resume` (`gh pr comment $PR --body "@coderabbitai resume"`) and, **only once that POST has returned a comment id**, write `coderabbit_paused: resumed` — a failed or denied post keeps `yes` and is an owner-visible stop, because a PR left paused under a request-changes workflow stays blocked — before the merge command, and on every owner-visible stop in this flow (the autonomy contract's stops a–d, the cycle cap, the trend stop), so a human's later push is reviewed normally. A resumed run that adopts a ledger reading `coderabbit_paused: yes` with no PR activity in the last hour resumes first, then decides. A crash leaves the PR paused and, under a request-changes workflow, blocked; that residual is why the flag lives in the ledger rather than in memory.
 - **All safety checks pass** (deploy preview may still be running) **and the required-reviews gate above is satisfied** (`reviewDecision` is `APPROVED` wherever a required count ≥ 1 applies — a non-approved state goes back to the re-request remedy above, never onward to the merge command) → look again per Phase 6's terminal-statement paragraph, re-run the child scan above one last time, and only when both print nothing new, merge and delete the branch:
   ```bash
   gh pr merge $PR --squash --delete-branch
@@ -652,7 +667,14 @@ rm -f "$LEDGER"
 # The handoff outlives this run only while its Slices: line still names a `next` or `pending` slice:
 # then rewrite its Branch: to the base branch and Head: to the merge commit and mark the shipped slice
 # `done`, so the next build (which starts from the base) adopts it. A handoff with nothing left is deleted.
-if [ -f "$HANDOFF" ] && grep -qE '^Slices:.*(next|pending)' "$HANDOFF"; then echo "handoff kept for the next slice — rewrite Branch:/Head:/Slices: now"; else rm -f "$HANDOFF"; fi
+if [ -f "$HANDOFF" ] && grep -qE '^Slices:.*(next|pending)' "$HANDOFF"; then
+  BASE=$(gh repo view --json defaultBranchRef -q .defaultBranchRef.name)
+  git fetch -q origin "$BASE"
+  # The slice marked `next` is the one this run shipped: mark it done and promote the first pending one.
+  sed -i.bak -E -e "s|^Branch:.*|Branch: $BASE|" -e "s|^Head:.*|Head: $(git rev-parse "origin/$BASE")|" \
+    -e '/^Slices:/{s/([^ ,]+) next/\1 done/; s/([^ ,]+) pending/\1 next/;}' "$HANDOFF" && rm -f "$HANDOFF.bak"
+  echo "handoff kept for the next slice:"; grep -E '^(Branch|Head|Slices):' "$HANDOFF"
+else rm -f "$HANDOFF"; fi
 ```
 
 ---
