@@ -72,7 +72,7 @@ The change's review depth scales to the diff. You can force it:
 
 | Command | Behavior |
 |---------|----------|
-| `/sonu:ship` | Auto — light touch on trivial diffs, full on security-relevant ones (with a medium-effort code review), medium otherwise. Only a typed `full` buys the high-effort code review. |
+| `/sonu:ship` | Auto — light touch on trivial diffs, full on security-relevant ones (the security review runs; the code review stays at low effort), low-effort code review otherwise. Only a typed `full` buys the high-effort code review. |
 | `/sonu:ship light` | Minimal Claude review (skips on truly trivial changes); still collects whatever the repo's bots post. |
 | `/sonu:ship full` | Deep Claude code + security review, full re-review loop. |
 

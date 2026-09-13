@@ -1,6 +1,6 @@
 # Reviewer tuning — review once, report Important-only
 
-Section F's two knobs, per reviewer in `/sonu:ship`'s registry. Each entry names the setting and where it lives; nothing here changes how ship runs — it changes how much the reviewers give ship to do.
+Optional reading for a repo owner who wants to tune the reviewers themselves — pr-conventions Section F points here. Two knobs per reviewer in `/sonu:ship`'s registry: review once per PR, and report Important-only after the first pass. Each entry names the setting and where it lives; nothing in ship depends on any of it — ship controls its loop from the inside — this only changes how much the reviewers give ship to do.
 
 **How this interacts with ship.** After a fix push, ship's Phase 6 re-requests Copilot explicitly (`gh pr edit --add-reviewer "@copilot"`) and drops the re-review mention for **every** bot that participated in Phase 2 — the mentions it knows are listed there (CodeRabbit, Sourcery, Greptile, Ellipsis, Cubic, Qodo). For those reviewers, turning off review-on-every-push costs no coverage inside a ship run: the one re-review ship wants, it asks for; what the setting removes is the *unasked* re-review on every fix commit. Three reviewers are outside that guarantee, and the entries below say so: ship posts no `@claude review`, and Aikido and Korbit have no mention at all — keep those three on their default trigger.
 

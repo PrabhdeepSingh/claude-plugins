@@ -160,9 +160,10 @@ Every open inline thread deserves a reply that closes the loop. Pick the wording
 | **False positive** | `I think this is a false positive — <why>; left a \`// TODO(review): <note>\` in the code marking it safe.` |
 | **Partially addressed** | `Addressed <X> in <SHA>; deferring <Y> because <reason>.` |
 | **Batched finding (one thread naming N locations)** | One reply for the whole thread, enumerating each location: `Fixed in <SHA> — line 87: <what>, line 162: <what>, line 203: <what>.` Never one reply per location, and never a reply covering fewer locations than the finding names — the resolve applies to the thread, so the reply must account for all of it. |
+| **Re-rolled or duplicate** (the ledger's `justified:` already holds this finding at this path, or a second bot raised the same point) | `Same as <the first thread's URL, from the justified: line> — <the recorded reply, verbatim>.` Never re-argue it. |
 | **Human question / need-info** | Answer directly. Offer the alternative if relevant, or ask the clarifying question back. |
 
-No AI attribution in any reply. Bot replies: one or two lines. Human replies: slightly more explanatory on the justification "why."
+No AI attribution in any reply. Bot replies: one or two lines — and a `JUSTIFY` on a Minor-labeled finding, or on one the plugin itself classed as a nitpick, is **one sentence**; the fuller form is for Major and above. Human replies: slightly more explanatory on the justification "why."
 
 ### Post the reply
 
@@ -186,9 +187,9 @@ gh api -X POST "/repos/$REPO/pulls/$PR/comments/$COMMENT_ID/replies" \
   -f body="<reply text from table above>"
 ```
 
-### Classify severity before replying
+### Read the severity the reviewer actually stated
 
-Not every finding is mandatory, and treating them all as mandatory wastes the fix budget on nits while the structural item waits. Read each incoming finding for its stated severity — `Critical:`/blocking (security, data loss, broken behavior: fix before merge), unprefixed/required (fix before merge), `Nit:`/`Optional:`/`Consider:` (author's discretion — fix or justify), `FYI` (no action owed). A reviewer who marked something optional gets a decision, not an apology; a reviewer who found something structural gets it fixed first, whatever order the comments arrived in.
+Modern reviewers label each finding themselves, and the label is the comment's first line — CodeRabbit emits `_<category>_ | _<severity>_ | _<effort>_` with severity one of Critical / Major / Minor and effort one of Quick win / Heavy lift; other reviewers use Critical/High/Medium/Low or a `[P1]`/`[P2]`/`[P3]` prefix — read High and `[P1]` as Critical, Medium and `[P2]` as Major, Low and `[P3]` as Minor. Parse that line first and carry the reviewer's own word into triage rather than inventing a second scale — two scales for one finding is how a Major gets answered like a nit. The label sets the **default**, which an independent read may override in one direction only: Critical and Major are `FIX` regardless of effort; Minor is `FIX` when it names a concrete failing input and `JUSTIFY` otherwise; anything naming security, data loss, or a stated repo convention is `FIX` whatever label it carries. A finding with no label is triaged on `/sonu:ship` Phase 3's bullets alone. Do not hunt for `Nit:`/`Optional:`/`Consider:` prefixes — across 129 audited bot threads that vocabulary never appeared, and an executor looking for it treats everything as required. And when a reviewer marked something Minor, the reply gets a decision, not an apology — one sentence, no re-litigation.
 
 ### Tone + resolution policy
 
@@ -216,13 +217,14 @@ Commits are how *you* track change; a **version** is how your *consumers* track 
 - **A changelog is not `git log`.** It's the curated, consumer-facing answer to "what changed and do I care?" — grouped Added / Changed / Fixed / Deprecated / Removed / Security, phrased by user impact. Write the entry **in the same change that makes the change**, while the impact is fresh; reconstructed at release time, half of it is missing.
 - **Derive the version from the tag** where the ecosystem allows, so the artifact, the tag, and the changelog can never disagree — every hand-edited version file is a place for them to drift apart.
 
-## F — When the loop won't converge: tune the reviewers
+## F — When the loop won't converge
 
-`/sonu:ship` can only work within the reviewers' own settings. When its final report shows two or more re-review cycles on a PR, the treadmill is usually the reviewers' configuration, not the code: a bot set to re-review on every push re-rolls unchanged code and surfaces new nits each round, and a bot with no severity floor reports everything it notices. Two knobs end most of it — review **once per PR** instead of on every push (safe for every reviewer ship can re-request or mention after a fix lands; the reference names the two it cannot), and **Important-only after the first review**. The per-bot settings, and where each lives, are in `references/reviewer-tuning.md` — read it when ship reports two or more cycles, or when setting up a repo's reviewers for the first time.
+The loop is controlled from inside `/sonu:ship`, on any repo, whatever the reviewers' settings: one push per review cycle, one incremental review request per bot per cycle, CodeRabbit paused after its first substantive review and resumed before every exit, a findings-per-cycle series that stops a treadmill before the cap does. Nothing in ship depends on repo-side reviewer configuration. `references/reviewer-tuning.md` remains as optional reading for a repo owner who also wants to tune the reviewers themselves — read it only when asked to set up a repo's reviewers, never as a dependency of the loop.
 
 ## Provenance and maintenance
 
 Volatile facts in this file, last verified 2026-07:
+- **Reviewer severity headers** (Section D) — CodeRabbit's first-line `category | Critical/Major/Minor | Quick win/Heavy lift` header, Copilot's unlabeled findings, `[P1]`-style prefixes elsewhere. Verified 2026-09 by reading live PR threads; re-verify by opening any recent bot-reviewed PR and reading the first line of three inline comments.
 
 - **PR template locations** (Section A) — re-verify against GitHub's "Creating a pull request template" docs if template discovery ever misses a team's template.
 - **Tracker URL formats** (Section B: `atlassian.net/browse/`, `linear.app/<workspace>/issue/`, `app.shortcut.com/<workspace>/story/`) — re-verify by opening a known ticket in each tracker.
