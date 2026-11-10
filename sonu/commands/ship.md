@@ -226,7 +226,7 @@ A PR whose base is not `$BASE` is stacked: it merges into another PR's branch. P
    <body text composed by Skill(sonu:pr-conventions) — replace this entire block>
    PREOF
    )
-   gh pr create --reviewer "@copilot" --title "<imperative title>" --body "$BODY"
+   gh pr create --reviewer "@copilot" --title "<title in the project's commit style>" --body "$BODY"
    ```
 6. Record `PR` and the URL, and report both to the owner.
 
@@ -602,7 +602,7 @@ gh api "/repos/$REPO/pulls?state=open&per_page=100" --paginate \
 ```
 A retargeted child shows this PR's commits in its diff until this merge lands, and afterwards follows the Stacked PRs rebuild.
 
-- **If either lookup shows required checks:** run the child scan, then prefer `gh pr merge $PR --auto --squash --delete-branch`. With required checks, `--auto` merges only once they pass.
+- **If either lookup shows required checks:** run the child scan, then prefer `gh pr merge $PR --auto --squash --delete-branch --subject "$(gh pr view $PR --json title -q .title) (#$PR)" --body ""`. The explicit subject and empty body matter: left to its defaults, the squash can take a commit's subject and list every commit message, cycle markers included. With required checks, `--auto` merges only once they pass.
 - **If both come back empty (unprotected):** `--auto` merges immediately, so poll and gate manually.
 
 **Required reviews are a separate gate.** A lingering `CHANGES_REQUESTED` blocks the merge even with every thread resolved and every check passing:
@@ -657,8 +657,12 @@ gh pr view $PR --json mergeStateStatus,mergeable --jq '{mergeStateStatus, mergea
 - **All safety checks pass** (a deploy preview may still be running) **and the required-reviews gate is satisfied:** look again per Phase 6, re-run the child scan, and when both show nothing new, merge and delete the branch:
 
   ```bash
-  gh pr merge $PR --squash --delete-branch
+  # Pass the subject and body explicitly: the defaults can use a commit's subject and
+  # list every commit message, cycle markers included, in the squash commit.
+  SUBJECT="$(gh pr view $PR --json title -q .title) (#$PR)"
+  gh pr merge $PR --squash --delete-branch --subject "$SUBJECT" --body ""
   ```
+  Give `--body` text only where the project's conventions call for a commit body.
 - `--delete-branch` also switches the local checkout back to `$BASE`, so a later `git branch -D` reporting "not found" is expected.
 - In a linked worktree that local switch can fail, because `$BASE` is checked out in the main worktree, and the command errors after the merge has landed. Do not re-run the merge command. Confirm with `gh pr view $PR --json state,mergedAt` (want `MERGED`), and leave the local branch and worktree for the owner to remove.
 
