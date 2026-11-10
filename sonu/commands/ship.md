@@ -1,19 +1,12 @@
 ---
-description: Commit, open a PR, gather Claude and bot reviews, fix or justify every finding, re-review until clean, then merge. Run only when the work is finished and the owner has said to ship. Needs a GitHub remote. To design and build first, use /sonu:build.
+description: Commit, open a GitHub pull request, gather Claude and bot reviews, fix or justify every finding, re-review until clean, then squash-merge. Run only when the work is finished and the owner has said to ship. Does not apply to a project with no GitHub remote or with its own review-and-landing process. To design and build first, use /sonu:build.
 argument-hint: "[light|full] [--orchestrate | --solo]"
 allowed-tools: Bash, Read, Edit, Write, Skill, Agent
 ---
 
 # /ship — from working tree to merged PR
 
-The project's own instructions win: where its AGENTS.md, CLAUDE.md or established conventions say otherwise, follow them and skip that part of this. Concretely, check these before Phase 0:
-
-- **The project defines its own review** (an external reviewer, a review command, a fixed number of rounds): run that review in place of Phase 1.5's Claude reviews and Phases 2 to 6, under its own round limit.
-- **The project defines its commit style**: use it for every commit here, including its rule on attribution lines.
-- **The project defines how work lands** (fast-forward, no squash, a merge script, a release gate): land that way in place of Phase 7's merge command.
-- **The repo has no remote, or the project forbids pushing or pull requests**: skip every phase that pushes or uses `gh` (the push in Phase 1, Phases 2 to 6, the PR parts of Phase 7). What remains is: commit in the project's style, run the project's checks and review, and land by the project's method.
-
-In each case say in the final report which parts of this command were skipped and which project rule replaced them. Do not stop merely because a phase does not apply.
+This command is a GitHub pull-request flow. If the project has no GitHub remote, or its own instructions define a different review-and-landing process (its own reviewer, its own way of landing work, no pushing or pull requests), this command does not apply: say so and stop, changing nothing. Where it does apply, the project's instructions still govern the commit message style of the final squash commit and the text of the PR.
 
 This command takes the current working tree through to a merged PR. Run it after implementation is complete and the owner has given an unambiguous go ("ship it", "go", "yes"). A hedged answer ("looks reasonable", "I guess") is not authorization; ask once, plainly.
 
@@ -63,7 +56,7 @@ The ledger is never staged or committed; Phase 1 excludes `.sonu-ship-ledger.md`
 | `own_commits:` | Stacked runs only: this PR's own commit SHAs, oldest first |
 | `findings_per_cycle:` | Comma-separated integers, one per completed Phase 6 cycle: every actionable finding Phase 3 collected that cycle from every source, after dedup and before triage |
 | `coderabbit_paused:` | `no`, `requested`, `yes` or `resumed`. `requested` is written before the pause comment is posted and `yes` only once the POST has returned a comment id. A resumed run that adopts `requested` checks the PR's comments and settles the field first. Every exit reads it to know whether it owes a `resume` |
-| `rate_limit_waits:` | Append-only `<notice time>→<until>` pairs, one per CodeRabbit allowance notice honoured. A wait is in force while the last entry's `until` is in the future |
+| `rate_limit_waits:` | Append-only, comma-separated `<notice time>→<until>` pairs, one per CodeRabbit allowance notice honoured, for example `2026-11-09T10:02:11Z→2026-11-09T10:47:11Z,2026-11-09T12:30:05Z→2026-11-09T13:30:05Z`. A wait is in force while the last entry's `until` is in the future |
 | `justified:` | One line per `JUSTIFY` verdict, a single JSON object `{"path":…,"key":<normalized finding text up to its first code fence>,"reply":…,"url":<the first thread's comment URL>}`. JSON because finding text can contain `|` and newlines. Phase 3 reads it to answer a re-raised finding |
 
 **`cycles_used:` is a cache.** The count that governs the Phase 6 cap is the number of commits on the branch after the PR opened whose subject begins `fix: address cycle`. Phase 4 lands each cycle's fixes as exactly one such commit and one push, so commits Phase 1.5 adds under other subjects do not inflate it. Recompute it from the PR at the start of every Phase 6 cycle and immediately before any terminal statement (the merge command, a hand-back, a cap stop), because a count derived from the PR survives a compaction and one held in the ledger or in memory may not. Write the result back to `cycles_used:`; when the two disagree, the PR wins. One exception: a stacked rebuild rewrites committer dates, so after that force-push the ledger's value stands until the next cycle's commit.
@@ -163,7 +156,7 @@ A PR whose base is not `$BASE` is stacked: it merges into another PR's branch. P
    OWNER=${REPO%%/*}; NAME=${REPO##*/}
    BASE=$(gh repo view --json defaultBranchRef -q .defaultBranchRef.name)  # e.g. main / master
    ```
-   If `gh repo view` fails there is no GitHub remote. Follow the project-instructions rule at the top: land by the project's own method if it defines one, skipping the PR phases; otherwise stop and tell the owner this flow needs a GitHub remote.
+   If `gh repo view` fails there is no GitHub remote: this command does not apply. Say so and stop, changing nothing.
 2. **Adopt or initialize the ledger.** Read it before deciding anything, including the effort mode:
 
    ```bash
@@ -222,7 +215,7 @@ A PR whose base is not `$BASE` is stacked: it merges into another PR's branch. P
 ## Phase 1 — Commit and open the PR
 
 1. Stage files by name. Do not use `git add -A`. Exclude `.env*`, secrets, unrelated files, the ship ledger (`.sonu-ship-ledger.md`) and build's handoff (`.sonu-build-handoff.md`).
-2. Run one secret sweep over what is staged, `git diff --staged | grep -iE "password|secret|api_key|token"`, and review any hit before committing. Then learn the repo's commit convention from `git log --oneline -15` and any `CONTRIBUTING` or `CODING` file. That convention wins over any house default. Where the repo has none, use an imperative subject of 72 characters or fewer and say why in the body when the diff cannot. Group commits by what would be reverted together: a feature with its migration, model and tests is one commit, and a drive-by rename is its own. No AI attribution.
+2. Run one secret sweep over what is staged, `git diff --staged | grep -iE "password|secret|api_key|token"`, and review any hit before committing. Then learn the repo's commit convention from `git log --oneline -15` and any `CONTRIBUTING` or `CODING` file. That convention wins over any house default, and it also sets the PR title, because the squash merge uses the title as the final commit's subject. Where the repo has none, use an imperative subject of 72 characters or fewer and say why in the body when the diff cannot. Group commits by what would be reverted together: a feature with its migration, model and tests is one commit, and a drive-by rename is its own. No AI attribution.
 3. `git push -u origin "$(git branch --show-current)"`.
 4. Run the Phase 1.5 loop on the committed diff. Its final pass's risk list is `RISKS`.
 5. Invoke `Skill(sonu:pr-conventions)` to compose the PR body: the team's template first, the change type, and `RISKS` in the risk section. Capture the text into `BODY` in the same fence:
@@ -266,7 +259,7 @@ A finding fixed before `gh pr create` costs one local commit. The same finding f
 2. **Partition the findings** from all three sources by Phase 3's bullets: valid and consequential → `FIX`; harmless, already correct, intentional or nitpick → `JUSTIFY`, keeping the justification for the PR body and later replies. Cosmetic findings (docstrings, comments, naming polish, formatting with no behaviour change) are `JUSTIFY` unless they break a convention the repo states, because each cosmetic fix commit is new material for the next pass and every bot.
 3. **Apply every `FIX`**, in this session unless the delegation rules route it. Then run the repo's checks yourself: the plan's `Gates:` block or the commands `/sonu:build` Phase 2 step 4 finds, in order. Do not start the next pass or open the PR with a failing check. Commit the fixes in the repo's style with no AI attribution.
 
-   **A new guard must be seen to fail.** Every new test, assertion, CI check or validation this loop adds is proven as `Skill(sonu:tdd)` section 10 describes for a test written after the code: break the covered line, watch the guard fail for the reason it names, restore. A guard that has never failed may be passing against the state it claims to forbid. Record one line per new guard in `RISKS`: `guard <name>: verified red against <state>`.
+   **A new guard must be seen to fail.** Every new test, assertion, CI check or validation this loop adds is proven as `Skill(sonu:tdd)` section 8 describes for a test written after the code: break the covered line, watch the guard fail for the reason it names, restore. A guard that has never failed may be passing against the state it claims to forbid. Record one line per new guard in `RISKS`: `guard <name>: verified red against <state>`.
 4. **Re-review the delta.** Run `Skill(sonu:self-review)` on `git diff <prepr_reviewed_sha>..HEAD` plus the full content of any file the fixes touched. Re-evaluate and write `security_surface:`, and apply 1c on its own terms. New findings go back to step 2.
 5. **End on a dry pass or the cap.** A pass with zero `FIX` items is dry: `git push` any fix commits, record the final risk list as `RISKS`, and go to Phase 1 step 5. The cap is 3 passes per PR over its lifetime, not per invocation; `prepr_passes:` accumulates across resumed runs and only the merge resets it. A resumed run that adopts `prepr_passes: 3` runs no further passes. If pass 3 still yields fixes, apply them, get the checks passing, push, record the still-open concerns in `RISKS`, and proceed.
 6. **Ledger after every pass:** update `prepr_passes:` and `prepr_reviewed_sha:`.
@@ -399,7 +392,7 @@ For each `FIX`, apply the change, in this session unless the delegation rules ro
 
 **One valid finding is a sample.** Reviewers report their top few findings, not everything they saw. Before committing a `FIX`, search the branch diff for the class the finding names (the same unawaited promise, the same unvalidated field, the same off-by-one on a sibling boundary), fix every instance in this commit, and list the extra locations in the reply (`Fixed in <SHA> — also applied at <file:line>, <file:line>`). Each instance left for a later cycle costs a full bot round.
 
-**One commit and one push per cycle.** Apply every `FIX` from this cycle's triage, run the repo's checks once (the `Gates:` block from the build handoff, or the commands `/sonu:build` Phase 2 step 4 finds), commit once as `fix: address cycle <n> review — <what>`, and push once. That subject prefix is what the ledger's count fence reads. If the project's commit rules require a different subject, use one fixed prefix for every cycle commit on this PR and change the `startswith` string in the count fence to match. A second commit or push inside a cycle is counted as a new cycle. Do not push a docs-only or comment-only change by itself; fold it into the cycle's commit, because every push after open buys another round of bot reviews and CI runs.
+**One commit and one push per cycle.** Apply every `FIX` from this cycle's triage, run the repo's checks once (the `Gates:` block from the build handoff, or the commands `/sonu:build` Phase 2 step 4 finds), commit once as `fix: address cycle <n> review — <what>`, and push once. That subject prefix is what the ledger's count fence reads. These subjects are machine-read markers on the PR branch, and the squash merge removes them, so they do not follow the project's commit style. Only the final squash commit's subject does. A second commit or push inside a cycle is counted as a new cycle. Do not push a docs-only or comment-only change by itself; fold it into the cycle's commit, because every push after open buys another round of bot reviews and CI runs.
 
 Then refresh the PR description with `Skill(sonu:pr-conventions)` section C. This applies on the first fix pass and in every Phase 6 cycle.
 
@@ -683,7 +676,6 @@ Compose the final report before touching the ledger, since several bullets are r
 - Rate-limit waits: the number of entries in `rate_limit_waits:` and the total minutes waited, or "none"
 - CodeRabbit schedule from `coderabbit_paused:`: `resumed`, `no`, or `yes` (paused and the resume did not confirm; say so prominently)
 - Merge state: auto-merge enabled, merged, or awaiting checks
-- Any part of this command skipped because the project's own instructions replaced it
 
 Then delete the ledger:
 

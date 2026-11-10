@@ -6,7 +6,7 @@ description: >-
 
 # Safe migrations — write the safe path, not the final state
 
-The project's own instructions win: where its AGENTS.md, CLAUDE.md or established conventions say otherwise, follow them and skip that part of this.
+Explicit project instructions (its AGENTS.md, CLAUDE.md or other written rules) override this skill's workflow and style; follow them and skip that part of this. Existing code or habit alone never waives a trust boundary, a disclosure rule, a required human authorization or a data-safety rule: where the code conflicts with one of those, say so instead of following it.
 
 These rules assume a deployed service whose releases roll out while the database is live. During a rolling deploy, a blue/green switch or a rollback, old code and new schema run against each other, sometimes for hours. A project with no such deployment (a local tool, a single-user store) needs only the parts about reversibility and rehearsal.
 
@@ -24,19 +24,7 @@ A breaking change (rename, drop, type change, moving data) is split across separ
 2. **Migrate.** Write to both old and new, backfill existing rows (section 4), then switch reads to the new location. Each step can be its own deploy and is reversible.
 3. **Contract.** After a full release cycle in which nothing reads or writes the old location, drop it, in a release that changes nothing else about that data.
 
-```sql
--- Avoid: the one-step rename. Old pods fail on every SELECT email,
--- and rolling the code back does not help because the column is gone.
-ALTER TABLE users RENAME COLUMN email TO email_address;
-
--- Prefer: the staged path
--- Release 1 (expand):    ALTER TABLE users ADD COLUMN email_address TEXT NULL;
---                        code dual-writes email + email_address
--- Release 1.x (migrate): backfill job copies email -> email_address (batched, section 4)
---                        code switches reads to email_address, still dual-writes
--- Release 2:             code stops writing email
--- Release 3 (contract):  ALTER TABLE users DROP COLUMN email;
-```
+A one-step `RENAME COLUMN` is the standard failure: old code fails on every read of the old name, and rolling the code back does not help because the column is gone.
 
 ## 3. Destructive operations ship alone, one release late
 

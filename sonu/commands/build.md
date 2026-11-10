@@ -1,12 +1,12 @@
 ---
-description: Design, build test-first and hand back a feature or fix. You approve the design once. Does not commit or merge. Not for already-built changes (/sonu:ship) or design-only work (/sonu:design-tree).
+description: Design, build test-first and hand back a feature or fix. By default you approve the design once and it does not commit or merge; a project's own process can change both. Not for already-built changes (/sonu:ship) or design-only work (/sonu:design-tree).
 argument-hint: "[feature, fix, or task to build] [--orchestrate | --solo]"
 allowed-tools: Skill, Read, Write, Edit, Bash, EnterPlanMode, ExitPlanMode, Agent
 ---
 
 # /build — decide, build, hand back
 
-The project's own instructions win: where its AGENTS.md, CLAUDE.md or established conventions say otherwise, follow them and skip that part of this. Concretely: if the project defines its own brief or plan format, use it in place of the plan file; if it says to decide without waiting for the owner, state the design decisions and proceed without the approval pause; if it names one check command, run that in place of the gate ladder; if it has its own reviewer, that review replaces the independent reader; if its process says the builder commits, commit in its style. Say in the hand-back which parts of this command were skipped and which project rule replaced each.
+The project's own instructions win: where its AGENTS.md, CLAUDE.md or established conventions say otherwise, follow them and skip that part of this. Concretely: if the project defines its own brief or plan format, use it in place of the plan file; if it says to decide without waiting for the owner, state the design decisions and proceed without the approval pause; if it explicitly says one command is its complete check before commit or review, run that in place of the gate ladder, and otherwise run the project's command plus whatever else on the ladder applies; if it has its own reviewer, that review replaces the independent reader; if its process says the builder commits, commit in its style. Say in the hand-back which parts of this command were skipped and which project rule replaced each.
 
 **Contract.** This command sequences design, build and self-review, then hands back. It pauses once, for you to approve the design, and stops once, with the checks passing, before shipping. By default it does not commit and does not merge; `/sonu:ship` does that when you say so. It uses the existing skills and works the same whether or not they are also run standalone.
 
@@ -24,8 +24,9 @@ When a step is delegated: the prompt is the step's text plus the paths and settl
 
 ## Phase 0 — Triage
 
-Read the working tree:
+Read the working tree, and record the commit the build starts from. The review and the hand-back cover everything since that commit, including uncommitted changes, so a build whose project process has the builder commit is still reviewed whole:
 ```bash
+git rev-parse HEAD        # the build's starting commit — keep this SHA for Phase 3
 git status --porcelain   # includes untracked (??) files — git diff HEAD does NOT show those
 git diff --stat HEAD
 ```
@@ -78,12 +79,13 @@ Plan mode wraps the design work and `ExitPlanMode` is the approval gate.
 
 ## Phase 3 — Self-review and hand back
 
-1. `Skill(sonu:self-review)`: the riskiest things in the diff, as a pointer for your review.
+1. `Skill(sonu:self-review)` over everything since the starting commit: `git diff <starting SHA>` (which includes uncommitted changes) plus untracked files. The result is a pointer for your review.
 2. **Rule on each acceptance criterion** (the spec's, or the ones the design settled): met, with the `file:line` or command output that shows it; not met, with what is missing; or waived, with the reason. A criterion you cannot rule on is not met. On an ad-hoc build with no written criteria, name what the request asked for in one line.
 3. Print a short built summary. It may say the checks pass only if they ran after the last change to the working tree, including any fix from step 1.
    - What was built, in a sentence.
-   - `git diff --stat HEAD` plus the untracked files from `git status --porcelain`, since new files do not appear in the diff.
+   - `git diff --stat <starting SHA>` plus the untracked files from `git status --porcelain`, since new files do not appear in the diff.
    - The risk list from step 1.
+   - Any new or changed function left over code-standards' 40-line limit, with its `file:function` and the one-line reason it stays whole.
    - What was deliberately not touched: adjacent problems noticed but out of scope, each offered as a separate task. Plan documents are a follow-up commit of their own, not bundled with the code.
    - Deviations from the plan: the Build notes list, or "none — built as planned".
    - The criteria ruling from step 2.

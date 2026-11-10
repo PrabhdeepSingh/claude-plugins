@@ -1,7 +1,7 @@
 ---
 name: colors
 description: >-
-  Color reference for web interfaces: contrast measurement (APCA and WCAG), OKLCH conversion and palette generation, gamut and P3 fallbacks, one meaning per color. Use when measuring contrast or building or converting a palette. Not for which requirement applies ([[accessibility]]) or whole-screen audits ([[interface-review]]).
+  Color reference for web interfaces: contrast measurement (APCA and WCAG), OKLCH palettes, semantic token assignment, light and dark theming, gamut fallbacks. Use when measuring contrast, building or converting a palette, assigning colors to tokens or theming. Not for which requirement applies ([[accessibility]]) or whole-screen audits ([[interface-review]]).
 ---
 
 # Color that carries meaning

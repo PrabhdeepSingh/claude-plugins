@@ -6,7 +6,7 @@ description: >-
 
 # Infra standards
 
-The project's own instructions win: where its AGENTS.md, CLAUDE.md or established conventions say otherwise, follow them and skip that part of this.
+Explicit project instructions (its AGENTS.md, CLAUDE.md or other written rules) override this skill's workflow and style; follow them and skip that part of this. Existing code or habit alone never waives a trust boundary, a disclosure rule, a required human authorization or a data-safety rule: where the code conflicts with one of those, say so instead of following it.
 
 One line of infrastructure can delete or replace a whole environment, and no unit test catches it. For any infra change, know what it can delete or replace, where its secrets live, and whether it gives the same result when run twice.
 

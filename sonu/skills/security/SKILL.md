@@ -6,7 +6,7 @@ description: >-
 
 # Security — decide what can go wrong before deciding what to build
 
-The project's own instructions win: where its AGENTS.md, CLAUDE.md or established conventions say otherwise, follow them and skip that part of this.
+Explicit project instructions (its AGENTS.md, CLAUDE.md or other written rules) override this skill's workflow and style; follow them and skip that part of this. Existing code or habit alone never waives a trust boundary, a disclosure rule, a required human authorization or a data-safety rule: where the code conflicts with one of those, say so instead of following it.
 
 These rules cover the decisions that are cheapest to get right while the trust boundaries are still being drawn. Parameterized queries and boundary validation live in [[code-standards]] section 9. Secret storage and CI credentials live in [[infra-standards]] sections 3 and 5.
 

@@ -6,7 +6,7 @@ description: >-
 
 # Code standards — the house rules
 
-The project's own instructions win: where its AGENTS.md, CLAUDE.md or established conventions say otherwise, follow them and skip that part of this.
+Explicit project instructions (its AGENTS.md, CLAUDE.md or other written rules) override these rules; follow them and skip that part of this. An established convention in the code overrides the style and structure rules here, as the next paragraph but one says. Existing code or habit alone never waives a trust boundary, a required human authorization or a data-safety rule (sections 7, 9, 10 and 14): where the code conflicts with one of those, say so instead of following it.
 
 These are the owner's preferences and the lessons that cost something to learn. General good practice is assumed and not repeated here. The reader of the code is a senior engineer with no context six months from now.
 
@@ -16,7 +16,7 @@ These are the owner's preferences and the lessons that cost something to learn. 
 
 **Surface ambiguity.** When a request has more than one reasonable reading, or assumes something the codebase contradicts, say so before building. Ask when a wrong guess would be expensive to undo; otherwise state the assumption and proceed.
 
-**Reuse before writing.** Before adding a helper, branch, option or component, check in this order and stop at the first that answers: does it need to exist at all; is it already in this codebase; is it in the standard library; is it a platform primitive (a native element over a component library, CSS over JavaScript, a database constraint over application code); is it in an installed dependency. Only then write the minimum code that does what was asked. When you skip something as unnecessary (a case that cannot occur, configurability nobody asked for, an abstraction with one use), name the skip in one line of the hand-off, not in a comment. This never removes validation at a trust boundary, error handling that prevents data loss, a security or accessibility requirement, or anything explicitly requested. `references/platform-native.md` lists what browsers, runtimes and databases already provide; read it when about to add a dependency for interface behaviour, formatting or data integrity.
+**Reuse before writing.** Before adding a helper, branch, option or component, check in this order and stop at the first that answers: does it need to exist at all; is it already in this codebase; is it in the standard library; is it a platform primitive (a native element over a component library, CSS over JavaScript, a database constraint over application code); is it in an installed dependency. Only then write the minimum code that does what was asked. When you skip something as unnecessary (a case that cannot occur, configurability nobody asked for, an abstraction with one use), name the skip in one line of the hand-off, not in a comment. This never removes validation at a trust boundary, error handling that prevents data loss, a security or accessibility requirement, or anything explicitly requested. Before relying on a platform feature, check it against the browsers and runtime versions the project supports.
 
 **Verify APIs against the installed version**, not memory, before calling anything beyond the language's core. A new package is an architectural decision, so do not add one for what a few lines or an existing dependency can do.
 
@@ -48,7 +48,7 @@ Prefer clear code to clever code, and guard clauses to nested conditionals.
 The default is no comment. A comment exists only for what the code cannot say, and before writing one, check four things:
 
 1. It states a hidden constraint, an invariant, a unit or format, a workaround with its issue link, a keep-in-sync pointer, a non-obvious algorithm choice, or a `TODO` that says what would make it removable. It does not describe what the next line does, and it does not describe the edit or the task ("added", "fixed", "as requested"); that belongs in the commit message.
-2. A function normally has at most one inline comment. Wanting a second usually means the function should be split or renamed. The Arrange/Act/Assert markers in a test and the justification on a suppression (section 12) do not count.
+2. Budget: at most one inline comment per function. Needing a second means the function wants splitting or a better name, so fix that instead. The Arrange/Act/Assert markers in a test and the justification a suppression must carry (section 12) do not count against the budget and are exempt from check 3. Inline comment lines never outnumber code lines in any function.
 3. It sits above the function or block, not interleaved line by line.
 4. It is one line. A longer explanation is a docstring or a doc file.
 
@@ -56,17 +56,17 @@ No dividers, end-of-block markers or commented-out code.
 
 Public or exported API gets a docstring in the language's own convention. Private helpers get none unless the logic is non-obvious. The summary line says what the caller gets and does not repeat the signature or its types; add only what the signature cannot say (a unit, an invariant, a failure mode).
 
-A `TODO` for a deferred shortcut names the known limit and the trigger that upgrades it: `// TODO(owner): global lock; per-account locks when throughput matters`. For a reviewer finding judged a false positive, it says why the code is safe. `references/comments.md` applies these checks to one function.
+A `TODO` for a deferred shortcut names the known limit and the trigger that upgrades it: `// TODO(owner): global lock; per-account locks when throughput matters`. For a reviewer finding judged a false positive, it says why the code is safe. `references/comments.md` has one example.
 
 ## 4. Small, single-purpose pieces
 
-- Keep functions short enough to read in one view, around 40 lines. A longer function usually hides a second job, and one that needs blank-line sections has usually crossed the line. Split while writing, because a later splitting pass rarely happens.
+- A function is at most 40 lines. Past that, split it, or spend one line in the hand-off saying why it stays whole. A function that needs blank-line sections to stay readable has already crossed the limit. Split while writing, because a later splitting pass rarely happens.
 - A new file has one responsibility, and its primary export's name states it.
 - A helper with one caller exists only if its name carries a concept the reader needs. A wrapper that only forwards its arguments is inlined.
 - New behaviour goes in the module that owns the data it touches. The caller gains a call, not a block.
 - Abstract on the third occurrence, once you know what varies.
 
-**A refactor must reduce the number of concepts a reader holds**, not move them. Prefer the change that makes a branch, mode or layer disappear. Before simplifying unfamiliar code, know its responsibility, its callers, its edge cases and why it might be written this way (check `git blame`). A simplification that needs test changes to pass probably changed behaviour ([[tdd]] section 11).
+**A refactor must reduce the number of concepts a reader holds**, not move them. Prefer the change that makes a branch, mode or layer disappear. Before simplifying unfamiliar code, know its responsibility, its callers, its edge cases and why it might be written this way (check `git blame`). A simplification that needs test changes to pass probably changed behaviour ([[tdd]] section 9).
 
 **Structural and behavioural changes do not travel in the same step.** Mixed together, a red suite cannot say whether the new behaviour is wrong or the restructuring broke something. Do the structural move first, on green; then the behaviour. If the suite goes red after a pure restructuring, revert it. Inside `/sonu:ship`'s review cycles, where each cycle's fixes land as one commit, answer a finding with the behavioural fix and leave the restructure as a follow-up.
 
@@ -86,7 +86,7 @@ Do not swallow errors. Catch only what you can handle, where there is enough con
 
 **Write the failure path with the happy path**, because it is the path nobody exercises.
 
-- Every acquire (a reservation, a lock, a marker, a slot) is released in a `finally`, or is not taken until after the last `await` that can reject. A reservation taken before a lookup that could fail has locked users out for a day.
+- Every acquire (a reservation, a lock, a marker, a slot) is released in a `finally`, or is not taken until after the last `await` that can reject.
 - Every detached promise has a `catch` that logs. Without one, a downstream failure crashes the process.
 - A remote write's transport timeout is ambiguous, never failed. The write may have landed, so the caller does not retry as if nothing happened, and the message to the user says so.
 
@@ -114,7 +114,7 @@ Prefer immutable values and the tightest scope.
 
 ## 12. When tooling objects, fix the cause
 
-A type error, lint violation or failing hook is information. Suppression (`as any`, `@ts-ignore`, `eslint-disable`, `--no-verify`) is a last resort and does not ship bare: use the narrowest scope, one line, with a comment saying why and what would make it removable. The same holds for failing tests ([[tdd]] section 11) and runtime errors (section 7).
+A type error, lint violation or failing hook is information. Suppression (`as any`, `@ts-ignore`, `eslint-disable`, `--no-verify`) is a last resort and does not ship bare: use the narrowest scope, one line, with a comment saying why and what would make it removable. The same holds for failing tests ([[tdd]] section 9) and runtime errors (section 7).
 
 ## 13. API design
 
@@ -151,5 +151,4 @@ The test for which rule applies is whether running with the thing off would be u
 | File | What it answers |
 |------|-----------------|
 | `references/data-and-api.md` | An example record (section 2) and the idempotency contract (section 13) |
-| `references/comments.md` | The comment checks applied to one function, and public versus private docstrings (section 3) |
-| `references/platform-native.md` | What the browser, CSS, the JS runtime, Node, Python and the database already provide |
+| `references/comments.md` | One example of a comment and a docstring that pass the checks (section 3) |

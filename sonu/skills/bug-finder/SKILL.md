@@ -8,7 +8,7 @@ allowed-tools: Bash, Read, Write, Grep, Glob
 
 # Bug finder — find real defects, prove them, report them
 
-The project's own instructions win: where its AGENTS.md, CLAUDE.md, design system or established conventions say otherwise, follow them and skip that part of this.
+Explicit project instructions (its AGENTS.md, CLAUDE.md or other written rules) override this skill's workflow and style; follow them and skip that part of this. Existing code or habit alone never waives a trust boundary, a disclosure rule, a required human authorization or a data-safety rule: where the code conflicts with one of those, say so instead of following it.
 
 This pass goes looking for defects on purpose and reports only the ones it can prove. The output to avoid is the plausible-sounding audit: a list of speculative observations with no reproduction. Each such item costs a maintainer time to dismiss, and after one such report the next gets ignored. A proven defect is worth a person's attention; a maybe is not.
 
@@ -41,7 +41,9 @@ Before reporting, search wherever the project records known issues (open and clo
 
 ## 4. Report every defect that meets the bar
 
-Report each defect that cleared sections 2 and 3, most serious first. Tell the person, and where the project has a place for such things (an issue tracker, a findings or later file), file it there in the project's own format. Filing a defect does not start work on it; a person decides that.
+A suspected vulnerability follows private disclosure and never appears in public issue text, because a public report of an unpatched hole documents the exploit. Use the project's security policy or private reporting channel. Where the project has none, hand the finding to the person privately, in this conversation, and file nothing. Any public follow-up is written only after disclosure has happened, and describes the work, not the hole.
+
+Report each other defect that cleared sections 2 and 3, most serious first. Tell the person, and where the project has a place for such things (an issue tracker, a findings or later file), file it there in the project's own format. Filing a defect does not start work on it; a person decides that.
 
 Each report carries a title naming the incorrect behavior ("expired session is accepted after logout", not "bug in auth"), the evidence from section 2 including the reproduction, the expected behavior, bounded acceptance criteria and a verification plan. Use the labels and fields that exist and create none.
 

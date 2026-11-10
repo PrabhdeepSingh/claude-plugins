@@ -1,7 +1,7 @@
 ---
 name: accessibility
 description: >-
-  Accessibility checks for product interfaces: keyboard and focus, names and roles, forms, announcements, hit areas, motion, zoom. Use when building or reviewing an interactive component, or on a keyboard or screen-reader complaint. Not for contrast measurement ([[colors]]), text sizing ([[typography]]) or whole-screen audits ([[interface-review]]).
+  Accessibility checks for product interfaces: keyboard and focus, names and roles, page structure and landmarks, forms, announcements, hit areas, motion, zoom and reflow. Use when building or reviewing a component or page structure, or on a keyboard or screen-reader complaint. Not for contrast ([[colors]]), text sizing ([[typography]]) or whole-screen audits ([[interface-review]]).
 ---
 
 # Accessibility that comes with the craft

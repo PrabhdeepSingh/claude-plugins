@@ -56,7 +56,7 @@ Optional flags: `--orchestrate` allows a mechanical, fully specified step with a
 
 ### `/sonu:ship` — PR babysitter
 
-Takes a finished change from working tree to a merged PR without stopping to ask "shall I merge?"; it pauses only for a real judgment call. If the project defines its own review, commit style or landing method, or the repo has no remote, ship follows the project, skips the phases that do not apply and says which.
+Takes a finished change from working tree to a merged PR without stopping to ask "shall I merge?"; it pauses only for a real judgment call. It is a GitHub pull-request flow: in a project with no GitHub remote, or with its own review-and-landing process, it says so and stops. The project's instructions still set the final squash commit's message style and the PR text.
 
 What it does:
 
@@ -82,7 +82,7 @@ Mode words are parsed forgivingly — `quick`/`fast`/`lite` → `light`, and `th
 
 ### Direct skill invocations
 
-`/sonu:tdd` runs the test-first loop on a named feature or bug. `/sonu:design-tree` records a design as a tree of decisions with rejected branches kept. `/sonu:self-review` lists the riskiest spots in the current diff and ends with "a pointer, not an approval"; large or high-risk diffs get one independent reader, with every finding judged in-session. `/sonu:performance` runs the measurement loop on a named slowness. `/sonu:intent-interview` questions a vague ask until the real outcome is clear. `/sonu:interface-review` audits a whole screen or flow. `/sonu:bug-finder` looks for one unreported defect and writes it up. `/sonu:build` and `/sonu:ship` already run the relevant ones.
+`/sonu:tdd` runs the test-first loop on a named feature or bug. `/sonu:design-tree` records a design as a tree of decisions with rejected branches kept. `/sonu:self-review` lists the riskiest spots in the current diff and ends with "a pointer, not an approval"; large or high-risk diffs get one independent reader, with every finding judged in-session. `/sonu:performance` runs the measurement loop on a named slowness. `/sonu:intent-interview` finds out what outcome, audience and measure of success a person wants before anything is built. `/sonu:interface-review` reviews a whole screen or flow and lists what it found, most serious first. `/sonu:bug-finder` hunts for unreported defects and reports every one it can prove, privately when it is a suspected vulnerability. `/sonu:build` and `/sonu:ship` already run the relevant ones.
 
 ## Skills
 
@@ -117,11 +117,11 @@ Every skill is also directly invocable by name (`/sonu:<skill>`). The ones desig
 
 ## What changed in 5.0
 
-- The skills were trimmed to what current models still need: the owner's house rules, facts a model cannot know, and trust policy. General programming knowledge, step-by-step scripts for judgment tasks and incident history were removed. The plugin's Markdown went from about 132,000 words to about 48,678.
-- `/sonu:factory` and its three ticket skills (`ticket-lifecycle`, `ticket-triage`, `classify-tickets`) were removed. The plugin no longer manages a ticket queue or talks to issue trackers.
+- The skills were trimmed to what current models still need: the owner's house rules, facts a model cannot know, and trust policy. General programming knowledge, step-by-step scripts for judgment tasks and incident history were removed. The plugin's Markdown went from about 132,000 words to about 47,237.
+- `/sonu:factory` and its three ticket skills (`ticket-lifecycle`, `ticket-triage`, `classify-tickets`) were removed. The plugin no longer drives a ticket queue. `bug-finder` may still file a proven defect where the project keeps its issues.
 - `model-tiering` was retired. The delegation rules that remain are a short section of `build.md`, and the default is to work in-session.
 - Skill descriptions were narrowed to what the skill is for, when to use it and what it is not for.
-- A project's own instructions take precedence. Every skill and command says so, and `/sonu:build` and `/sonu:ship` follow a project's own review, commit style and landing method, or the absence of a remote, and report which of their steps they skipped.
+- A project's own instructions take precedence. Every skill and command says so, `/sonu:build` follows a project's own brief, checks, reviewer and commit rule, and `/sonu:ship` stops in a project that lands work some other way. Existing code alone never waives a security, disclosure, authorization or data-safety rule.
 
 ## Developing this plugin
 
@@ -172,7 +172,7 @@ claude-plugins/
     └── skills/              # loaded when the task matches; each also invokes directly as /sonu:<name>
         ├── code-standards/
         │   ├── SKILL.md     # how code gets written
-        │   └── references/  # example record and idempotency contract, the comment checks worked example, the platform-primitive lookup
+        │   └── references/  # example record and idempotency contract, one comment example
         ├── tdd/
         │   └── SKILL.md     # test-first rules
         ├── debugging/
@@ -193,9 +193,9 @@ claude-plugins/
         ├── performance/
         │   └── SKILL.md     # baseline → one change → beat the noise → neutral is a revert
         ├── intent-interview/
-        │   └── SKILL.md     # pre-spec intent extraction — one question at a time, guess attached
+        │   └── SKILL.md     # find the wanted outcome before building
         ├── interface-review/
-        │   └── SKILL.md     # holistic interface audit — coordinates the six domains below into one verdict
+        │   └── SKILL.md     # whole-screen review across the six interface skills below
         ├── accessibility/
         │   ├── SKILL.md     # keyboard, focus, ARIA, forms, screen readers, hit areas, motion
         │   └── references/  # focus & keyboard, screen readers
@@ -221,7 +221,7 @@ claude-plugins/
         │   ├── SKILL.md     # per-type PR templates, living description, reply wording
         │   └── references/  # the 8 per-change-type PR body templates, reviewer tuning (review-once, Important-only)
         └── bug-finder/
-            └── SKILL.md     # prove one real defect and write it up; never fixes it
+            └── SKILL.md     # prove real defects and report each one; never fixes them
 ```
 
 ## Troubleshooting
