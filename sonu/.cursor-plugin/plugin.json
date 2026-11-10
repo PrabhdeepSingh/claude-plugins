@@ -1,6 +1,6 @@
 {
   "name": "sonu",
-  "version": "5.0.0",
+  "version": "5.1.0",
   "description": "Commands and skills that hold a coding agent to one owner's standards. /sonu:build designs a change with you, builds it test-first and hands it back with the riskiest parts listed. /sonu:ship takes a finished change to a merged PR: it gathers the repo's AI reviewer bots, fixes or answers each finding, and merges when the checks pass. 22 skills carry the rules: code-standards, tdd, debugging, bug-finder, security, performance, intent-interview, design-tree, self-review, blast-radius, pr-conventions, safe-migrations, infra-standards, observability, seo, interface-review, accessibility, layout, ui-polish, typography, colors, ux-writing. Each is plain Markdown you can read and edit, and a project's own instructions take precedence over any of them. Works in Claude Code and Cursor.",
   "author": {
     "name": "Prabhdeep Singh",
