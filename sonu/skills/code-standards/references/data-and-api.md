@@ -1,8 +1,8 @@
-# Data & API examples — schema, queries, and response contracts
+# Data and API reference
 
-Depth and worked examples for `code-standards` §2, §5, and §13. Read this file when the change touches a database schema, a query, or an API endpoint's request/response shape. The rules themselves (with their *why*) live inline in `SKILL.md` — this file is the illustration, not a second copy of the rule.
+Read this when a change touches a database schema, an API response or a retried operation. The rules are in `SKILL.md`; this file holds the example record and the idempotency contract.
 
-## §2 — a well-named record
+## A well-named record (section 2)
 
 Field-naming rules in one example: `snake_case`, UUID ids, separate first/last name, boolean-as-question, integer minor units for money, UTC timestamps.
 
@@ -20,65 +20,7 @@ Field-naming rules in one example: `snake_case`, UUID ids, separate first/last n
 }
 ```
 
-## §5 — data access
-
-**SQL — select only what's used, filtered and bounded:**
-
-```sql
--- Avoid: every column, every row, straight into memory
-SELECT * FROM orders;
-
--- Prefer: only the fields used, filtered and bounded
-SELECT id, customer_id, total_amount_cents, created_date
-FROM orders
-WHERE status = 'open'
-ORDER BY created_date DESC
-LIMIT 50 OFFSET :page_offset;
-```
-
-**ORM — same discipline, same shape:**
-
-```js
-// Avoid: loads every column of every user
-const users = await User.findAll();
-
-// Prefer: just the fields you need, one page at a time
-const users = await User.findAll({
-  attributes: ['id', 'email', 'last_login_date'],
-  where: { is_active: true },
-  order: [['created_date', 'DESC']],
-  limit: 50,
-  offset: pageNumber * 50,
-});
-```
-
-The N+1 case is the same principle in a different shape: fetching a list and then firing one more query per row turns one round trip into a thousand. Use a join or a batched `IN (...)` fetch instead of looping queries per row.
-
-## §13 — API response contract, worked
-
-**The allowlist, not the entity:**
-
-```js
-// Avoid: returns whatever the table contains, today and forever
-app.get('/api/users/:id', async (req, res) => {
-  const user = await User.findByPk(req.params.id);
-  res.json(user); // password_hash, mfa_secret, internal_notes — all shipped
-});
-
-// Prefer: the response shape is explicit, minimal, and stable
-app.get('/api/users/:id', async (req, res) => {
-  const user = await User.findByPk(req.params.id, {
-    attributes: ['id', 'first_name', 'last_name', 'created_date'], // §5: select what you need
-  });
-  if (!user) return res.status(404).json({ error: 'Not found' });
-  res.json({
-    id: user.id,
-    first_name: user.first_name,
-    last_name: user.last_name,
-    created_date: user.created_date,
-  });
-});
-```
+## Response contract (section 13)
 
 **Status codes, spelled out:** `201` created, `400` invalid input, `401` unauthenticated, `403` forbidden, `404` not found, `409` conflict, `422` semantically invalid, `5xx` our fault. Never `200` with `{ "error": ... }` in the body — a lying 200 breaks retries, caching, monitoring, and every client that trusted it. Remember `code-standards` §10: keep `403` vs `404` indistinguishable wherever existence itself is sensitive.
 

@@ -1,95 +1,47 @@
 ---
 name: layout
 description: >-
-  Layout structure for web interfaces — grouping, alignment, negative space, reading order, progressive disclosure, breakpoints, direction-aware (RTL) structure. INVOKE PROACTIVELY when structuring a page or component, spacing or aligning controls, deciding what collapses at small sizes, or reviewing frontend structure. Hit areas and focus: [[accessibility]]; radius, shadows, motion: [[ui-polish]]; line length and text spacing: [[typography]]; whole-screen audits: [[interface-review]].
+  Layout defaults for web interfaces: grouping by space, shared edges, spacing values, the four view states, breakpoints, direction-aware structure. Use when structuring a page or component. Not for hit areas ([[accessibility]]), surfaces and motion ([[ui-polish]]), text ([[typography]]) or whole-screen audits ([[interface-review]]).
 ---
 
 # Layout that communicates structure
 
-Layout communicates before a single word is read: position, spacing, and alignment carry hierarchy on their own, and generous space beats decoration. A good layout also survives stress: resize it, translate it, mirror it for RTL, and it should still hold together. Apply these principles when building or reviewing UI code, and express every change in the project's existing styling system (Tailwind, plain CSS, CSS-in-JS); never introduce a second styling approach.
+The project's own instructions win: where its AGENTS.md, CLAUDE.md, design system or established conventions say otherwise, follow them and skip that part of this. Use the project's existing kit and tokens; do not add components, on-screen text or options that the project's design does not call for.
 
-Hit-area sizes and focus behavior are covered by [[accessibility]]; visual polish (radius, shadows, animation) by [[ui-polish]]; line length and text spacing by [[typography]].
+Position, spacing and alignment carry hierarchy before a word is read. Express every change in the project's existing styling system and spacing scale. The numbers below are this skill's defaults for an interface with no established density or spacing system; an existing system that works keeps its own values.
 
-Treat the numeric values below as starting points for interfaces without an established density or spacing system. Preserve deliberate platform chrome, compact professional tools, and project tokens when they remain usable under hit-area, zoom, localization, and viewport stress tests.
+## Defaults
 
-## Core Principles
+**Group with space before lines.** Negative space is the first grouping tool, a background shape the second, and a separator line the last, kept for dense data where space would cost too much. The gap between groups is at least twice the gap within a group (`8px` inside, `16px` or more between), or the grouping does not read. A separator that is needed is a quiet hairline and is not combined with a large gap.
 
-### 1. Group with Space, Not Lines
+**One spacing step per level.** Use one project spacing step for each level of nesting (`16px` when no scale exists), and keep everything on a small set of shared edges. A stray edge reads as noise even when nobody can name it.
 
-Negative space is the primary grouping tool; background shapes second; separator lines last, only where space alone can't carry the structure. The gap between groups must be at least 2× the gap within a group (`8px` intra-group → `16px`+ inter-group), or the grouping reads as noise.
+**Controls look like controls.** An interactive element has a background, a border, an underline or a consistent control zone. Static elements do not borrow control styling, or they collect dead clicks.
 
-→ `references/grouping-and-alignment.md` — space-vs-separator decisions, alignment edges, logical properties, and importance ordering behind §1–§4, read when this change groups, aligns, or reorders elements.
+**Space between targets.** Start with `12px` between adjacent bordered or filled controls and `24px` around borderless text and icon controls, which have nothing else marking where one target ends. Compact tools may use less when hit areas ([[accessibility]]) do not overlap.
 
-### 2. Keep Controls Distinct from Content
+**Order by importance, in leading and trailing terms.** The most important content sits near the top and the leading edge. Use logical properties (`margin-inline-start`, `padding-inline-end`, `inset-inline-start`, `text-align: start`) for anything direction-dependent, and keep physical left and right for geometry that is physical, such as a device notch. Arrangements that encode progression mirror in right-to-left.
 
-Interactive elements must look interactive: a background shape, a border, or a consistent placement zone. Never style a control identically to adjacent static text.
+**One main action per view.** Detail sits a level deeper, in the way the project's design already provides for.
 
-### 3. Align to Shared Edges
+**Hidden content shows a cue.** Use the project's established cue. Where there is none, let the next item of a horizontal scroller show `16–32px` past the edge, or use a disclosure control that says what is hidden.
 
-Pick alignment edges and stick to them; every stray edge reads as noise. Use one project spacing step for each level of subordination (`16px` is a useful default). Use logical properties (`padding-inline-start`, `margin-inline-end`) for direction-dependent layout; reserve physical left/right for genuinely physical geometry.
+**Insets and edges.** Backgrounds and media may run to the viewport edges; text and controls stay inside the layout margins and safe areas (`env(safe-area-inset-*)`). Full-width buttons in content sit inside the margins (about `16px` inline on mobile). Edge-to-edge actions are fine when they follow established platform or application chrome.
 
-### 4. Order by Importance
+**Breakpoints come from the content.** Break where the layout stops fitting, not at device presets, and collapse late. Prefer container queries for components, so a card adapts to its column.
 
-The most important content sits near the top and the leading edge; reading order flows top-to-bottom, leading-to-trailing. Think in leading/trailing, not left/right.
+**Plan for growth and clipping.** Strings grow by language, so text containers have no fixed widths or heights and buttons size from their label. Primary actions stay in stable chrome or normal flow where resizing, scrolling or a keyboard cannot clip them; if a modal's content scrolls, its action row does not.
 
-### 5. Hint at Hidden Content
+## Every view accounts for four states
 
-Progressive disclosure needs a visible affordance. Use the project's established cue; without one, let the next item peek `16–32px` past the scroll edge or show a disclosure control. Content hidden with zero cue may as well not exist.
+A view that shows data has four states: ready, loading, empty and error. Every view accounts for all four, because development runs against populated data and the other three are the ones that ship unconsidered.
 
-→ `references/spacing-and-adaptivity.md` — spacing between targets, layout margins, progressive-disclosure cues, full-bleed content, breakpoint selection, and localization growth behind §5–§10, read when this change sets spacing or margins, hides content behind a cue, or adapts across viewport sizes.
+It does so with the project's standard loading, empty and error parts. Each of the three is a small family of variants chosen by the shape of what is being shown: for loading, for example, a table-shaped placeholder, a card-shaped one and a small inline indicator; empty and error work the same way. Use the existing variant that matches the content's shape, and add a variant only when no existing one fits that shape. Every variant in a family shares the same look and motion, so they read as one system. Do not design a state for a single screen: that is a new component each time, and the views drift apart.
 
-### 6. Breathing Room Between Targets
+The loading part keeps the eventual layout where the project's part supports that, and is marked busy for assistive technology. The error part offers the way to retry. The empty part offers the one action that fills the view; its wording follows [[ux-writing]].
 
-Without an established density system, start with `12px` between adjacent bordered or filled controls and `24px` of clearance around borderless text- and icon-only controls. Compact layouts may use less when [[accessibility]] hit areas do not overlap and the controls remain visually distinct.
-
-### 7. Inset Buttons from the Edges
-
-In content layouts, keep full-width buttons inside the layout margins (start near `16px` inline on mobile) with a visible radius. Edge-to-edge actions are acceptable when they intentionally follow established platform or application chrome, account for safe areas, and remain distinguishable from system UI.
-
-### 8. Content Bleeds, Controls Float
-
-Backgrounds and media extend to the viewport edges; controls and text stay inside the layout margins and safe areas (`env(safe-area-inset-*)`). Sticky chrome floats above the content layer, it doesn't dam it.
-
-### 9. Hold Structure Until It Breaks
-
-Breakpoints come from the content, not device presets. Keep the expanded layout as long as it genuinely fits and collapse late; prefer container queries for component-level adaptation. Test the smallest and largest sizes first.
-
-### 10. Plan for Growth and Clipping
-
-Plan for substantial and language-dependent string growth rather than relying on a universal percentage: no fixed widths or heights on text containers, and let rows wrap. Never park critical actions where resizing or scrolling clips them; keep them reachable in the normal flow or stable chrome appropriate to the product.
-
-### 11. Every Data View Has Four States
-
-A view that renders data has four states, and a layout isn't done until all four are designed: **loading** (a skeleton preserving the eventual layout, marked busy for assistive technology — a spinner tells the user nothing about what's coming), **error** (with a retry path, not a dead end), **empty** (with the next step — what the user does to make content exist), and the content itself. The empty and error states are the ones that ship unstyled, because development always runs against populated happy-path data. And state that defines *which* view the user sees — active filters, the current page, a selected tab worth sharing — belongs in the URL (`searchParams`), where it survives refresh and travels in a link, not in component memory that evaporates.
-
-## Common Mistakes
-
-| Mistake | Fix |
-| --- | --- |
-| Separator line where spacing would do | Remove the line, double the gap between groups |
-| `margin-left` / `padding-right` in a localizable layout | `margin-inline-start` / `padding-inline-end` |
-| Content-layout button accidentally touches the viewport | Inset within the project margins; preserve intentional platform chrome |
-| Carousel/scroller that looks complete | Let the next item peek `16–32px` past the edge |
-| Adjacent controls merge or expanded hit areas overlap | Increase the gap using the project scale; use `12px`/`24px` as starting points |
-| Breakpoints at 768/1024 because they're the defaults | Break where the content actually stops fitting |
-| Fixed-width text container sized to one language | `max-width` + wrapping; test pseudo-localization and representative locales |
-| Primary action at the clip-prone bottom of a pane | Sticky positioning or stable chrome with safe-area padding |
-
-## Review Output Format
-
-Use this format only when the user asks for a standalone layout review. When [[interface-review]] orchestrates the review, provide domain evidence and findings to that skill and let its output format, severity scale, consolidation rules, cap, and verdict take precedence.
-
-Report all confirmed findings as one markdown table ordered by severity — `| Severity | Location | Before | After | Why |`, never separate "Before:" / "After:" lines. **Location** cites `path/to/file:line` (or the exact screen and component when there are no source files); **Before / After** show the current implementation and an actionable replacement; **Why** names the violated principle and its impact. Consolidate a repeated systemic issue into one row listing every affected location. **Severity**: `HIGH` blocks content or an action at a supported viewport; `MEDIUM` harms hierarchy, reading order, or adaptability; `LOW` is isolated alignment or spacing polish.
-
-After the findings: **Verification** — list the exact checks run and their observed results (the relevant viewport widths, reading order, zoom, RTL state when applicable), and name any check not run. Then **Verdict**: `Block` if any `HIGH` finding remains, `Needs changes` if only `MEDIUM` or `LOW` findings remain, `Approve` only when no actionable findings remain. When there are no findings, omit the table, state "No actionable layout findings", report verification, and end with `Approve`.
+State that decides which view a person sees and is worth sharing, such as filters, the page or a selected tab, belongs in the URL where the platform has one, so it survives a refresh.
 
 ## Provenance and maintenance
 
-Volatile facts in this skill and its references, last verified 2026-08: platform support claims (`env(safe-area-inset-*)`, container queries preferred over media queries, logical-property behavior) — re-verify against current browser-support data when a finding hinges on one; the numeric thresholds (12/16/24px spacing tiers, the 16–32px peek) are this skill's own conventions, not external facts — change them only as a deliberate decision here.
-
-## Reference files
-
-| File | What it answers |
-|---|---|
-| `references/grouping-and-alignment.md` | Space vs. separators, alignment edges, logical properties, importance ordering (§1–§4) |
-| `references/spacing-and-adaptivity.md` | Spacing between targets, layout margins, progressive disclosure, full-bleed content, breakpoints, localization growth (§5–§10) |
+Volatile facts in this skill, last verified 2026-08: platform support claims (`env(safe-area-inset-*)`, container queries preferred over media queries, logical-property behavior). Re-verify against current browser-support data when a finding hinges on one. The numeric values (the 2× gap rule, the 12/16/24px spacing tiers, the 16–32px peek) are this skill's own conventions, not external facts; change them only as a deliberate decision here.

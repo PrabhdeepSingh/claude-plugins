@@ -1,61 +1,31 @@
 ---
 name: interface-review
 description: >-
-  Cross-discipline review of a whole screen, flow, or feature — coordinates [[accessibility]], [[layout]], [[ux-writing]], [[typography]], [[colors]], and [[ui-polish]] into one ranked findings table and a single verdict. INVOKE for a holistic interface review or UI audit; quick and full modes. Orchestration only — it carries no domain rules. For one domain, or for build-time interface work, use the domain skills directly.
-argument-hint: "[quick|full] [scope]"
+  Review a whole screen, flow or feature across [[accessibility]], [[layout]], [[ux-writing]], [[typography]], [[colors]] and [[ui-polish]] and report what was found, most serious first. Use when asked for an interface review or UI audit. Not for one domain or for build-time work: use that skill directly.
+argument-hint: "[scope]"
 allowed-tools: Skill, Read, Bash, Grep, Glob
 ---
 
 # Review the interface as one system
 
-A strong interface is not six independent audits stapled together. Review the whole experience, let each domain skill own its rules, then consolidate the evidence into one prioritized verdict. This skill owns orchestration only: accessibility rules belong to [[accessibility]], structure to [[layout]], copy to [[ux-writing]], type to [[typography]], color to [[colors]], polish and motion to [[ui-polish]]. Never duplicate or override their rules here.
+The project's own instructions win: where its AGENTS.md, CLAUDE.md, design system or established conventions say otherwise, follow them and skip that part of this. Use the project's existing kit and tokens; do not add components, on-screen text or options that the project's design does not call for.
 
-## 1. Resolve Scope and Mode
+Review the whole experience against the project's own design intent first: its design system, its instructions about how much belongs on a screen, and its conventions. The domain skills supply defaults for what the project leaves open. A finding that asks for more components, more text or more options than the project's design allows is not a finding.
 
-Apply this to `$ARGUMENTS` — the text typed after the invocation, carrying an optional mode (`quick` or `full`) and an optional scope. If that token appears literally or is empty, infer the scope from the request and workspace, and use `full`. State the resolved scope in the output.
+Apply this to `$ARGUMENTS`, the scope to review. If that token appears literally or is empty, infer the scope from the request and the workspace, and state it. If the scope is too large to inspect credibly, narrow it to the most used complete flow and say where the boundary is.
 
-| Mode | Coverage | Finding cap |
-| --- | --- | --- |
-| `quick` | Primary user path and highest-traffic states; report only `HIGH` and `MEDIUM` | 5 |
-| `full` | Entire requested scope across all six domains, including empty, loading, error, and narrow-width states | 15 |
+A review is read-only. Change the interface only when the person also asks for that.
 
-If the scope is too large to inspect credibly, narrow it to the highest-traffic complete flow and state the boundary — never imply uninspected surfaces were reviewed. A review is read-only: implement findings only when the user also asks for that, and re-run the relevant verification afterward.
+## How to review
 
-## 2. Load the Domain Skills
+Find the framework, styling system, design tokens and preview or test commands, so findings follow the project's conventions. Load the domain skills that bear on the scope: `Skill(sonu:accessibility)`, `Skill(sonu:layout)`, `Skill(sonu:ux-writing)`, `Skill(sonu:typography)`, `Skill(sonu:colors)`, `Skill(sonu:ui-polish)`. If one does not load, say that domain was not reviewed.
 
-Identify the framework, styling system, design tokens, and available preview or test commands first — findings must follow the project's own conventions. Availability of the domain skills is then discovered by attempting the load — there is no way to enumerate installed skills without trying. Invoke each in this order, so foundational failures are not hidden by polish: `Skill(sonu:accessibility)`, `Skill(sonu:layout)`, `Skill(sonu:ux-writing)`, `Skill(sonu:typography)`, `Skill(sonu:colors)`, `Skill(sonu:ui-polish)`. A load that fails marks that domain `Not reviewed` — name the missing skill, continue with the rest, and never recreate its rules from memory, substitute a neighbor, or claim holistic coverage.
+Look at the rendered interface where you can, including its loading, empty and error states and a narrow width. Unit tests do not test layout or rendering, so a claim about how something looks rests on having looked. Do not report a visual finding from source alone when runtime behavior decides the result; mark it as not verified.
 
-This skill owns the final response: when a domain skill is loaded through this coordinator, apply its principles and references but ignore its standalone **Review Output Format** — the consolidated format, shared severity, and finding cap here take precedence. When two skills appear to cover the same issue, assign it to the skill that owns the underlying rule, mention secondary effects in the **Why** cell, and report it once.
+## What to report
 
-## 3. Evidence and Severity
+State the scope and what was and was not inspected. Then list the findings, most serious first: something that blocks a task, misleads, hides content or risks data loss comes before something that slows comprehension, which comes before isolated polish. For each finding give the location (`path/to/file:line`, or the screen and component), what is there now, what to change it to, and why. One root cause is one finding with all its locations; a fix in a token or shared part ranks above the same symptom in one place.
 
-Every finding cites `path/to/file:line` and the current implementation (or the exact screen and component when there are no source files). Do not report a code-level finding from visual appearance alone, or a visual finding from source alone when runtime behavior determines the result — inspect the rendered state or mark it not verified. One shared scale:
+Report what you found and no more. A short review, or none, is a valid result. Say which checks you ran and which you could not. Give no verdict: the person who asked decides what to do with the findings.
 
-- `HIGH`: blocks a task, misleads the user, hides content or controls, causes data-loss risk, or creates a repeated systemic failure.
-- `MEDIUM`: meaningfully harms comprehension, efficiency, adaptability, or consistency.
-- `LOW`: isolated polish with limited task impact — `full` mode only.
-
-Within a severity, rank by reach and leverage: a token or shared-component fix outranks the same symptom in one leaf component. One root cause is one finding — list every confirmed location in the same row. Never pad toward the cap; a short review or no findings is a valid result.
-
-## Review Output Format
-
-Always use these sections.
-
-**Scope and Coverage** — the mode, exact scope, stack conventions, and any boundary; then a coverage table (`| Domain | Evidence inspected | Result |`) listing all six domains, where `Clear` means inspected with no actionable finding and `Not reviewed` must explain why.
-
-**Findings** — one table ordered by severity, then reach and leverage: `| # | Severity | Domain | Location | Before | After | Why |`. Each row is one root cause; **Domain** names the owner (`Accessibility`, `Layout`, `Writing`, `Typography`, `Colors`, `UI`). Respect the mode's cap. With no findings, omit the table and state "No actionable interface findings."
-
-**Considered but Rejected** — up to 3 candidates in `quick`, 5 in `full`: `| Location | Candidate | Rejected because |`. A candidate is rejected when the owning skill permits the implementation, evidence is insufficient, the convention is intentional, or the change adds complexity without user benefit. These are real candidates inspected during the review — zero is a legal count ("none — nothing borderline was inspected"); never invent filler.
-
-**Verification** — each check or interaction, the exact command or steps, and the observed result, separating passes from **Not verified**. Run safe, relevant checks; never convert a verification gap into a finding. A production page should also show a clean console — zero errors and warnings before shipping — and remember unit tests don't test CSS, layout, or real rendering: the DOM being correct is verified by looking, not by a green suite.
-
-**Verdict** — exactly one: `Block` (one or more `HIGH` remain), `Needs changes` (only `MEDIUM`/`LOW` remain), `Approve` (no actionable findings and the claimed coverage was verified).
-
-## Self-check before the verdict
-
-- Was every domain either genuinely inspected or marked `Not reviewed` with the missing skill named — no coverage claimed beyond what was actually loaded and read?
-- Does every finding cite a location you actually inspected, with rendered-state checks run or explicitly marked not verified?
-- Is each root cause exactly one row, ranked by severity then reach — nothing padded toward the cap, nothing invented for the rejected table?
-- Did the review stay read-only, with implementation only on explicit request?
-
-**One exception to this whole output format:** when this methodology is applied as a review *lens* rather than a standalone review — [[self-review]]'s interface checklist, carried by its cold reader, is the case that exists today — the reader's own reporting contract wins: report in its requested line format and omit the sections, tables, and verdict above; a verdict returned into that skill's synthesis is unusable there.
+When this is used as a lens inside another review, such as the interface checklist of [[self-review]], report in that review's own format.

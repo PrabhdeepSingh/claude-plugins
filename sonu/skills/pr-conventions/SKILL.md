@@ -1,24 +1,20 @@
 ---
 name: pr-conventions
 description: >-
-  Author PR descriptions from the right per-change-type template (the repo's own PULL_REQUEST_TEMPLATE wins), embed issue-tracker links, keep the description current as fixes land, and reply to human and bot review threads. INVOKE when opening or updating a PR or responding to reviewer comments — inside /sonu:ship or standalone. ([[self-review]] seeds the risk section.)
+  Pull-request rules: use the repo's own PR template first, link the issue, keep the description current as fixes land, and reply to human and bot review threads. Use when opening or updating a PR or answering review comments. Not for projects without pull requests. Risk section: [[self-review]].
 ---
 
-# PR conventions — right template, living description, honest replies
+# PR conventions
 
-A PR body is the reviewer's briefing: it should match the change type so reviewers apply the right lens, stay accurate as fixes land, and every thread should get a reply that closes the loop. This skill handles all three.
+The project's own instructions win: where its AGENTS.md, CLAUDE.md or established conventions say otherwise, follow them and skip that part of this. A project that does not use pull requests skips this skill.
 
-## When to apply this
-
-- **Opening a PR** (`/sonu:ship` Phase 1) — scan for a team template, classify the change type, fill the matching built-in template, embed the `RISKS` list in the risk section (Section A → B).
-- **After fixes land** (after `/sonu:ship` Phase 4 push, and within each Phase 6 re-review cycle) — re-render the description in place (Section C).
-- **Responding to reviewer comments** (`/sonu:ship` Phase 5, or standalone) — reply to every open inline thread with the right wording; resolve bot threads but leave human threads for the reviewer to resolve (Section D).
+A PR body is the reviewer's briefing. It matches the change type, stays accurate as fixes land, and every review thread gets a reply. `/sonu:ship` uses section A and B when opening a PR, section C after each fix push, and section D when answering comments; each also works standalone.
 
 ---
 
-## A — Discover the team template first
+## A — Use the team's template first
 
-Before reaching for a built-in template, scan for the repo's own PR template. The team standard wins.
+The repo's own PR template wins over the built-in ones. Single-file locations take precedence over template directories, and both case spellings are checked because some filesystems are case-sensitive.
 
 ```bash
 # Single-file locations take precedence over multi-template directories.
@@ -50,26 +46,19 @@ echo "$TEMPLATE_FOUND"
 
 | Found | Action |
 |-------|--------|
-| Single file | Use it verbatim as the base. Fill its sections from the change context. If it has no risk or reviewer-attention section, append the `## Risk / reviewer attention` block at the end. If it has no issue-link placeholder, embed the detected issue link as the last Summary bullet (see Section B — Detect the linked issue). Preserve checklists exactly. |
-| Multi-template dir | Classify the change type (Section B). Pick the file whose name best matches (`feature.md`, `bugfix.md`, …). If none match, use the most generic file in the dir. Same fill + risk-append + issue-link rule. |
-| Nothing found | Fall through to the per-type built-in template in Section B. |
+| Single file | Use it as the base and fill its sections. If it has no risk section, append `## Risk / reviewer attention` at the end. If it has no issue-link placeholder, add the link as the last Summary bullet. Keep its checklists exactly. |
+| Template directory | Classify the change type (section B) and pick the file whose name matches best, or the most generic one. Then fill it the same way. |
+| Nothing | Use the built-in template for the change type (section B). |
 
 ---
 
-## B — Classify the change type + built-in templates
+## B — Change type, linked issue, built-in templates
 
-**Detect in this order (first signal wins):**
+Classify the change type from the first signal that applies: the branch prefix (`feat/`, `fix/`, `hotfix/`, `chore/`, `refactor/`, `docs/`, `perf/`, `release/`), then the commit prefixes ahead of the base, then the diff (new files with new tests is a feature; only docs is docs; only dependency or config bumps is a chore). The default is feature.
 
-1. **Branch name prefix** — `feat/` or `feature/` → feature; `fix/` or `bugfix/` → bugfix; `hotfix/` → hotfix; `chore/` → chore; `refactor/` → refactor; `docs/` or `doc/` → docs; `perf/` → perf; `release/` → release.
-2. **Conventional-commit prefix** on commits ahead of the base (`git log origin/$BASE..HEAD --oneline`): `feat:` → feature; `fix:` → bugfix; `chore:` → chore; `refactor:` → refactor; `docs:` → docs; `perf:` → perf.
-3. **Diff heuristic** — new files with new tests → feature; test-file-only changes → chore; only `.md` / docs-folder files → docs; only dependency or config bumps → chore.
-4. **Default** — feature.
+### Find the linked issue
 
-### Detect the linked issue first
-
-Before filling the template, look for an issue reference. It belongs in the PR body so reviewers (and the issue tracker) can link back to the original context.
-
-**Search order (first hit wins):**
+The issue reference belongs in the PR body so the tracker links back.
 
 ```bash
 BRANCH=$(git branch --show-current)
@@ -102,7 +91,7 @@ TRACKER_KEY=$(echo "$BRANCH $LOG_CLEAN" | grep -oE '\b[A-Z]{2,10}-[0-9]+\b' \
   | grep -viE '^(utf|iso|sha|rfc|md|aes|rsa|ecdsa|http|tls|ipv)-' | head -1)
 ```
 
-**Format the link based on what you found (check in order; first hit wins):**
+Format the link by the first row that applies:
 
 | Found | Formatted link |
 |-------|----------------|
@@ -113,28 +102,22 @@ TRACKER_KEY=$(echo "$BRANCH $LOG_CLEAN" | grep -oE '\b[A-Z]{2,10}-[0-9]+\b' \
 | Weak GitHub reference only (`$GH_ISSUE_WEAK`, no closing keyword, no tracker key) | `Related to #123` — never `Closes` on a guess; a bare `#N` may be a PR reference, and auto-closing the wrong item is worse than a soft link. Checked **last**: a real tracker key always outranks a keywordless `#N` guess |
 | Nothing found | Omit the issue line entirely — don't invent a reference |
 
-**Where to embed it:** add the formatted issue link as the **last bullet of `## Summary`** in whatever template is being filled (built-in or team), e.g. `- Closes #123` or `- Fixes [ABC-123](url)`. If the team template already has an issue-link placeholder, fill that instead.
+Add the link as the last bullet of `## Summary`, or fill the team template's own placeholder.
 
----
-
-Fill the matching template from `references/templates.md`. Drop any section that genuinely doesn't apply. Never leave a `<placeholder>` unfilled.
-
-→ `references/templates.md` — the 8 per-change-type templates (feature, bugfix, hotfix, chore, refactor, docs, perf, release), read once the change type is classified and you're actually filling a body.
+Then fill the matching template from `references/templates.md`. Drop a section that does not apply and leave no `<placeholder>` unfilled.
 
 ---
 
 ## C — Keep the description current
 
-Re-render the PR body in place after each fix pass and each re-review round. **Never duplicate sections.**
+Re-render the PR body in place after each fix pass and each re-review round. Do not duplicate sections.
 
-When invoked standalone, derive the PR number first — `PR=$(gh pr view --json number -q .number)` (inside `/sonu:ship`, use the ledger's recorded number). Every fence below is a fresh shell: redeclare `PR` in each, never assume it survived.
+1. Fetch the current body: `gh pr view $PR --json body -q .body`. Standalone, derive `PR` with `gh pr view --json number -q .number`.
+2. Update the Summary, Changes and Fix bullets to what the latest commits changed.
+3. If the fixes touched non-trivial logic, run `Skill(sonu:self-review)` on the latest diff and replace the `## Risk / reviewer attention` section in place.
+4. Keep everything else as it was: team-template checklists, breaking-change notes, screenshots.
+5. Write it back. Capture the text into a variable in the same fence that writes it, because passing an unset variable to `--body` blanks the live description:
 
-1. Fetch the current body: `gh pr view $PR --json body -q .body`.
-2. Update **Summary / Changes / Fix** bullets to reflect what the latest commits actually changed — not what was planned, what landed.
-3. If the fix surface touched non-trivial logic: run `Skill(sonu:self-review)` on the latest diff and replace the **Risk / reviewer attention** section with the new output.
-4. Preserve everything else verbatim — team-template checklists, breaking-change notes, screenshots, migration sections.
-5. **Dedup guard**: if `## Risk / reviewer attention` already exists in the body, replace it in-place. Never append a second copy.
-6. Write back — **capture the composed text into a variable explicitly, in the same fence that writes it**; passing an unset variable to `--body` silently blanks the live PR description:
    ```bash
    PR=$(gh pr view --json number -q .number)
    # Compose this at column 0 — a heredoc terminator (PREOF) must start the line, unindented.
@@ -147,27 +130,25 @@ When invoked standalone, derive the PR number first — `PR=$(gh pr view --json 
 
 ---
 
-## D — Reply to reviewer comments
+## D — Reply to review comments
 
-Every open inline thread deserves a reply that closes the loop. Pick the wording from the table; tone and resolve policy differ by commenter type.
-
-### Reply wording
+Every open inline thread gets a reply.
 
 | Scenario | Wording |
 |----------|---------|
-| **Fixed** | `Fixed in <SHA> — <one line on what changed>.` |
-| **Justified / keeping as-is** | `Keeping as-is — <reason referencing the convention, constraint, or trade-off>.` |
-| **False positive** | `I think this is a false positive — <why>; left a \`// TODO(review): <note>\` in the code marking it safe.` |
-| **Partially addressed** | `Addressed <X> in <SHA>; deferring <Y> because <reason>.` |
-| **Batched finding (one thread naming N locations)** | One reply for the whole thread, enumerating each location: `Fixed in <SHA> — line 87: <what>, line 162: <what>, line 203: <what>.` Never one reply per location, and never a reply covering fewer locations than the finding names — the resolve applies to the thread, so the reply must account for all of it. |
-| **Re-rolled or duplicate** (the ledger's `justified:` already holds this finding at this path, or a second bot raised the same point) | `Same as <the first thread's URL, from the justified: line> — <the recorded reply, verbatim>.` Never re-argue it. |
-| **Human question / need-info** | Answer directly. Offer the alternative if relevant, or ask the clarifying question back. |
+| Fixed | `Fixed in <SHA> — <one line on what changed>.` |
+| Keeping as-is | `Keeping as-is — <reason: the convention, constraint or trade-off>.` |
+| False positive | `I think this is a false positive — <why>; left a \`// TODO(review): <note>\` in the code marking it safe.` |
+| Partially addressed | `Addressed <X> in <SHA>; deferring <Y> because <reason>.` |
+| One thread naming several locations | One reply listing each location: `Fixed in <SHA> — line 87: <what>, line 162: <what>.` The resolve applies to the whole thread, so the reply accounts for all of it. |
+| Re-raised or duplicate finding (already in the ship ledger's `justified:`, or raised by a second bot) | `Same as <the first thread's URL> — <the recorded reply, verbatim>.` Do not argue it again. |
+| Human question | Answer directly, or ask the clarifying question back. |
 
-No AI attribution in any reply. Bot replies: one or two lines — and a `JUSTIFY` on a Minor-labeled finding, or on one the plugin itself classed as a nitpick, is **one sentence**; the fuller form is for Major and above. Human replies: slightly more explanatory on the justification "why."
+No AI attribution in any reply. Replies to bots are one or two lines, and one sentence when justifying a Minor finding. Replies to humans explain the reason a little more fully.
 
 ### Post the reply
 
-When invoked standalone (outside `/sonu:ship`, which already knows these values), derive the context and enumerate the open threads first:
+Standalone, derive the context and list the open comments first. Inside `/sonu:ship` these values are already known.
 
 ```bash
 REPO=$(gh repo view --json nameWithOwner -q .nameWithOwner)
@@ -177,7 +158,7 @@ gh api "/repos/$REPO/pulls/$PR/comments" --paginate \
   --jq '[.[] | {id: .id, login: .user.login, path: .path, line: .line, body: .body}]'
 ```
 
-Then reply to a specific comment (fresh shell — the leading declarations are required, per the shell discipline `/sonu:ship` states):
+Then reply to a specific comment. Each fence is a fresh shell, so the declarations are repeated:
 
 ```bash
 REPO=$(gh repo view --json nameWithOwner -q .nameWithOwner)
@@ -187,53 +168,40 @@ gh api -X POST "/repos/$REPO/pulls/$PR/comments/$COMMENT_ID/replies" \
   -f body="<reply text from table above>"
 ```
 
-### Read the severity the reviewer actually stated
+### Read the severity the reviewer stated
 
-Modern reviewers label each finding themselves, and the label is the comment's first line — CodeRabbit emits `_<category>_ | _<severity>_ | _<effort>_` with severity one of Critical / Major / Minor and effort one of Quick win / Heavy lift; other reviewers use Critical/High/Medium/Low or a `[P1]`/`[P2]`/`[P3]` prefix — read High and `[P1]` as Critical, Medium and `[P2]` as Major, Low and `[P3]` as Minor. Parse that line first and carry the reviewer's own word into triage rather than inventing a second scale — two scales for one finding is how a Major gets answered like a nit. The label sets the **default**, which an independent read may override in one direction only: Critical and Major are `FIX` regardless of effort; Minor is `FIX` when it names a concrete failing input and `JUSTIFY` otherwise; anything naming security, data loss, or a stated repo convention is `FIX` whatever label it carries. A finding with no label is triaged on `/sonu:ship` Phase 3's bullets alone. Do not hunt for `Nit:`/`Optional:`/`Consider:` prefixes — across 129 audited bot threads that vocabulary never appeared, and an executor looking for it treats everything as required. And when a reviewer marked something Minor, the reply gets a decision, not an apology — one sentence, no re-litigation.
+Reviewers that label findings do it on the comment's first line. CodeRabbit writes `_<category>_ | _<severity>_ | _<effort>_` with severity Critical, Major or Minor. Others use Critical/High/Medium/Low or a `[P1]`/`[P2]`/`[P3]` prefix: read High and `[P1]` as Critical, Medium and `[P2]` as Major, Low and `[P3]` as Minor. Copilot labels nothing. Carry the reviewer's own word into triage instead of inventing a second scale.
 
-### Tone + resolution policy
+The label sets the default. Critical and Major are `FIX`. Minor is `FIX` when it names a concrete failing input and `JUSTIFY` otherwise. Anything naming security, data loss or a stated repo convention is `FIX` whatever its label. An unlabeled finding is triaged on `/sonu:ship` Phase 3's bullets alone. Do not look for `Nit:`, `Optional:` or `Consider:` prefixes; current bots do not use them.
 
-**Bot threads** (inside `/sonu:ship`, any login matching that command's Phase 2 AI-reviewer registry — the canonical home; standalone, where that registry isn't loaded, classify mechanically: a commenter whose API `user.type` is `"Bot"`, or the literal login `Copilot`, is a bot):
-- Terse. Reply, then **resolve the thread**. Inside `/sonu:ship`, Phase 5 carries the exact calls. Standalone: fetch thread ids with a GraphQL `reviewThreads` query on the PR (each thread's first comment `databaseId` matches the comment id you replied to), then resolve each with the `resolveReviewThread` mutation — `gh api graphql -f query='mutation($id:ID!){ resolveReviewThread(input:{threadId:$id}){ thread{ isResolved } } }' -f id=<thread id>`.
+### Bot threads and human threads
 
-**Human threads** (all other logins):
-- Warmer; explain the "why" more fully in justified replies.
-- **Reply only.** Never call `resolveReviewThread` on a human's thread — leave resolution to them. Closing someone else's feedback thread is presumptuous and may conflict with their team's review workflow.
+A commenter is a bot when its login matches `/sonu:ship`'s Phase 2 registry (its one home). Standalone, a commenter whose API `user.type` is `"Bot"`, or the literal login `Copilot`, is a bot.
 
-### Self-check before moving on
-
-- Did every open bot thread get a reply **and** a resolve?
-- Did every human thread get a reply but remain unresolved?
-- Is any reply dismissive ("no issue here")? Rewrite it with an actual reason.
-- No AI attribution anywhere?
+- **Bot threads:** reply, then resolve the thread. Inside `/sonu:ship`, Phase 5 has the calls. Standalone, fetch thread ids with a GraphQL `reviewThreads` query on the PR (each thread's first comment `databaseId` matches the comment id you replied to), then resolve each: `gh api graphql -f query='mutation($id:ID!){ resolveReviewThread(input:{threadId:$id}){ thread{ isResolved } } }' -f id=<thread id>`.
+- **Human threads:** reply only. Never resolve a human's thread; closing someone else's feedback is theirs to do and may conflict with their team's workflow.
 
 ---
 
 ## E — Versions and changelogs
 
-Commits are how *you* track change; a **version** is how your *consumers* track it — the moment anything depends on the code, "latest on main" stops answering "what am I running, and is it safe to upgrade?". Three rules when a change ships to consumers:
+When a change ships to consumers:
 
-- **When unsure whether a change is breaking, assume it is.** A "patch" that changes behavior consumers relied on is a major change wearing a disguise — a surprise major is far cheaper than a broken consumer.
-- **A changelog is not `git log`.** It's the curated, consumer-facing answer to "what changed and do I care?" — grouped Added / Changed / Fixed / Deprecated / Removed / Security, phrased by user impact. Write the entry **in the same change that makes the change**, while the impact is fresh; reconstructed at release time, half of it is missing.
-- **Derive the version from the tag** where the ecosystem allows, so the artifact, the tag, and the changelog can never disagree — every hand-edited version file is a place for them to drift apart.
+- If unsure whether a change is breaking, treat it as breaking. A surprise major version costs less than a broken consumer.
+- A changelog is not `git log`. It is grouped Added, Changed, Fixed, Deprecated, Removed, Security, phrased by user impact, and written in the same change that makes the change.
+- Derive the version from the tag where the ecosystem allows, so the artifact, the tag and the changelog cannot disagree.
 
-## F — When the loop won't converge
+## F — Reviewer settings
 
-The loop is controlled from inside `/sonu:ship`, on any repo, whatever the reviewers' settings: one push per review cycle, one incremental review request per bot per cycle, CodeRabbit paused after its first substantive review and resumed before every exit, a findings-per-cycle series that stops a treadmill before the cap does. Nothing in ship depends on repo-side reviewer configuration. `references/reviewer-tuning.md` remains as optional reading for a repo owner who also wants to tune the reviewers themselves — read it only when asked to set up a repo's reviewers, never as a dependency of the loop.
+`/sonu:ship` controls its review loop from inside and depends on no repo-side reviewer configuration. `references/reviewer-tuning.md` is optional reading for a repo owner who wants to tune the reviewers themselves; read it only when asked to set up a repo's reviewers.
 
-## Provenance and maintenance
+## Maintenance
 
-Volatile facts in this file, last verified 2026-07:
-- **Reviewer severity headers** (Section D) — CodeRabbit's first-line `category | Critical/Major/Minor | Quick win/Heavy lift` header, Copilot's unlabeled findings, `[P1]`-style prefixes elsewhere. Verified 2026-09 by reading live PR threads; re-verify by opening any recent bot-reviewed PR and reading the first line of three inline comments.
-
-- **PR template locations** (Section A) — re-verify against GitHub's "Creating a pull request template" docs if template discovery ever misses a team's template.
-- **Tracker URL formats** (Section B: `atlassian.net/browse/`, `linear.app/<workspace>/issue/`, `app.shortcut.com/<workspace>/story/`) — re-verify by opening a known ticket in each tracker.
-- **AI-reviewer registry** — not stored here; the canonical home is `/sonu:ship` Phase 2.
-- **Per-reviewer tuning settings** (Section F) — vendor setting names and defaults, last verified 2026-09 in `references/reviewer-tuning.md`, which carries its own re-verification URLs.
+Last checked 2026-09: the reviewer severity headers in section D (re-check by reading the first line of a few recent bot comments), the PR template locations in section A, and the tracker URL formats in section B.
 
 ## Reference files
 
 | File | What it answers |
 |------|-----------------|
-| `references/templates.md` | The 8 per-change-type PR body templates (feature, bugfix, hotfix, chore, refactor, docs, perf, release) |
-| `references/reviewer-tuning.md` | Per-reviewer settings for review-once and Important-only (Claude Code Review, claude-code-action, Copilot, CodeRabbit) and how they interact with ship's re-review loop (Section F) |
+| `references/templates.md` | The built-in PR body templates by change type |
+| `references/reviewer-tuning.md` | Optional per-reviewer settings (section F) |

@@ -1,139 +1,78 @@
 ---
 name: ui-polish
 description: >-
-  Design-engineering details that make an interface feel polished — border radius, optical alignment, shadows and elevation, animations and micro-interactions, press feedback, icons. INVOKE PROACTIVELY when building or reviewing UI components, adding motion or hover/active states, or when the user says "make it feel better" or "something feels off". Text rendering: [[typography]]; hit areas, focus, reduced motion: [[accessibility]]; structure: [[layout]]; whole-screen audits: [[interface-review]].
+  Default values for interface finish: nested radius, optical alignment, shadows, press feedback, icon and motion values, and the generated-interface defaults to avoid. Use when polishing or reviewing components and motion. Not for text ([[typography]]), focus and reduced motion ([[accessibility]]), structure ([[layout]]) or whole-screen audits ([[interface-review]]).
 ---
 
 # Details that make interfaces feel better
 
-Great interfaces rarely come from a single thing. It's usually a collection of small details that compound into a great experience. Apply these principles when building or reviewing UI code.
+The project's own instructions win: where its AGENTS.md, CLAUDE.md, design system or established conventions say otherwise, follow them and skip that part of this. Use the project's existing kit and tokens; do not add components, on-screen text or options that the project's design does not call for.
 
-When reviewing, slow the interface down: replay motion at 10% speed in the browser's Animations panel and walk every state: hover, focus, active, loading, empty. What feels off at 10% speed is what's subtly wrong at full speed.
+Polish is many small details that add up. The values here are defaults: they apply where the project has no value of its own. A project's component library, tokens, density and established motion values win over every number in this skill, and a kit part is not restyled or given new props to match it.
 
-Preserve the project's component library, tokens, and density. Match its established motion language except where a principle below prescribes an exact interaction pattern.
+When reviewing motion, slow it down (10% speed in the browser's Animations panel) and walk each state: hover, focus, active, loading, empty. What looks wrong slowed down is what feels slightly off at full speed.
 
-Typography (text wrapping, font rendering, tabular numbers, spacing) is covered by [[typography]]; use that for anything text-related. Accessibility (hit areas, focus states, keyboard support, ARIA, reduced motion) is covered by [[accessibility]]. Layout structure (grouping, spacing between sections, breakpoints, spatial RTL) is covered by [[layout]].
+## Surfaces
 
-## Core Principles
+**Concentric radius.** For closely nested rounded surfaces, outer radius = inner radius + padding. Mismatched nested radii are a common reason an interface looks off.
 
-### 1. Concentric Border Radius
+**Optical alignment.** Where geometric centering looks wrong (a button with an icon, a play triangle, an asymmetric glyph), align by eye.
 
-Outer radius = inner radius + padding. Mismatched radii on nested elements is the most common thing that makes interfaces feel off.
+**Shadows for elevation, borders for structure.** Where a border exists only to give a button, card or container depth, a layered transparent `box-shadow` adapts better to varied backgrounds. Borders that carry structure or state stay: dividers, separators, input outlines, selected and focus states.
 
-→ `references/surfaces.md` — the radius arithmetic, optical-alignment adjustments, layered shadow recipes, and image-outline values behind §1–§3 and §8, read when this change nests rounded surfaces, adds elevation, or places an image.
+**Image outlines.** A `1px` outline at low opacity gives images a consistent edge: pure black at 10% in light mode and pure white at 10% in dark mode. A tinted neutral picks up the surface color and reads as dirt on the edge, so the color stays pure black or white; express it through the project's token where it has one.
 
-### 2. Optical Over Geometric Alignment
+→ `references/surfaces.md` — the radius arithmetic and its limit, alignment offsets, the shadow recipes and the image-outline values. Read when a change nests rounded surfaces, adds elevation or places an image.
 
-When geometric centering looks off, align optically. Buttons with icons, play triangles, and asymmetric icons all need manual adjustment.
+## Motion
 
-### 3. Shadows for Elevation, Borders for Structure
+**Interruptible by default.** Use CSS transitions for interactive state changes, since they retarget when interrupted. Keep keyframes for staged sequences that run once.
 
-For buttons, cards, and containers whose border exists only to create depth, prefer layered transparent `box-shadow` values. Keep borders that communicate structure or state: dividers, layout separators, and selected or focus states.
+**Restraint.** No custom animation on high-frequency interactions (keystrokes, row hovers, tab switches in a work tool); they get instant feedback or an opacity or color transition of 150ms or less. Motion is not the only feedback: every animated state change also has a static cue.
 
-### 4. Interruptible Animations
+**Entrances and exits.** For an infrequent staged entrance, split content into semantic chunks and stagger them by about 100ms. Exits are softer and shorter than entrances: a small fixed `translateY`, `ease-out`.
 
-Use CSS transitions for interactive state changes: they can be interrupted mid-animation. Reserve keyframes for staged sequences that run once.
+**Contextual icons.** Defaults for an icon that appears or swaps on a state change: scale `0.25` to `1`, opacity `0` to `1`, blur `4px` to `0`, with a spring of `duration: 0.3, bounce: 0`. Under reduced motion this becomes an opacity crossfade ([[accessibility]]).
 
-→ `references/animations.md` — interruptible-transition patterns, enter/exit and stagger timings, the icon cross-fade recipes, press feedback, and the motion-restraint rules behind §4–§10 and §15, read when this change adds or edits any animation or transition.
+**Press feedback.** Default `scale(0.96)` on press. An established project value is kept; below `0.95` feels exaggerated.
 
-### 5. Split and Stagger Enter Animations
+**No entrance on first render.** A stateful icon or toggle does not animate into its default state on page load (`initial={false}` on `AnimatePresence`), as long as that does not remove an intended page entrance.
 
-For an infrequent staged entrance where sequence helps communicate hierarchy, break content into semantic chunks and stagger them by ~100ms instead of animating one container. Do not stagger routine, high-frequency interactions.
+**Name the properties.** Transition the properties that change, not `all`. Tailwind's `transition-transform` covers `transform, translate, scale, rotate`. Add `will-change` only for `transform`, `opacity` or `filter`, and only on observed first-frame stutter, since each layer costs memory.
 
-### 6. Subtle Exit Animations
+→ `references/animations.md` — the default values, the cross-fade recipe with and without a motion library, and when `initial={false}` breaks an entrance. Read when a change adds or edits an animation or transition.
 
-Use a small fixed `translateY` instead of full height. Exits should be softer than enters. Use `ease-out` for both enter and exit transitions.
+## Icons
 
-### 7. Contextual Icon Animations
+An icon beside text carries the text's optical weight: `1.5px` stroke beside regular text, `2px` beside semibold, where the icon set supports stroke variants. One icon set per surface. Icons use `currentColor` and take their states from CSS, not from separate assets. Outline is the default variant and fill marks the active state.
 
-Animate icons with `opacity`, `scale`, and `blur` instead of toggling visibility. Use exactly these values: scale from `0.25` to `1`, opacity from `0` to `1`, blur from `4px` to `0px`. Under `prefers-reduced-motion`, [[accessibility]]'s rule wins over these values: replace the scale/blur entrance with an opacity-only crossfade — the exact values govern the full-motion variant only. If the project has `motion` or `framer-motion` in `package.json`, match that package's import path (or the established nearby imports when both exist) and use `transition: { type: "spring", duration: 0.3, bounce: 0 }`; bounce must always be `0`. If no motion library is installed, keep both icons in the DOM (one absolute-positioned) and cross-fade with CSS transitions using `cubic-bezier(0.2, 0, 0, 1)`; this gives both enter and exit animations without any dependency.
+→ `references/icons.md` — stroke weights, sizing, the outline and fill pair, and which icons flip in right-to-left. Read when a change adds, swaps or restyles an icon.
 
-### 8. Image Outlines
+## Don't ship the model default
 
-Add a subtle `1px` outline with low opacity to images for consistent depth. The color must be pure black in light mode (`oklch(0 0 0 / 0.1)`) and pure white in dark mode (`oklch(1 0 0 / 0.1)`), never a near-black like slate, zinc, or any tinted neutral. A tinted outline picks up the surface color underneath it and reads as dirt on the image edge. The *pure-black/white at low alpha* is the non-negotiable part, not the literal notation: in a project with a semantic token system, express the value through a token in the project's existing notation ([[colors]]' rule) rather than pasting a raw `oklch()` string.
-
-### 9. Scale on Press
-
-A subtle `scale(0.96)` on click gives buttons tactile feedback. Default to `0.96`; honor an established project value down to `0.95`, and never go below `0.95` — anything smaller feels exaggerated. Add a `static` prop to disable it when motion would be distracting.
-
-### 10. Skip Animation on Page Load
-
-Use `initial={false}` on `AnimatePresence` to prevent enter animations on first render. Verify it doesn't break intentional entrance animations.
-
-### 11. Never Use `transition: all`
-
-Always specify exact properties: `transition-property: scale, opacity`. Tailwind's `transition-transform` covers `transform, translate, scale, rotate`.
-
-→ `references/performance.md` — transition specificity and the `will-change` rules behind §11–§12, read when this change animates a property or you hit first-frame stutter.
-
-### 12. Use `will-change` Sparingly
-
-Only for `transform`, `opacity`, `filter`, the properties the GPU can composite. Never use `will-change: all`. Only add when you notice first-frame stutter.
-
-### 13. Match Icon Stroke to Text Weight
-
-An icon next to text carries the text's optical weight: `1.5px` stroke beside regular (400) text, `2px` beside semibold (600). One stroke weight per icon set; never mix libraries on one surface.
-
-→ `references/icons.md` — stroke weights, `currentColor` state handling, outline vs. fill, sizing, and RTL flipping behind §13–§14, read when this change adds, swaps, or restyles an icon.
-
-### 14. One SVG, Recolored per State
-
-Icons use `currentColor` and get their states (hover, selected, disabled) from CSS color and opacity, never from separate assets. Outline variant is the default; fill variant marks the active state.
-
-### 15. Motion Restraint
-
-No custom animation on high-frequency interactions: the attention cost repeats on every trigger. Motion is never the only feedback channel; every animated state change also needs a static cue (color, icon, label).
-
-### 16. Don't Ship the Model Default
-
-A generated interface has a recognizable house style, and every entry in it is a defect with a reason:
+A generated interface has a recognizable house style. Each entry here is a defect when it is used as a default:
 
 | Model default | Why it's a problem |
 | --- | --- |
 | Purple/indigo everything | The visually "safe" palette makes every generated app look identical — derive color from the product's own brand or content |
 | Gradients everywhere | Visual noise that clashes with most real design systems |
-| `rounded-2xl` on everything | Maximum rounding ignores the radius hierarchy (§1's concentric rule) that real designs use to signal nesting |
+| `rounded-2xl` on everything | Maximum rounding ignores the radius hierarchy (the concentric rule) that real designs use to signal nesting |
 | Generic hero section | Template-driven layout with no connection to the actual content or user need |
 | Lorem-ipsum-style copy | Placeholder text hides the layout problems real content reveals — length, wrapping, overflow |
 | Equal oversized padding | Uniform generous spacing destroys visual hierarchy and wastes screen space |
 | Stock card grids | A uniform grid is a layout shortcut that ignores information priority and scanning order |
 | Shadow-heavy depth | Layered shadows compete with content and are costly to render on low-end devices |
 
-None of these is banned outright — each is banned *as a default*: reach for it only when the product's content and brand actually call for it.
-
-## Common Mistakes
-
-| Mistake | Fix |
-| --- | --- |
-| Same border radius on closely nested parent and child | Calculate `outerRadius = innerRadius + padding` |
-| Icons look off-center | Adjust optically with padding or fix SVG directly |
-| Border used only to fake elevation | Use layered `box-shadow` with transparency; keep structural and state borders |
-| Jarring staged entrance or contextual exit | Stagger infrequent entrances and keep context-preserving exits subtle |
-| Stateful icon or toggle animates its default state on page load | Add `initial={false}` to that `AnimatePresence`; preserve intentional page entrances |
-| `transition: all` on elements | Specify exact properties |
-| First-frame animation stutter | Add `will-change: transform` (sparingly) |
-| Hairline icon beside bold text | Match the stroke width to the text weight |
-| Separate icon assets per state | One `currentColor` SVG, states via CSS |
-| Filled icons everywhere | Outline as default, fill only for the active state |
-| Entrance animation on every hover or keystroke | Instant feedback or ≤150ms opacity/color transition |
-
-## Review Output Format
-
-Use this format only when the user asks for a standalone UI-polish review. When [[interface-review]] orchestrates the review, provide domain evidence and findings to that skill and let its output format, severity scale, consolidation rules, cap, and verdict take precedence.
-
-Report all confirmed findings as one markdown table ordered by severity — `| Severity | Location | Before | After | Why |`, never separate "Before:" / "After:" lines. **Location** cites `path/to/file:line` (or the exact screen and component when there are no source files); **Before / After** show the current implementation and an actionable replacement; **Why** names the violated principle and its impact. Consolidate a repeated systemic issue into one row listing every affected location. **Severity**: `HIGH` makes an interaction misleading, unresponsive, or repeatedly disruptive; `MEDIUM` creates a noticeable craft or consistency problem; `LOW` is isolated polish.
-
-After the findings: **Verification** — list the exact checks run and their observed results (every relevant state, plus motion inspected at 10% speed in the browser's Animations panel — or verified from source with the slowed replay named as still needing a human when applicable), and name any check not run. Then **Verdict**: `Block` if any `HIGH` finding remains, `Needs changes` if only `MEDIUM` or `LOW` findings remain, `Approve` only when no actionable findings remain. When there are no findings, omit the table, state "No actionable UI-polish findings", report verification, and end with `Approve`.
+None of these is banned outright. Each is banned as a default: use it only when the product's content and brand call for it.
 
 ## Reference files
 
 | File | What it answers |
 |---|---|
-| `references/surfaces.md` | Border radius, optical alignment, shadows, image outlines (§1–§3, §8) |
-| `references/animations.md` | Interruptible animations, enter/exit transitions, icon animations, scale on press, motion restraint (§4–§10, §15) |
-| `references/icons.md` | Icon stroke weight, states via `currentColor`, outline vs. fill, sizing, RTL flipping (§13–§14) |
-| `references/performance.md` | Transition specificity, `will-change` usage (§11–§12) |
+| `references/surfaces.md` | Border radius, optical alignment, shadows, image outlines |
+| `references/animations.md` | Interruptible animations, enter and exit values, icon animation, press feedback, motion restraint |
+| `references/icons.md` | Icon stroke weight, states via `currentColor`, outline vs. fill, sizing, RTL flipping |
 
 ## Provenance and maintenance
 
-Last verified 2026-07. The volatile claims here are the ecosystem-dependent ones: the `motion` / `framer-motion` package names, import paths, and API surface in §7 and §10 (`AnimatePresence`, `initial={false}`, the spring `transition` object), and the set of properties Tailwind's `transition-transform` covers in §11. Re-verify against the installed package's own documentation and the project's Tailwind version before relying on a specific API shape; the motion principles and the exact numeric values they prescribe are stable.
+Last verified 2026-07. The volatile claims here are the ecosystem-dependent ones: the `motion` / `framer-motion` package names, import paths, and API surface (`AnimatePresence`, `initial={false}`, the spring `transition` object), and the set of properties Tailwind's `transition-transform` covers. Re-verify against the installed package's own documentation and the project's Tailwind version before relying on a specific API shape. The numeric values are this skill's own defaults, not external facts; change them only as a deliberate decision here.

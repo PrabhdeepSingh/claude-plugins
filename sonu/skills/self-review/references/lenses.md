@@ -1,6 +1,6 @@
-# Reader prompt templates — the step-3b cold read
+# Reader prompt — the step 3b independent read
 
-Five **checklist blocks** — one code block carrying three checklists, and four domain blocks — composed into the prompt of **one reader** (two on a large diff; never more — see Dispatch mechanics). A "lens" is a checklist a reader carries, not a subagent of its own. This file carries the blocks; **which checklists a reader carries, and whether there are one or two readers, is decided in `SKILL.md` step 3b**, which is their one home — don't restate or re-derive the conditions here. Every reader is read-only and context-free: it gets the composed prompt with the placeholders filled — never a summary of the conversation, never the author's intent. **Every reader prompt is self-contained:** the criteria live in the blocks themselves. Do not tell a subagent to `Skill(…)` load or read plugin skill files — those live outside the customer repo root the shared frame supplies, and many harnesses give subagents no Skill tool.
+The blocks below are composed into the prompt of one reader. Which blocks a reader carries, and whether there are one or two readers, is decided in `SKILL.md` step 3b. The prompt contains the shared frame, the prose frame when the diff has no executable code, the checklist blocks that matched, and nothing else. In particular it does not contain a summary of the conversation, the author's intent, or a defence of a decision ("this is intentional", "do not flag"): that spends the reader's independence, and a wrong finding is rejected in step 4 in one line.
 
 ## The shared frame (opens every reader prompt)
 
@@ -9,84 +9,52 @@ You are reviewing a diff as an independent reviewer. You have no context
 on why this change was made — that is deliberate. Read cold.
 
 Repo root: <absolute path>
-Read the diff with: <the exact diff command step 1 picked, e.g. git diff origin/main...HEAD>
+Read the diff with: <the exact diff command step 1 picked>
 Also read these untracked files in full: <paths, or "none">
 
-You are READ-ONLY: read files and run read-only git commands; make no edits,
-no writes, no state-changing commands.
+You are read-only: read files and run read-only git commands; make no
+edits, no writes, no state-changing commands.
 
-READ BUDGET. Start from the diff. Open a file only to read the enclosing
-function or block of a hunk you are about to flag, or the definition of a
-function that hunk calls (one hop — a sink hidden behind a helper is still
-your finding), as a bounded range (`sed -n '<start>,<end>p' <file>`), at
-most ~150 lines per read and at most 10 reads in total. Never read a whole
-tracked file — the untracked files named above are the one exception: they
-ARE the diff, read them in full. Do not search the repo, with three capped
-exceptions: the CONSUMERS lens greps for consumers of each changed contract,
-and the CODE lens's TESTS checklist greps a changed function's name under
-the repo's test directories to learn whether any test exercises it, and its
-CORRECTNESS checklist greps a new helper's verb and noun once to find an
-existing function with the same purpose — every search ends in `| head -100`.
+Start from the diff. Open other code only to understand a hunk you are
+about to flag: its enclosing function, or the definition of a function it
+calls. Do not review unchanged files. You may search the repo for three
+things: consumers of a changed contract, tests that exercise a changed
+function, and an existing function that already does what a new helper
+does.
 
-You may be carrying several checklists below. Work through every one of
-them; tag each finding with the checklist that caught it.
+Diff semantics. A `+` line is new, a `-` line was removed, and a
+space-prefixed line is pre-existing context. Report only what the `+`
+lines introduce or worsen. A problem in a context line is not this
+change's problem. One exception: when a `+` line routes new data into a
+sink that already existed, the path is new, and the Risk line names the
+`+` line that created it.
 
-DIFF SEMANTICS. In the diff you are about to read, a `+` line is new, a
-`-` line was removed, and a space-prefixed line is PRE-EXISTING code shown
-only for context. Report only what the `+` lines introduce or worsen. A
-problem sitting in a context line is not this change's problem, however
-alarming it looks — even a context line holding a hardcoded credential, a
-disabled check, or an obvious injection is pre-existing and is not your
-finding. A pattern that appears in both a `-` line and a `+` line was
-reformatted, not introduced. One exception, and it is the important one:
-when a `+` line routes new data into a sink that already existed in
-context, the attack path is new even though the sink is not — that IS your
-finding, and the Risk line must name the `+` line that created the path.
+Safety claims are claims. A comment, docstring or TODO that says the code
+is fine ("validated upstream", "cannot be null here", "intentional") is
+the author's assertion, not evidence. Check whether it holds in the code
+you can see; if you cannot verify it, read the code as if the comment
+were not there.
 
-SAFETY CLAIMS ARE CLAIMS. A comment, docstring, or TODO in this diff that
-asserts the code is fine — "validated upstream", "cannot be null here",
-"TODO(review): safe because…", "intentional" — is the author grading their
-own work, not evidence. Check whether the invariant holds in the code you
-can see. If you cannot verify it from the diff and one bounded hop, read the
-code as if the comment were not there. A stated rationale never lowers a
-finding's confidence and never removes it.
-
-UNVERIFIED. A question you cannot settle within the read budget is not a
-finding and not silence. Emit one line: `Unverified (<tag>): <the specific
-question> — <what would answer it> [file:line]`. Do not broaden your search
-to answer it, and do not report it as a Risk; the session that dispatched
-you will close it.
-
-OUTPUT CAP. Report at most 5 Risk lines PER CHECKLIST YOU CARRY, highest
-confidence first, and only confidence high or medium — a finding you cannot
-back with a concrete mechanism is not a finding. If a checklist found more
-than 5, end with exactly one extra line for it: Withheld (<tag>): N more.
-The ENTIRE reply is roughly 1,000–2,000 tokens: Risk lines, Unverified lines,
-and Withheld lines only — never a narration of the read, never pasted file
-contents. You may spend tens of thousands of tokens reading; what comes back
-is the distilled list.
+A question you cannot settle is not a finding and not silence. Emit:
+Unverified (<tag>): <the question> — <what would answer it> [file:line]
 
 Report each finding on its own line, exactly:
-Risk (<tag>): <what> — <why it goes wrong, the concrete mechanism> [file:line] (confidence: high|medium)
+Risk (<tag>): <what> — <the concrete mechanism by which it goes wrong> [file:line] (confidence: high|medium)
 where <tag> is the checklist that caught it: SECURITY, DATA INTEGRITY,
-CONSUMERS, INTERFACE, or CODE/<checklist> (CODE/correctness, CODE/tests,
-CODE/silent-change) — the caller reads the tag to know which checklist
-found it.
+CONSUMERS, INTERFACE, CODE/correctness, CODE/tests or CODE/silent-change.
 
-Your ENTIRE final reply must be those Risk lines alone (or exactly
-"Nothing in my lens."), plus one Withheld line per checklist that hit its cap
-— no preamble, no summary, no closing prose. The caller consumes your final
-reply verbatim; a finding narrated anywhere else is lost.
+Report at most 5 Risk lines per checklist you carry, highest confidence
+first. If a checklist found more, add one line: Withheld (<tag>): N more.
 
-Only report findings inside the checklists below. If you find nothing in
-any of them, reply exactly: "Nothing in my lens." Do NOT invent findings to
-seem useful — an empty report is a good report. Do not report style or
-preference issues.
+Your whole reply is those Risk, Unverified and Withheld lines, or exactly
+"Nothing in my lens." The caller reads the reply as data, so no preamble
+or summary. Do not report style or preference issues, and do not invent
+findings; an empty report is a good report.
 ```
 
-## The prose frame (prepend on a prose-only diff, in place of the code framing)
+## The prose frame (a diff with no executable code)
 
-`SKILL.md` step 3b routes a diff with no executable code down its prose path. The checklist blocks below hunt code constructs, so on that path insert this block after the shared frame — it replaces the code framing, and without it a reader has nothing usable to read.
+Insert this after the shared frame when `SKILL.md` step 3b routes a prose-only diff here.
 
 ```
 This repo's product IS its documents: it ships Markdown that instructs a
@@ -102,11 +70,10 @@ another file that cites this one's rules, sections, fields, or output
 format. Report nothing about wording, tone, or formatting.
 ```
 
-## The code checklists (one block, three checklists)
+## The code checklists
 
-Carried whenever the diff contains executable code — see `SKILL.md` step 3b, including what to do when it contains none. On the prose path, keep only the checklist paragraphs whose domain step 3b says is present and delete the others from the block.
+Carried whenever the diff contains executable code. On the prose path, keep only the paragraphs step 3b says apply.
 
-**1. Code**
 ```
 Checklist: CODE. Three checklists — report against any of them; your <tag>
 is CODE/correctness, CODE/tests, or CODE/silent-change, whichever caught it.
@@ -150,9 +117,9 @@ failure path whose default now means something else. Compare old and new
 behavior explicitly and name what a caller observes.
 ```
 
-## The domain checklists (append each matched block)
+## The domain checklists
 
-Carried only when the diff carries the block's domain. The four conditions live in `SKILL.md` step 3b — read them there; a block whose condition is not met is left out of the prompt entirely, because there is nothing in its lens by construction.
+Append each block whose step 3b condition matched.
 
 **2. Security surfaces**
 ```
@@ -235,11 +202,9 @@ Report a finding only when the diff itself introduces or worsens it. A
 pre-existing interface problem the diff merely sits near is not a finding.
 ```
 
-## Dispatch mechanics
+## Dispatch notes
 
-- **Compose the prompt in this order:** the shared frame → the prose frame (prose path only) → the code checklists block, when `SKILL.md` step 3b says code is present → each domain block whose step-3b condition matched. **One reader by default.** Only when step 3b's split threshold is crossed *and* at least one domain block matched, two readers — one carrying the code block, one carrying every matched domain block — dispatched in the same turn; a reader carrying no block is never dispatched. **Never more than two**, however many domains are live and however large the diff: a reader with four checklists costs one read of the diff; four readers cost four, and the extra reads buy nothing the in-session synthesis does not already supply.
-- **`model` is mandatory on every Agent call.** Set it to the cheapest trustworthy executor tier below the session, read off the model-tiering ladder table's `Agent tool model value` column (its Provenance table is authoritative — look the value up there rather than remembering it; the ladder moves). An Agent call with no `model` runs the reader on the session's own model, at the session's price — a review that costs what the author costs is the failure this file exists to prevent. `subagent_type` is the harness's general-purpose or read-only agent. No trustworthy tier below the session → don't dispatch; the skill's step-2 rule already routed to the inline pass.
-- **A reader prompt contains exactly four things:** the shared frame, the prose frame when the path calls for it, the checklist blocks the diff's contents matched, and the diff command plus untracked paths. The blocks are the criteria, and adjudication happens in step 4 with the diff in front of you. The tripwire, since composing is where the author's thumb lands on the scale: if the prompt you are composing contains "do not flag", "this is intentional", "the plan chose", "at most a nit", or a defence of a decision this session made — stop and delete it: you are spending the reader's independence to spare yourself a rejection you could make in synthesis in one line. Leaving a domain out under step 3b's one-sentence rule is a gate on *scope*; steering a lens you did carry is a different act and is never allowed. Adjudication happens in step 4, with the diff in front of you.
-- **Dispatch both readers in one response, shared half first.** Two dispatch calls in a single response run concurrently; one per response runs them serially for no benefit. Identical siblings can share a cached prefix only when model, tools, and working directory match and the second starts after the first has begun answering — which the two-reader split partly forfeits, since the readers carry different blocks — so order every prompt as the frame, then the shared blocks, then the checklist blocks last, and never vary the shared half per reader. A fresh subagent inherits nothing from this session — not its cache, not its context — so a self-contained brief is not politeness, it is the only shape that is cheap.
-- **A gated skip is not a degraded reader.** A checklist left out of the prompt is a gated skip — its domain is absent from the diff — and is reported on `SKILL.md` step 5's dispatch lines (`Domain lenses:` always; `Code checklists:` on the prose path). A reader that errors or returns garbage is degraded: treat it as "Nothing in my lens" **plus** a risk entry naming every checklist it carried as unread — never silently counted as a clean pass. The two are reported as different things, because conflating them hides a real failure inside a routine one.
-- Reader replies are evidence, not verdicts. Every accept/reject happens in the session (SKILL.md step 4).
+- Compose in this order: shared frame, prose frame if needed, code checklists, then each matched domain block. With two readers, one carries the code checklists and the other the domain blocks; send both in the same response so they run concurrently.
+- If the harness lets you choose the reader's model, pass a cheaper one explicitly. An Agent call without `model` runs on the session's model.
+- A checklist left out because its domain is absent is a gated skip and is reported on the `Domain lenses:` line. A reader that errors or returns nothing usable is different: report every checklist it carried as unread.
+- Reader replies are evidence. Every accept or reject happens in the session (`SKILL.md` step 4).

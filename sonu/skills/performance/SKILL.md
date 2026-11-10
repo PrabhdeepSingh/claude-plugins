@@ -1,12 +1,14 @@
 ---
 name: performance
 description: >-
-  Performance work as measurement discipline — baseline first, one change at a time, beat the noise, and a keep/revert verdict where neutral is a revert. INVOKE when making anything faster or lighter, investigating slowness, or reviewing an optimization — "optimize", "too slow", "reduce latency/bundle size" — even mid-build. NOT for diagnosing functional bugs ([[debugging]]) or query-shape hygiene while writing ordinary code ([[code-standards]] §5).
+  Measurement rules for performance work: baseline first, one change at a time, beat the noise, and a neutral result is reverted. Use when making something faster or lighter, or reviewing an optimization. Not for functional bugs ([[debugging]]) or ordinary query hygiene ([[code-standards]]).
 argument-hint: "[what to make faster, or the optimization to verify]"
 allowed-tools: Skill, Read, Write, Edit, Bash
 ---
 
 # Performance — the measurement is the work
+
+The project's own instructions win: where its AGENTS.md, CLAUDE.md or established conventions say otherwise, follow them and skip that part of this.
 
 Most "optimizations" are guesses wearing confidence: a change lands because it *should* be faster, nobody measures, and the codebase accretes complexity that never bought anything. The discipline that prevents this is not knowing the tricks — it's the loop around them: measure a baseline, change one thing, re-measure the same way, and **keep only what provably paid**. Code you keep, you maintain forever; make it pay for itself.
 

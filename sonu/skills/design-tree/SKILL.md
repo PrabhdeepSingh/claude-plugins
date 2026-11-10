@@ -1,180 +1,75 @@
 ---
 name: design-tree
 description: >-
-  Make design decisions as an explicit branching tree — genuine alternatives, decisive rationale, rejected branches preserved. INVOKE PROACTIVELY when planning or designing any implementation approach, or choosing between architectures, libraries, or data models — especially in plan mode. Skip trivial or forced changes with no real alternatives.
+  Records design decisions as a tree: real alternatives, the deciding reason, and rejected branches kept. Use when choosing between architectures, libraries or data models, or writing an implementation plan. Not for trivial or forced changes. Unclear goal: [[intent-interview]]; standards that pre-decide forks: [[code-standards]].
 argument-hint: "[topic or decision to tree]"
 allowed-tools: Skill, Read, Write, Edit
 ---
 
-# Design Tree — decide by branching, not by marching
+# Design tree — decide by branching
 
-Design isn't a straight line from question to answer. It's a tree: each decision point is a node with multiple branches; you pick one, sometimes backtrack, and move forward. The genealogy of what you chose *and what you didn't* is the record that keeps decisions from getting silently relitigated later, and that lets you backtrack to a real fork when a downstream choice invalidates an earlier one.
+The project's own instructions win: where its AGENTS.md, CLAUDE.md or established conventions say otherwise, follow them and skip that part of this. When the project has its own plan or brief format, record the decisions in that format and at its length; the tree notation below is the default, not a requirement.
 
-This skill makes you design that way: interview first to confirm you're solving the right problem, then expose the real decision points, enumerate genuine alternatives, record the chosen branch with its rationale, and preserve the rejected branches with the reasons they lost.
+A design has decision points where it could go more than one way. Recording what was chosen and what was rejected, with reasons, stops decisions being reopened silently and gives you a known fork to return to when a later choice invalidates an earlier one.
 
-## How to apply this
+Invoked directly as `/sonu:design-tree`, apply this to `$ARGUMENTS`; if that token appears literally or is empty, apply it to the current design or plan. To design and implement together, run `/sonu:build`.
 
-Before mapping any decision, **interview the user.** Before branching, before enumerating anything — ask. A few sharp, targeted questions about intent, constraints, success criteria, and non-goals are the highest-leverage work in any design task. Designing the right problem is worth more than any number of well-reasoned branches on the wrong one.
+## 1. Confirm the problem
 
-When planning or designing an approach, run through this in sequence: interview → load applicable standards → find decision points → enumerate alternatives → record choices and rationale → emit the tree. When invoked directly as `/sonu:design-tree`, apply it to `$ARGUMENTS` — the text typed after the invocation; if that token appears literally or is empty, apply it to the current design, plan, or discussion in context; and if the intent is to design AND implement end-to-end, run `/sonu:build` instead — it runs this methodology as its design gate, then builds test-first and self-reviews. When in plan mode, write the tree into the plan file's `## Design Tree` section; otherwise print it in-chat.
+Ask the user only what the repository cannot answer and a wrong guess would make expensive: scope first, then anything touching security or personal data, then user-visible behaviour, then technical detail. Read the code before asking, and cite the `file:line` in the question. If the request already states intent, constraints and what done looks like, say what you understood and proceed. If the project says not to wait for the owner, or nobody can answer (a subagent, a headless run), state your assumptions and mark any node they leave open with `[?]`. When the goal itself is unclear, that is [[intent-interview]].
 
----
-
-## 1. Interview first — confirm the problem before solving it
-
-**This is the highest-leverage step.** Ask before you branch. The goal is a *shared understanding* of what you're designing: intent, constraints, success criteria, and non-goals. A few sharp questions up front save context, tokens, and the headache of treeing the wrong thing.
-
-How to interview well:
-
-- **Target the unknowns, not the obvious.** Skip what's already clear from the request. Ask only what a wrong assumption would make expensive to unwind.
-- **Read before you ask.** Every question costs a human round-trip, so never spend one on something the repository already answers. Before the first question, find the behavior in the actual code — the file, the function, the test that covers it — and cite it in the question itself: "the expiry check at `src/auth/session.ts:88` redirects once and drops the return path; is losing the return path acceptable?" beats "how should expired sessions behave?" by the whole width of the repository. A question with no `file:line` in it is usually one you could have answered yourself, and "which file handles this?" is never the user's job. The same bar applies to what the tree asserts: a statement about how the code works today carries the path and line where you read it.
-- **Record each answer where it survives, the moment it arrives.** An answer that exists only in the conversation is the one thing in this pass that cannot be regenerated — the repository can be re-read and the tree re-derived, but a human's ruling is gone when the context is. Write each answer as it is given, one line (`Q: … → A: …`), into the plan file under the tree — or into the ticket, where the ticket is the artifact — before asking the next question. And when choosing which unknowns earn a question, order them by what a wrong guess costs: scope first, then anything touching security or personal data, then how it behaves for the user, then technical detail — a wrong technical guess is a refactor, a wrong scope guess is the wrong feature.
-- **Keep it tight.** 2–4 questions, not an interrogation. If you find yourself wanting to ask more, the problem is underspecified enough to warrant a scoping pass before designing anything — that pass is [[intent-interview]], which tests whether the asked-for artifact is even the right one.
-- **Pin down success criteria explicitly.** "How will we know it's working?" is often the most clarifying question — it reveals scope, correctness bars, and non-goals at once.
-- **Ask about constraints early.** Constraints eliminate whole branches before you draw them, so surfacing them first makes the rest cheaper.
-- **Know when not to interview.** If the request already states intent, constraints, and success criteria, don't ask rote questions to satisfy this step — say what you understood and proceed. And if no user can answer (a non-interactive run, a subagent, a headless session), skip the interview entirely: state the assumptions you're proceeding on, and mark any node those assumptions leave genuinely open with `[?]` (Section 8) instead of stalling.
-
-**Example:** before designing an auth system, don't tree OAuth vs. magic links vs. passwords — ask: Is this customer-facing or internal? What's the session-lifetime expectation? Do we own the identity store or integrate with an existing one? One answer might make three branches irrelevant.
+Write each answer down where it will survive, one line (`Q: … → A: …`) in the plan file or ticket, because a human's ruling cannot be regenerated from the repository.
 
 ## 2. Find the real decision points
 
-Only fork where the design could genuinely go in ≥2 consequential ways. Don't tree trivia.
+Fork only where the choice changes what gets built or how it can evolve, two or more options are in play, and choosing one closes the others. Where constraints force one option, state the constraint once and do not tree it.
 
-A real decision point changes something downstream — the architecture, the user experience, the data shape, the deployment model, a hard constraint. A non-decision is anything where one option is obviously right given the constraints already established, or where the choice is reversible with trivial cost.
+**House standards are constraints already decided.** Load the standards that govern the build before looking for forks: [[code-standards]] always; [[safe-migrations]] when the design moves schema or data; [[seo]] for public web pages and content; [[infra-standards]] for infrastructure, containers or CI; [[observability]] for a new service, endpoint or background job; [[blast-radius]] when it changes data another component consumes; [[security]] for auth, personal or payment data, uploads, outbound requests to user-influenced destinations, new dependencies, webhooks, queues, or model output reaching an executable sink; [[accessibility]], [[layout]] and [[ui-polish]] for user-facing interface, plus [[typography]], [[colors]] or [[ux-writing]] as the change touches text styling, colour or interface copy; [[performance]] when the goal is itself a measurement. Skip any already loaded, and skip the load when the decision is not about code.
 
-**When to fork:**
-- The choice meaningfully affects what gets built or how it can evolve.
-- Two or more options are genuinely in play given what you know.
-- The chosen path closes other paths off.
+A fork one of them settles (id type, field casing, error envelope, migration staging) is not a decision point: state the constraint and cite the skill. Where the codebase already holds a contrary convention, that convention is the settled answer.
 
-**When not to fork:**
-- One option is forced by constraints already agreed on (skip it, state the constraint once instead).
-- The choice is a detail that can be changed later without ripple effects.
-- Treeing it would add overhead that buries the real decisions.
+## 3. Name real alternatives
 
-**House standards are pre-decided constraints.** Before hunting for decision points, load the standards skills that will govern the build — [[code-standards]] always; [[safe-migrations]] when the design moves schema or data; [[seo]] (templates, routes, metadata, and prose meant to rank) when the surface is public web; [[infra-standards]] when it touches IaC, containers, or CI; [[observability]] when it adds a service, endpoint, or background job; [[blast-radius]] when it changes the shape, format, or semantics of data another component consumes (return values, response bodies, serialized payloads, DB columns read elsewhere, log/telemetry fields, events, config values/env vars, parsed CLI output); [[security]] when it touches auth or authorization, personal or payment data, file uploads, outbound requests to user-influenced destinations, new dependencies, webhooks or queues, or model output reaching an executable sink; [[accessibility]], [[layout]], and [[ui-polish]] when the surface is user-facing interface (components, screens, styles, templates, interface copy), plus [[typography]], [[colors]], or [[ux-writing]] as the change touches text styling, color, or interface copy. Skip any of these already loaded this session (under `/sonu:build`, Phase 1 loads them before this skill runs), and skip the load entirely when the tree isn't about code — a product or process decision has no build to govern. And when the design's goal is itself a measurement — making something faster, lighter, or cheaper — load [[performance]] too: its baseline is what decides whether any branch here was worth taking. A fork that one of them already settles (id type, field casing, error envelope, migration staging) is not a genuine decision point — state the constraint and cite the skill instead of treeing it. "Settles" means the standard's default *plus* its match-the-repo rule: on a brownfield surface where the codebase already holds a contrary convention, that established convention is itself the settled answer ([[code-standards]]' consistency-beats-correctness rule) — not a fork to reopen, and not a license to plan against the repo. This resolves the plan-vs-standards conflict at design time, where the strong model and the approval gate are, instead of leaving it for the executor to discover mid-build.
+Give two or three honest options per fork. An honest option is one a real team could have chosen, with at least one real advantage. Do not invent an option to knock it down.
 
-## 3. Enumerate genuine alternatives
+## 4. Record the choice and the deciding reason
 
-At every real fork, name ≥2 honest options — **no strawmen.**
+A deciding reason is a constraint that rules the others out, a concrete trade-off given the stated priorities, or an irreversibility that makes getting it right now worth the cost. "It's simpler" and "it's the standard approach" are not reasons until you say for whom and why here. If you cannot state the reason in one sentence, the decision is still open.
 
-A strawman is an option invented only to be knocked down: *"Option A is to store everything in a single JSON blob (obviously wrong)…"* That's not a branch, it's theater. It wastes the reader's attention and hides the real trade-off.
+## 5. Keep the rejected branches
 
-What makes an alternative genuine:
-- A real team or real constraint could have chosen it.
-- It has at least one meaningful advantage over the others in some context.
-- Its costs are real and worth stating, not invented to make another option look better.
+Each rejected option stays, with one sentence on why it lost or what would have to change for it to win.
 
-Aim for 2–3 alternatives per node. More than 3 is usually a sign the decision has a hidden dimension that should be its own node.
+## 6. Backtrack to the fork
 
-## 4. Record the chosen branch + why
+When a later decision invalidates an earlier one, return to the recorded fork, mark the old choice rejected with what changed, and take another branch. Do not layer workarounds on a decision that no longer fits.
 
-State the decisive reason, not a vague preference.
-
-**What counts as a decisive reason:**
-- A constraint that rules other options out ("can't use X — we don't control the database")
-- A concrete trade-off that tips the balance given the priorities established ("latency matters more than storage cost here")
-- An irreversibility that makes getting it right now worth the cost ("changing the wire format later requires migrating all clients")
-
-**What doesn't count:**
-- "It's simpler." (Simpler for whom, at what cost?)
-- "The team prefers it." (State what the preference is actually grounded in.)
-- "It's the standard approach." (Standard is a prior, not a reason — name why it applies here.)
-
-If you can't state the decisive reason in one sentence, the decision is probably still open.
-
-## 5. Keep the pruned branches
-
-Every rejected branch stays in the tree with **the reason it lost.**
-
-Two things this buys you:
-- **Stops silent relitigation.** When someone asks "why aren't we using X?" later, the answer is already there.
-- **Preserves the fork for backtracking.** If a downstream decision makes your original choice untenable, you return to a recorded branch rather than inventing a new path from scratch.
-
-What goes in a rejected branch:
-- The option name
-- One sentence: why it was rejected, or what would have to change for it to be the right call
-
-Don't elaborate. A rejected branch that consumes a paragraph signals the decision wasn't really made yet.
-
-## 6. Backtrack deliberately
-
-When a downstream node invalidates an earlier choice, **return to the recorded fork and take a different branch.** Don't patch forward.
-
-Patching forward means accepting the original choice and compensating — layering workarounds on top of a decision that no longer fits. It produces complexity that's hard to explain because the root cause is hidden upstream. A recorded tree makes backtracking surgical: you know exactly which node changed, which branch you're now taking, and what downstream choices need to be revisited.
-
-**How to backtrack:**
-1. Identify the upstream node that's now wrong.
-2. State what changed (the new constraint, the new finding, the failed assumption).
-3. Mark the previous choice as rejected, with the reason it's no longer viable.
-4. Take a different branch and continue from there.
-
-## 7. Notation — how to write the tree
-
-Use a compact nested-bullet format. Scannable at a glance, not prose.
+## 7. Notation
 
 ```
 [decision point: one-line statement of what's being decided]
-  ✓ [chosen option] — [decisive reason in one line]
-  ✗ [rejected option 1] — [why it lost in one line]
-  ✗ [rejected option 2] — [why it lost in one line]
+  ✓ [chosen option] — [deciding reason in one line]
+  ✗ [rejected option] — [why it lost in one line]
     [sub-decision: only if this branch requires its own fork]
       ✓ [chosen sub-option] — [reason]
       ✗ [rejected sub-option] — [why]
 ```
 
-**Example:**
-```
-[how to handle user sessions]
-  ✓ JWT with short expiry + refresh token rotation — stateless, scales horizontally, expiry is enforceable without a server round-trip
-  ✗ server-side sessions (Redis) — requires shared session store; adds infra dependency not justified at current scale
-  ✗ long-lived JWTs with no refresh — can't invalidate compromised tokens without server-side blocklist, defeating the benefit
+An open node the owner must rule on is marked `[?]`. Work you can sense coming but cannot yet phrase as a sharp question is left out of the tree; do not invent nodes for it.
 
-  [where to store the refresh token on the client]
-    ✓ httpOnly cookie — not accessible to JS, survives page refresh, CSRF-mitigated with SameSite
-    ✗ localStorage — accessible to any JS on the page; XSS leaks it
-```
+## 8. Where the tree goes, and what a plan carries
 
-## 8. Output — where the tree goes
+In plan mode, write the tree as a `## Design Tree` section of the plan file, after the context and before the implementation steps, with a `Constraints:` line naming the standards it was drawn under. Otherwise print it in chat. When the repo keeps decision records, record the outcome in that convention too.
 
-**In plan mode:** write the tree as a `## Design Tree` section in the plan file — placed after the Context section and before the implementation steps, so the decision genealogy is part of the plan record. Directly under the heading, add a one-line `Constraints:` note naming the standards skills the design was drawn under (e.g. `Constraints: code-standards, safe-migrations`), and one sentence addressed to the executor who picks the plan up later: if implementation reality invalidates a chosen branch, return to the recorded fork in the Design Tree above and take a recorded alternative — do not improvise a new path or deviate from the standards to save the plan. (Write that sentence self-contained: the executor has this plan file, not this skill, so it must not cite sections of this document.)
+A plan file may be executed later by a session without this conversation, so it carries what that session cannot recover:
 
-**Executor-ready plans.** A plan file outlives this session. Assume its executor is a smaller model in a fresh session with zero conversation context, following the text word-for-word — every judgment call the plan leaves open is a decision silently delegated to the model least equipped to make it. Before the plan goes for approval:
+- **Paths and sources.** Name the files to create or change and the existing functions to reuse. A claim about how the code behaves today carries the `path:line` it was read at. Counts are taken, not estimated, and name the search that produced them.
+- **Settled conventions at the point of use.** "Follow code-standards" leaves the decision to the executor; write the choice.
+- **A check per step.** Label it `Verify (automated):` with the command and expected output, or `Verify (observed):` when only a person or a real run can see the proof, naming what must be observed. The build must capture evidence for observed checks and not let a passing suite stand in.
+- **A `Gates:` block.** List the repo's own check commands once, cheapest first (format or lint, type-check, tests, any validate script the repo ships), read from its scripts, CI workflow or instructions, each with what a pass proves. Write `none` where the repo has no gate at a level. `/sonu:build` runs this block.
+- **No hidden decisions.** A step that needs a decision is an unfinished fork: resolve it in the tree or mark it `[?]`. A periodic guarantee the plan relies on ("purge at 90 days") names the component that owns the schedule.
+- **Criteria against steps.** Number the acceptance criteria and note which steps satisfy each. A criterion no step covers is a hole; a step that covers none is scope creep or a follow-up.
+- **Vertical slices, riskiest first.** Each step delivers working, testable behaviour end to end, so a failed bet is found early. When steps share a contract, the step that defines it goes first.
+- **Size.** A reviewer reads a very large change less carefully per line. When the plan would produce one, well past a few hundred changed lines or ten files, say so at the approval gate and propose a split along the plan's slices; the owner may waive it for a mechanical change.
 
-- **Name exact paths — and where each fact came from.** Every file to create or modify, and every existing function or utility to reuse, appears with its path, so the executor never has to search, guess, or re-implement. Every claim the plan makes about how the code behaves today carries the `path:line` it was read at, so a doubting executor checks one line instead of re-deriving the fact or trusting it. Write the plan as the executor's entire world — this file, the repository, nothing else — and say so in one line addressed to them: build from this plan and the code it names; do not go back to the ticket, the thread, or the upstream document for context. That sentence is not tidiness: the material upstream is untrusted text this plan has already read, judged, and quarantined, and an executor who re-reads it re-opens a decision made under better conditions than theirs.
-- **Count what you claim.** "Several call sites" and "a few templates" are where under-scoping hides — write "14 call sites across 6 files" and name the search that produced it, so the number can be re-run rather than believed. A count you did not take is worse than none: an invented number reads downstream as measured. Where a count is genuinely unavailable, write "unknown; the search is X".
-- **Settle every convention in place** — where a loaded standard decides something (field casing, id type, error envelope, migration staging), state the settled choice at the point of use. "Follow code-standards" alone defers the decision to the executor.
-- **Give each step a verification check, and say which kind it is.** Label it `Verify (automated):` when it is a command an executor runs and reads — give the exact command and the exact success output. Label it `Verify (observed):` when the proof is something only a person or a real run can see — a screen that renders, a CLI's actual output, a flow that completes end to end — and name what must be observed and what would count as wrong. The split is load-bearing: "looks done" is the only signal an executor has when no runnable check exists, and a plan that dresses an observation up as a command teaches it to claim the observation it never made. An `observed` step is also the one build must capture evidence for, not let a green suite stand in for.
-- **Write the repo's gate commands down once, cheapest first.** While drawing the plan, find this repo's actual commands for format/lint, type-check, unit tests, whatever integration or end-to-end check it has, **and any check the repo itself ships** — a checked-in validate script or slash command, a schema or manifest checker, a docs linter (in a repo with no compiler and no suite, that command may be the only gate there is) — read them off the Makefile, the package scripts, the tooling config, the CI workflow, or the repo's own instructions, and copy them verbatim into a `Gates:` block under the implementation steps, each with the one thing a pass proves, ordered by cost. Build's Phase 2 runs that block in order; this is its one home. The search happens once, in the session with the most context, and a plan that names `pnpm -w lint` cannot be executed as `npm test` by a smaller model in a fresh session. If the repo genuinely has no linter or type-checker, write `none` beside that level — an absent gate stated is a fact the executor can rely on; an absent gate unstated is a gate the executor will invent.
-- **Mark what each step needs and touches.** Order already implies dependency — a step may assume every step before it has landed — so annotate only what order cannot say: `needs: 3` when a step depends on a specific earlier step rather than everything before it; `parallel with: 4` when it can run beside its predecessor; `touches: src/cache/` naming the files or module it writes. Two steps are parallel-safe only when neither needs the other *and* their touched sets do not overlap — a shared file is a conflict no independence survives, and the planner, who just decided what each step edits, knows this cheaply. No annotation means sequential, touching whatever the step's text names; absence is the safe reading. [[model-tiering]] reads these at execution rather than re-deriving them.
-- **Hide no judgment calls** — if writing a step requires a decision, that's an unfinished fork: resolve it in the tree, or mark it `[?]` so the owner rules on it at the approval gate. A visible `[?]` is honest and allowed; what's forbidden is a decision buried inside an implementation step for the executor to make silently. Any periodic guarantee the plan relies on ("purge to NULL at 90 days", "rotate weekly") names the component that owns the schedule, or carries a `[?]` — an unowned guarantee is the one that gets litigated in review three times and kept by nobody.
-- **Sweep the criteria against the steps, both directions.** Number the acceptance criteria the work is measured against — the ticket's, or the ones the interview settled — and put the numbers each step satisfies beside it. Then read the two lists against each other twice. A criterion no step claims is a hole: a step is missing, or the criterion is out of scope and the plan must say so. A step that claims no criterion is scope creep with a number on it: it is load-bearing for one and should say which, or it is a follow-up and comes out. State the result in one line ("criteria 1–5 covered by steps 2,3,3,5,6; none uncovered either way") — the line is what makes the sweep checkable rather than claimed. Skipped on the trivial path. If the sweep finds a hole twice on the same plan, stop patching the plan and say what the requirements themselves are missing.
-- **Size the change before the gate, on two axes.** Compute the changed-line count exactly as [[self-review]] step 2 does — that is its one home, including its docs-product rule that counts prose where the prose is the product — and count the files it touches under the same exclusions. Past roughly **400 counted lines or 10 files**, say so at the gate: a reviewer reading 600 lines is not reading three times as hard, they are reading less carefully per line, and an agent-authored change crosses that line routinely. Propose the split as stacked PRs cut along the plan's own vertical slices, riskiest first, with the contract-defining slice as the parent — `/sonu:ship`'s Stacked PRs section carries the mechanics. This is a threshold the owner may waive in one line, not a refusal: a whole-file deletion, a generated-client refresh, or a mechanical rename earns the waiver. Justify it by attention per line, never by finding counts.
-- **Prune before the gate.** Read the finished plan once more as the reviewer who will reject padding, and put four tests to every item: does it change what an executor *does* or what the owner must decide at the gate (a note that alters neither is cut — a `[?]` fork alters the second, so it stays); does a cheaper home exist (a sentence in an existing section beats a new section, lens, or file); does its recurring cost outlive the incident that motivated it (an extra subagent per run, a count kept in sync across files); is it flexibility no stated requirement needs (an interface with one implementation, a config nobody sets, a layer with one caller)? Record the trims and the kept-anyway items, each with its reason, in the plan itself — a short `Pruned:` list directly under the Design Tree — so the record the owner approves carries them; where no plan file exists (an in-chat tree, a ticket-driven build) the same list is printed directly under the tree, wherever the tree goes. The owner rules on trims at the gate, not after the build. Then read it a second time against the standards it was drawn under — the ones on the `Constraints:` line — because the violation you are hunting was almost always created by the design work itself, not present before it. Where the plan still departs from one, keep the departure only with a row beside the `Pruned:` list saying what it departs from, why this change needs it, and which simpler option was rejected and on what grounds. A deviation with all three parts is a decision the owner can rule on at the gate; a deviation with fewer is an accident a reviewer finds later, at bot-review prices.
-- **Cut steps as vertical slices, riskiest first.** Each step delivers working, testable behavior end-to-end — never a layer ("all the schema", then "all the endpoints", then "wire it up"), because layers can't be verified until the last one lands. Put the riskiest or most uncertain slice first, so a failed bet is discovered before the investment, not after. When steps will run in parallel, a contract-defining step goes first and the sides build against it; and if two planned modules each need the other, they are one module — split elsewhere.
-- **A step is too big when**: it wouldn't fit one focused session, its acceptance criteria don't fit in about three bullets, it touches two independent subsystems, or its title needs an "and" — each of those is the same fact wearing different clothes: it's two steps.
-
-On an orchestrator-class session model, this bar is also the delegation bar — within [[model-tiering]]'s categorical exclusions: that skill grades the steps that clear it for delegated execution by subagents, but clearing this bar never delegates design, integration, debugging, or security work, no matter how well specified. The routing methodology, the exclusions, and which model tier each grade maps to all live there.
-
-**Manual call (`/sonu:design-tree`):** print the tree in-chat. If a plan file is active, offer to write it into the plan file. And when the repo already keeps decision records (an ADR directory, a decisions log, an `.adr-dir` file), record the tree's outcome in that convention too — continue its numbering and heading shape rather than introducing a second scheme, and surface a conflict instead of silently picking.
-
-**On partial information:** if the interview didn't surface enough to fill all branches, emit what's known and mark open nodes with `[?]` — that's more honest than filling them speculatively.
-
-**`[?]` vs not-yet-specifiable.** A `[?]` is a sharp question the owner can rule on at the approval gate. Work you can sense coming but cannot yet phrase that sharply is not a `[?]` and not a fork — leave it out of the tree entirely. The fog test that draws this line lives in [[ticket-lifecycle]] section 9; do not invent speculative nodes to stand in for fog.
-
----
-
-## Self-check before you call it done
-
-- Did you interview the user before treeing anything (or, if the request was already fully specified or no user could answer, did you state your assumptions explicitly)? Did you confirm intent, constraints, success criteria, and at least one non-goal?
-- Did you load the applicable standards skills before branching, and does no node relitigate a choice a standard already settles?
-- Does every node represent a genuinely consequential fork — not a trivial or forced choice?
-- Does every node have ≥2 honest alternatives, with no strawmen invented to be knocked down?
-- Is the chosen branch's rationale a decisive reason (constraint, concrete trade-off, irreversibility), not a vague preference?
-- Does every rejected branch have a one-line reason? Could someone read it and understand why that path was closed?
-- Are rejected branches concise enough to read as decided, not still-open?
-- Is the tree traceable end-to-end — can you follow the chosen branches from root to leaf without gaps?
-- If you backtracked, did you return to a recorded fork rather than patching forward?
-- Is the tree written into the plan file (plan mode) or printed in-chat (manual call)?
-- Did you run the prune pass, and does the plan carry the `Pruned:` list of trims and kept-anyway items with their reasons?
-- If a plan file was written: could a smaller model in a fresh session execute it without making a single *unmarked* design decision — exact paths, conventions settled in place, a verification check per step, every genuinely open fork visibly `[?]`, a `Constraints:` line naming the standards applied?
+Before the plan goes for approval, cut anything that changes neither what gets built nor what the owner must decide, and any flexibility no stated requirement needs. If implementation later invalidates a chosen branch, the executor returns to a recorded alternative; say that in the plan in one sentence.

@@ -2,7 +2,7 @@
 
 Contrast is always measured between a **foreground color** (text, icon, or UI element) and the **background color** it sits on. When checking contrast, identify the background the element will be rendered against, typically the nearest parent's background color.
 
-**Measure, never estimate — a fabricated number cited as evidence is worse than none.** The thresholds below are only as good as the measurement behind them:
+**Measure; do not estimate.** A made-up number cited as evidence is worse than none. The thresholds below are only as good as the measurement behind them:
 
 - **WCAG 2 ratio** — computable anywhere node runs, no packages:
   ```bash
@@ -15,7 +15,7 @@ Contrast is always measured between a **foreground color** (text, icon, or UI el
   console.log(((hi + 0.05) / (lo + 0.05)).toFixed(2) + ":1");
   ' "#1a1a2e" "#f5f5f7"   # substitute the rendered pair, as 6-digit hex
   ```
-- **APCA Lc** — needs the real algorithm (a tool or library implementing it). When none is runnable in this session, report **"Lc not measured"** and fall back to the lightness-gap guide below plus the computed WCAG ratio as proxies. Never write an invented Lc value into a review's evidence column.
+- **APCA Lc** — needs the real algorithm (a tool or library implementing it). When none is runnable in this session, report **"Lc not measured"** and fall back to the lightness-gap guide below plus the computed WCAG ratio as proxies. Do not write an invented Lc value into a review as evidence.
 
 **Report, don't repaint.** When a check fails, report it (the failing foreground/background pair, its measured Lc or ratio, and the threshold it misses) and leave the colors unchanged. A project's colors are a design decision; only apply the fix below when the user asks for one.
 
