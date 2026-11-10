@@ -123,6 +123,8 @@ Every skill is also directly invocable by name (`/sonu:<skill>`). The ones desig
 - Skill descriptions were narrowed to what the skill is for, when to use it and what it is not for.
 - A project's own instructions take precedence. Every skill and command says so, `/sonu:build` follows a project's own brief, checks, reviewer and commit rule, and `/sonu:ship` stops in a project that lands work some other way. Existing code alone never waives a security, disclosure, authorization or data-safety rule.
 
+**5.1** adds one rule to `code-standards`, "smallest change that works": find where the behaviour already happens and change it there, make the smallest change that fully does what was asked, stop and say why if it grows past the request, and reshape only on evidence.
+
 ## Developing this plugin
 
 Contributor tooling is **repo-local, not shipped** — it lives in this repo's `.claude/` directory, so it loads automatically for anyone working *on* the plugin (a clone of this repo) and never reaches marketplace users, who'd have no use for it:
