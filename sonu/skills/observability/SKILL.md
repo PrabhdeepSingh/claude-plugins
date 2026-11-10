@@ -1,95 +1,54 @@
 ---
 name: observability
 description: >-
-  Producing telemetry worth having — metrics, traces, error capture, health-check endpoints, and alerts that page on user-facing symptoms. INVOKE PROACTIVELY when creating a service, endpoint, or background job, or adding instrumentation, dashboards, health endpoints, or alert rules — "add monitoring/logging/alerting". Log-line mechanics: [[code-standards]]; consuming telemetry while diagnosing: [[debugging]].
+  What a service must emit to be diagnosable: the four signals, bounded metric labels, the two health endpoints, error capture and symptom-based alerts. Use when adding a service, endpoint, background job, instrumentation or alert rule. Log-line rules: [[code-standards]]; reading telemetry while diagnosing: [[debugging]].
 ---
 
-# Observability — instrument for the question you'll ask at 2am
+# Observability — instrument for the question you will ask during an incident
 
-The [[debugging]] skill's first production move is "pull the real event." That move only works if someone instrumented the service *before* it broke — and that someone is you, now, while writing it. You can't debug what you didn't record, and you can't retrofit telemetry onto an incident that already happened. The bar: every service answers four questions without anyone SSHing anywhere — **is it up, is it erroring, is it slow, and for whom?**
+The project's own instructions win: where its AGENTS.md, CLAUDE.md or established conventions say otherwise, follow them and skip that part of this.
 
-## How to apply this
+[[debugging]] starts a production investigation by pulling the real event, which only works if the service recorded it. The bar is that a service can answer four questions without anyone logging into a machine: is it up, is it erroring, is it slow, and for whom. A project with no telemetry stack, such as a local-only tool, skips this skill; say so in the hand-off ([[self-review]]) when a service ships without one.
 
-Instrumentation is part of the feature, not a follow-up: a new endpoint ships with its metrics, error capture, and trace context wired, the same way it ships with tests. Run the self-check before calling any service change done.
+## 1. Four signals per operation
 
-**Define "working" before instrumenting.** Section 1's four questions are the per-operation floor every service owes; on top of them, write down 2–4 questions an on-call engineer will ask about *this feature specifically* ("is the retry actually recovering payments?", "which provider is slow?") — every signal you add beyond the floor must help answer one. Telemetry without a question is noise: if you can't name the questions, you'll log everything and learn nothing. The division of labor, as a rule of thumb: **metrics tell you *that* something is wrong, traces tell you *where*, logs tell you *why*.**
+For each endpoint, job or consumer, emit traffic (a counter), errors split by kind (a counter with a failure label), latency as a distribution (a histogram, because averages hide the slow tail) and, for pools, queues and memory, saturation (a gauge). Beyond that floor, add a signal only when it answers a question an on-call engineer would ask about this feature.
 
----
+## 2. Logs
 
-## 1. The four questions drive what you instrument
+Log at boundaries (request in and out, external call, job start and finish) and at decisions (retry scheduled, fallback taken, permission denied). Levels, structured context, correlation ids and the no-secrets rule are in [[code-standards]] section 8.
 
-For every operation a service performs (each endpoint, each job, each consumer), emit enough to answer:
+## 3. Metrics
 
-- **Traffic** — how often is this happening? (a counter)
-- **Errors** — how often is it failing, split by kind? (a counter with a failure label)
-- **Latency** — how long does it take, as a *distribution*? (a histogram — averages hide the slow tail where users actually live)
-- **Saturation** — for resources (pools, queues, memory): how close to full? (a gauge)
+Put the unit in the metric name, because a `timeout` that is secretly milliseconds gets misread by a factor of a thousand.
 
-If an operation emits these four, most incidents are diagnosable from a dashboard. If it emits none, every incident starts with "let's add logging and wait for it to happen again" — the most expensive sentence in operations.
+Every distinct label combination is a separate stored time series. Labels are for bounded sets such as endpoint, status class and region. A user id, order id, email, request id, raw error text or raw URL path in a label multiplies series without limit until the backend or the bill fails. Per-entity data belongs in logs and traces.
 
-## 2. Logs: at boundaries and decisions, not every line
+## 4. Traces
 
-The mechanics — levels, structured key/value context, correlation ids, the no-secrets rule — have one home: [[code-standards]] section 8. What belongs *around* them: log at **boundaries** (request in/out, external call made, job started/finished) and **decisions** (retry scheduled, fallback taken, permission denied), not as a narration of every line executed. A log stream that records everything is a log stream nobody can read during an incident.
+Accept the incoming trace context and pass it on every outbound call, including queue message metadata. Open a span for each external call. Put the correlation id on both logs and traces so one can be reached from the other. Wire the platform SDK's auto-instrumentation first and add manual spans where it has gaps.
 
-## 3. Metrics: counters, histograms, and the cardinality trap
+## 5. Health checks
 
-- **Counters** for things that happen (`orders_created_total`), **histograms** for durations and sizes (`checkout_duration_seconds`), **gauges** for current levels (`queue_depth`). Name with the unit in the name — a metric called `timeout` that's secretly milliseconds causes a 1000× misread.
-- **The cardinality trap — the one metrics mistake that takes the platform down.** Every distinct label combination is a separate stored time series. Labels are for *low-cardinality dimensions*: endpoint, status class, region — a bounded set you could list. Putting `user_id`, `order_id`, an email, a `request_id`, raw error-message text, or a raw URL path (with ids embedded) in a label multiplies series without bound until the metrics backend falls over or the bill does. Per-entity data belongs in logs and traces, which are built for it — never in metric labels.
+Liveness answers "is the process alive" and checks nothing external. Readiness answers "can I serve traffic now", checks the dependencies the service cannot work without, and gates load-balancer membership. Keeping them separate prevents a restart storm: when the database blips, readiness removes instances from rotation instead of liveness restarting the fleet. Readiness returns which dependency failed, in machine-readable form. Both endpoints are unauthenticated, so they expose dependency names and nothing more.
 
-```js
-// Avoid: unbounded label — one time series per user, forever
-metrics.increment('checkout_completed', { user_id: user.id });
+## 6. Error capture
 
-// Prefer: bounded dimensions; the user id lives in the log line / trace
-metrics.increment('checkout_completed_total', { plan: user.plan, region });
-logger.info('Checkout completed', { user_id: user.id, request_id: req.id });
-```
+- Tag every event with the release or commit. First-seen release turns a search through history into a short bisect.
+- Attach the correlation id and non-sensitive request context only.
+- Do not capture expected outcomes (validation rejections, 404s, user cancellations) as errors. A feed that is mostly noise goes unread.
 
-## 4. Traces: propagate the context or lose the story
+## 7. Alerts
 
-One user action fans out across services, and without propagation each service logs its fragment into a void. The rules: accept the incoming trace context and pass it on every outbound call (HTTP headers, queue message metadata); open a span per meaningful unit — especially every external call (DB, HTTP, queue); and put the correlation/request id from [[code-standards]] section 8 on both the logs *and* the trace, so you can pivot between them. Most platform SDKs (App Insights, Datadog, OpenTelemetry) auto-instrument the common frameworks — wire that up first and add manual spans only where the auto view has gaps.
+- Alert on what users feel: error rate, latency percentile, availability. Causes such as CPU belong on dashboards.
+- Every alert has a defensible threshold, an owner and a note on what to check.
+- Use two severities only: page (a human acts now) and ticket (someone acts this week). A third tier becomes the pile everyone ignores.
+- An alert that fires and gets dismissed routinely is re-thresholded, moved to a dashboard or deleted. Flag existing ones to the owner; do not delete alert rules outside your diff.
 
-## 5. Health checks: two endpoints, two different questions
+## 8. Ship it with the feature, then verify it
 
-- **Liveness** — "is the process alive?" Checks *nothing external* — no database ping, no downstream call. It exists so the orchestrator can restart a genuinely wedged process.
-- **Readiness** — "can I serve traffic right now?" Checks the dependencies the service can't work without, and gates load-balancer membership.
+A new endpoint, job or service includes its signals, error capture with release tagging, trace propagation and, for a new service, the two health endpoints. Then check the telemetry itself: force an error in a non-production environment and find it in the tracker by correlation id, confirm the metric series appear with the expected labels, and fire each new alert once by lowering its threshold. The test is that an induced failure can be located from telemetry alone.
 
-Keeping them separate is what prevents the restart storm: when the database blips, readiness pulls instances out of rotation (recoverable in seconds) instead of liveness restarting the whole fleet — whatever the orchestrator (App Service, ECS, a load balancer's health probe), the semantics are the same. Return machine-readable detail from readiness (`{ "db": "ok", "cache": "degraded" }`) — during an incident, *which* dependency failed is the entire question. And the health endpoints themselves are unauthenticated infrastructure: they must not leak internals beyond dependency names ([[code-standards]] section 10).
+## Maintenance
 
-## 6. Error capture: with context, without noise
-
-Wire the error tracker (Sentry, App Insights, Datadog — whatever the project uses) so unhandled failures are captured with the context [[debugging]] section 2 will need later:
-
-- **Tag every event with the release/commit.** First-seen-release is the single highest-value debugging fact — it turns "somewhere in history" into a two-commit bisect.
-- Attach the correlation id and non-sensitive request context. The no-PII discipline from [[code-standards]] sections 8/10 applies to telemetry payloads too.
-- **Don't capture expected outcomes as errors.** Validation rejections, 404s, user cancellations — these are traffic, not failures. An error feed where 95% of events are noise is an error feed nobody reads, which is how the real 5% ships to the front page.
-
-## 7. Alerts: page on symptoms, and only when a human must act
-
-- **Alert on what users feel** — error rate, latency percentile, availability — not on causes like CPU or memory. High CPU with healthy latency is a Tuesday; paging on it teaches people to ignore pages. Cause-level signals belong on dashboards, where they explain a symptom alert.
-- **Every alert is actionable and owned**: a threshold someone can defend, a responder who knows it's theirs, and a linked runbook or at minimum a "check X, then Y" note. An alert with no action attached is spam with a pager.
-- **Exactly two severities: page and ticket.** Page means a human acts now; ticket means someone acts this week. A third tier becomes the pile everyone learns to ignore — and trains them to ignore the first two.
-- **Alert fatigue is a system failure, not a personnel issue.** An alert that fires routinely and gets dismissed routinely must be re-thresholded, converted to a dashboard, or deleted — a channel full of ignored red is *worse* than silence, because it hides the real one. (Same failure shape as coverage theater in [[tdd]]: signal that doesn't mean anything trains people to skip signal entirely.)
-
-## 8. Instrumentation ships with the feature
-
-The definition of done for a new endpoint, job, or service includes: the four signals (section 1), error capture with release tagging (section 6), trace propagation (section 4), and — for a new service — the two health endpoints (section 5). Retrofitting is 10× the cost and always happens *after* the incident that needed it.
-
-**Then verify the telemetry itself — instrumentation is code, and it can be wrong.** Before calling it done: force an error in a non-production environment and find it in the tracker by correlation id, with fields structured (not `[object Object]`); send test traffic and confirm the metric series appear with the expected labels; follow one request across services and confirm no broken spans; and fire each new alert once by temporarily lowering its threshold, confirming it reaches the right channel and its runbook link works. The bar: **an induced failure was located from telemetry alone, without reading the source.** If the project has no observability stack at all, say so explicitly and put the gap in the hand-off notes ([[self-review]]) rather than silently shipping a black box.
-
----
-
-## Self-check before you call a service change done
-
-- Can the four questions (traffic, errors, latency, saturation) be answered for every new operation from emitted telemetry alone?
-- Any metric label that could grow without bound (user ids, entity ids, raw paths)? Move it to logs/traces.
-- Are durations histograms (not averages), with units in the metric name?
-- Is trace context propagated on every outbound call, and does the correlation id appear on both logs and traces?
-- Liveness checks only the process; readiness checks dependencies and returns which one is unhealthy — and neither leaks internals?
-- Are captured errors tagged with release/commit, carrying non-PII context only — and are expected outcomes (validation, 404s) excluded from the error feed?
-- Does every new alert page on a user-facing symptom, with an owner and an action — and did you **flag** any existing alert that fires-and-gets-ignored for deletion or demotion? (Flag to the owner in the hand-off — deleting alert rules outside your diff is the surgical-change violation [[code-standards]] warns about.)
-- If the project has no observability stack: did you say so in the hand-off instead of shipping a black box silently?
-
-## Provenance and maintenance
-
-The principles (four signals, cardinality, liveness/readiness split, symptom-based alerting) are durable. The SDK specifics — auto-instrumentation coverage in App Insights/Datadog/OpenTelemetry, release-tagging config per platform — drift with vendor releases; last sanity-checked 2026-07. Verify SDK wiring against the platform's current docs; the platform *detection* table lives in [[debugging]]'s reference file `pull-the-event.md` (one home).
+SDK auto-instrumentation coverage and release-tagging configuration change with vendor releases (last checked 2026-07). The platform detection table is in the debugging skill's reference file.

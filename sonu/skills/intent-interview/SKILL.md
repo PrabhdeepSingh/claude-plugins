@@ -1,74 +1,29 @@
 ---
 name: intent-interview
 description: >-
-  Pre-spec intent extraction — one question at a time, each with a guess attached, until you can predict the user's answers; for when the asked-for artifact itself might be wrong. INVOKE when a request's outcome, audience, or success measure is genuinely unclear. NOT ticket speccing ([[ticket-triage]]), choosing approaches ([[design-tree]]), or any non-interactive run — there an underspecified ask is a blocker, never a license to guess.
+  Find out what outcome, audience and measure of success a person wants before building, when the requested thing itself might be the wrong one. Use interactively when those are unclear. Not for choosing an approach ([[design-tree]]) or for unattended runs.
 argument-hint: "[the vague request to interview toward]"
 allowed-tools: Skill, Read
 ---
 
-# Intent Interview — find out what they actually want before building anything
+# Intent interview — find out what they want before building it
 
-The most expensive misunderstanding is not a wrong implementation of the right thing — it's the right implementation of the wrong thing. A user who asks for "a dashboard for our metrics" may, two questions later, turn out to need a list. Different artifact, different scope, different work — and no amount of good speccing or good design recovers from interviewing zero. [[design-tree]]'s interview confirms the problem *behind a design*; this skill runs earlier and cheaper, for the case where the requested artifact itself is the hypothesis to test.
+The project's own instructions win: where its AGENTS.md, CLAUDE.md, design system or established conventions say otherwise, follow them and skip that part of this.
 
-## When to apply this
+The costly misunderstanding is building the wrong thing well. A person who asks for "a dashboard for our metrics" may turn out to need a list, and no amount of good speccing recovers from that. [[design-tree]] confirms the problem behind a design; this runs earlier, when the requested thing is itself the guess to test.
 
-Interactively, when a request names an artifact but not the outcome ("build me X" with the why, the audience, or the success measure unstated), or when you notice you could not predict how the user would answer basic questions about it. Skip it when intent, constraints, and success criteria are already stated — restate them and proceed — and **never run it in a non-interactive context** (CI, a factory pass, a subagent, a scheduled run): nobody is there to answer, so an underspecified ask is written into the hand-off as a blocker instead.
+## When to use it
 
-## How to apply this
+Use it in a conversation, when a request names a thing to build but not the outcome, the audience or how success will be judged, and you could not predict how the person would answer basic questions about it. When those are already stated, restate them briefly and proceed.
 
-### 1. Write a hypothesis, with a confidence number
+Do not use it where nobody is there to answer (CI, a subagent, a scheduled run). There, write the underspecified ask into the hand-off as a blocker. If the project's instructions say to decide and record the decision yourself, do that.
 
-Before asking anything, write (for yourself) what you believe they actually want and how confident you are. The honesty test for the number: **can you predict the user's reactions to the next three questions you would ask?** If not, the number is inflated. Below ~70%, name in one line what's missing — that gap is what the questions must close, and it keeps the interview aimed instead of ritual.
+## The goal
 
-### 2. One question at a time, each with a guess attached
+Learn three things: what is true or exists when this is done, who it is for, and how they will know it worked. Also learn the binding constraint and what is deliberately not being built, since much misalignment is silent disagreement about what is out of scope.
 
-Ask exactly one question per message, and attach your current best guess to it ("Q: who reads this every day? My guess: the on-call engineer, during incidents"). Why one: the user can't react to hypotheses buried in a list, batches get skim-read, and the third question usually depends on the first answer. Why the guess: people correct a wrong guess faster than they compose an answer from nothing — and the guess commits you to being visibly wrong, which is the point. Occasionally guess in a direction you expect pushback on; a guess engineered to be agreed with tests nothing.
+Attach your best guess to each question ("Who reads this every day? My guess: the on-call engineer, during incidents"). People correct a wrong guess faster than they compose an answer from nothing, and the guess shows them what you have assumed. How many questions to ask, and whether to ask them together or one at a time, is your judgment: ask what you cannot predict, and stop when you can predict the answers.
 
-Three or more questions in one message is batching. A question with no hypothesis attached is surveying. Both waste the user's finite attention.
+Listen for the answer someone thinks they are supposed to give: best-practice vocabulary ("scalable", "clean architecture"), deference to convention, "I should probably". Asking what they would want if they did not have to justify it to anyone often gets the real requirement.
 
-### 3. Detect "want" vs. "should-want"
-
-Users often report the answer they think they're supposed to give: best-practice vocabulary ("scalable", "clean architecture"), deference to convention ("the way most apps do it"), and hedges ("I should probably…") are the tells. When you hear one, ask the question that does more work than the previous five:
-
-> "If you didn't have to justify this to anyone, what would you actually want?"
-
-The answer to *that* is the requirement; the earlier answer was its costume.
-
-### 4. Restate in six lines, and get a real yes
-
-When you believe you've converged, restate the intent in exactly this shape and end with "yes / no / refine?":
-
-- **Outcome** — what exists or is true when this is done
-- **User** — who it's for, specifically
-- **Why now** — what prompted this
-- **Success** — how they'll know it worked
-- **Constraint** — the binding limit (time, stack, budget, compatibility)
-- **Out of scope** — what is deliberately not being built
-
-"Out of scope" is non-negotiable: half of all misalignment is silent disagreement about what is *not* being built.
-
-### 5. Know what does not count as yes
-
-- **"Whatever you think is best."** — delegation, which means *they* don't have confidence either. Re-ask as a choice between two concrete options.
-- **"Sounds good."** — ambiguous. Ask: "anything you'd refine?" Silence isn't confirmation.
-- **"Sure, let's go."** — often a polite exit. Confirm the one line you're least sure of before proceeding.
-- **Silence, then "okay, start."** — they gave up on the interview, not converged. Say so and offer the restate again, shorter.
-
-Proceed only on an answer that engages the restate's content — a correction counts; enthusiasm doesn't.
-
-### 6. Stop conditions — both directions
-
-**Stop asking** when the confidence test from step 1 passes: you can predict their reaction to the next three questions you'd ask. More questions past that point is procrastination with a questionnaire.
-
-**Stop the interview** when several rounds pass and confidence isn't rising — that's information about the ask, not a cue to grind: "I've asked N questions and still can't predict your answers; something foundational is missing — want to step back and talk about the problem instead of the artifact?" And never save or act on the intent before the user has confirmed it: writing the doc first implies a yes they didn't give.
-
----
-
-## Self-check before handing off to spec or design
-
-- Did you write the hypothesis and confidence *before* the first question — and did the confidence actually rise as answers arrived?
-- One question per message, every question carrying a visible guess?
-- Did any "should-want" tell (best-practice talk, convention deference, "I should probably") get the actually-want question?
-- Does the restate carry all six lines — including a real "Out of scope" — and did the user engage its content rather than wave it through?
-- Was any hedge ("sounds good", "whatever you think") treated as a yes?
-- If this ran anywhere non-interactive: it shouldn't have — was the underspecified ask flagged as a blocker instead?
+When you have it, restate the intent briefly (outcome, who it is for, how success is judged, the constraint, what is out of scope) and go on once the person agrees. Plain consent is consent: "yes", "sounds good" and "go ahead" all count. If the conversation is not converging, say so and suggest talking about the problem instead of the thing to build.

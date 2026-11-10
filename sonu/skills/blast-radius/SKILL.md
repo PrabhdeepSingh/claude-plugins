@@ -1,80 +1,57 @@
 ---
 name: blast-radius
 description: >-
-  Consumer-impact discipline for contract changes — enumerate every consumer, flag the ones that degrade silently, verify one downstream path end-to-end before shipping. INVOKE PROACTIVELY when a change alters anything other code reads — return shapes, payloads, DB columns, telemetry fields, config values — or renames a published identifier. Skip purely internal changes and strictly additive optional fields. (Schema seams: [[safe-migrations]]; downstream verification: [[tdd]].)
+  Consumer-impact rules for contract changes: find every consumer, flag the ones that degrade silently, verify one downstream path. Use when a change alters something other code reads or addresses by name. Not for purely internal changes or additive optional fields. Schema changes: [[safe-migrations]]; downstream tests: [[tdd]].
 ---
 
-# Blast Radius — who reads the thing you're changing?
+# Blast radius — who reads the thing you are changing?
 
-A change can be locally correct, fully tested, and still break production — because the correctness of a *producer* says nothing about the assumptions of its *consumers*. And the most expensive version of that break isn't the loud one; it's the silent one, where a downstream `catch` or fallback converts the breakage into missing data that nobody notices for weeks, long after the deploy that caused it has stopped being a suspect. This skill exists to make "who reads this?" a mandatory step in the change, not an instinct you hope the author has.
+The project's own instructions win: where its AGENTS.md, CLAUDE.md or established conventions say otherwise, follow them and skip that part of this.
 
-## When to apply this
+A producer can be correct and fully tested and still break its consumers, because its tests say nothing about what they assume. The expensive break is the silent one: a downstream `catch` or fallback turns the breakage into missing data that nobody notices for weeks, long after the deploy that caused it has stopped being a suspect.
 
-Apply it the moment a change alters the **shape, format, semantics, or published identity of anything consumed outside the edited code**: a function's return value or type, an API or tool response body, a serialized payload, a database column other code reads, a log or telemetry field, an event or queue message, a config value or env var, CLI/stdout output that anything parses, or an identifier a caller addresses by name (a tool, route, or command). Wrapping counts. Renaming counts — a field or an identifier. Adding an envelope around existing data counts — the bytes a consumer parses are different even though "the data is still there."
+## When this applies
 
-Skip it for changes with genuinely no consumers outside the edited function, and for strictly additive optional fields that no consumer is required to read.
+It applies when a change alters the shape, format, meaning or published name of anything consumed outside the edited code: a return value or type, an API or tool response, a serialized payload, a database column other code reads, a log or telemetry field, an event or queue message, a config value or env var, CLI output that something parses, or an identifier a caller addresses by name (a tool, route or command). Wrapping existing data in an envelope counts, because the bytes a consumer parses are different. Renaming counts.
 
-The test is not "did I change an interface file" — it's **"does anything outside this diff read the bytes, fields, or values I'm changing, or address something by the name I'm changing?"** If you haven't checked, the answer is unknown, and unknown means yes.
-
-Run sections 1–6 in order. They're cheap — a few searches and one real observation — and each exists because skipping it has a specific failure mode.
-
----
+Skip it for changes with no consumers outside the edited function, and for strictly additive optional fields that no consumer is required to read. If you have not checked whether anything outside the diff reads what you are changing, treat the answer as yes.
 
 ## 1. Name the seam
 
-Before editing, state in one sentence what contract is changing: the producer, and either the data shape and transport (return value / response body / column / log field / event / stdout) or the published identity (tool, route, command) a caller addresses by name. Why: an unnamed seam can't be searched for. "I'm changing how search results come back" is a vibe; "the tool's text channel currently carries raw JSON that callers parse" is a searchable surface with findable consumers.
+State in one sentence which contract is changing: the producer, and either the data shape and its transport or the published name callers use. A named seam can be searched for. The seam includes the address a consumer uses to reach the producer: renaming a tool renames what clients call, so a call by the old name resolves to nothing.
 
-The seam includes the **address a consumer uses to reach the producer** — a tool name, an API route, a CLI command — not only the payload it parses. Renaming a tool renames the address clients call, not just the data they read; an invocation by the old name now resolves to nothing instead of returning altered data.
+## 2. Find consumers by searching
 
-## 2. Enumerate consumers mechanically — never from memory
+Search for the symbol, the field names, the parse sites, the column name and the topic or queue name, in this repo and in known sibling repos or clients when the seam crosses a service boundary. Memory returns the consumers you wrote; search returns the ones that exist.
 
-Search for the seam; don't recall it. Grep for the symbol, the field names, the parse sites (`JSON.parse`, `json.loads`, `Unmarshal`, `deserialize`), the column name, the topic or queue name — in this repo, and in known sibling repos or clients when the seam crosses a service boundary. Memory produces the consumers you wrote; search produces the consumers that exist.
-
-**The consumer you forget is never a call site — it's a pipeline.** Loggers, telemetry helpers, analytics/ETL jobs, dashboards, alert rules, and export scripts read production data shapes without ever appearing in the producer's call graph. Explicitly search the logging and observability layer for the seam's field names before declaring the consumer list complete. Why: call-graph intuition finds callers; it structurally cannot find out-of-band readers — and those are exactly the ones whose breakage nobody is watching for.
+The consumer you forget is never a call site. It is a pipeline. Loggers, telemetry helpers, analytics and export jobs, dashboards and alert rules read production data shapes without appearing in the producer's call graph. Search the logging and observability layer for the seam's field names before calling the list complete, because nobody is watching for breakage there.
 
 ## 3. Classify each consumer by how it fails
 
-For every consumer found, put it in one of three buckets:
+- **Unaffected.** It reads fields the change does not touch. Say so per consumer.
+- **Breaks loudly.** It throws, returns a 500 or fails CI. This is caught before or just after shipping.
+- **Degrades silently.** Look specifically for `try/catch` returning a default, `|| []`, `?? null`, optional chaining and "return empty on error" downstream of the seam. Tests, error dashboards and users do not see this class when it happens.
 
-- **Unaffected** — it reads fields or bytes the change doesn't touch. Say so explicitly per consumer; don't hand-wave the list.
-- **Breaks loudly** — it throws, 500s, or fails CI. This is the good kind: it will be caught before or immediately after ship.
-- **Degrades silently** — the killer class. Hunt specifically for `try/catch → default`, `|| []`, `?? null`, optional chaining, and "return empty on error" downstream of the seam. Why this bucket gets its own hunt: silent degradation is invisible to tests, error dashboards, and users in the moment — it surfaces weeks later as corrupted analytics or quietly missing data, when the causing deploy is no longer under suspicion.
+Two questions cut across the buckets for a published name. Can you reach the consumer, meaning you can update and deploy it with this change? Does it cache the name or shape? A client that cached a tool name keeps calling it, and its error lands in the client's logs, not yours. A consumer that is both unreachable and caching is the case that turns a rename into an outage.
 
-Two more questions cut across all three buckets and change what "affected" means for a published identity. **Can you reach it?** — an owned, in-repo consumer you can update in the same change, versus an external or uncontrolled client whose runtime you don't touch when you ship. **Does it cache the identity or shape?** — a client that cached a tool name, route, or response shape keeps calling what it remembers; the moment the old identity stops resolving, it errors loudly for the client, but that error usually lands in the client's own logs, not yours — unless you've built explicit telemetry for it, your side sees nothing to alert on. A consumer that is both unreachable and caching is the case that turns a rename into an outage — it's why disposition 1 below is off the table for it.
+## 4. Decide per consumer before shipping
 
-## 4. Decide per consumer, before shipping
+Every affected consumer gets one of three dispositions.
 
-Every affected consumer gets exactly one of these three dispositions, chosen deliberately — not every disposition is available for every consumer; a consumer's own traits (reachability, caching) can rule one out, as disposition 1's caveat below shows:
+1. **Update it in the same change.** This is the default, and it is only available for consumers you can deploy in lockstep.
+2. **Version the contract.** Publish the new shape or name beside the old one, migrate consumers, then retire the old one deliberately. This is the expand, migrate, contract sequence of [[safe-migrations]] applied to any data seam. For a published name with external or caching consumers it is the only safe option: keep the old name resolving through an alias for a deprecation window, and remove it in a later release once telemetry shows no calls to it. Do not ship the removal just before nobody is watching, because the removal is the risky step.
+3. **Accept the break and write it down.** This is legitimate only when it is explicit in the change record. It is not available for a published name with external or caching consumers.
 
-1. **Update it in the same change** — the default, but only for consumers you can reach and deploy in lockstep with the change. An external client you don't control can't be "updated in the same change"; if you can't ship its update alongside yours, this disposition doesn't apply to it.
-2. **Version the contract** — publish the new shape alongside the old (a new field next to the old one), migrate consumers, then retire the old shape deliberately. This is [[safe-migrations]]'s expand → migrate → contract, and it generalizes from schemas to every data seam — including identities. When the seam is a published identity with external or caching consumers (a tool name, an API route, a CLI command), this is the *only* safe disposition: keep the old identity **resolving** — an alias or shim that forwards the old name to the new one — through a deprecation window, rather than hard-renaming it. Alias first; announce the deprecation; remove the old identity only after the window has passed and telemetry shows zero calls to it. Never remove the old identity in the same release that adds the new one, and never ship the removal right before you go offline for the weekend or a holiday — the removal is the risky step, and it needs someone watching when it lands. Three rules govern the whole deprecation, not just the rename case. **The churn rule:** if you own the thing being deprecated, migrating its consumers is *your* duty — ship the migration path (tooling, updated call sites, or a backward-compatible default), never an announcement with a deadline and a shrug. **Default to advisory over compulsory:** a warning consumers act on at their own pace beats a forced cutoff; force one only when the maintenance cost or risk justifies it, and then only with the migration tooling in hand. **No deprecation without a replacement:** if the replacement doesn't exist, build it first — and weigh the cost of *not* deprecating (security exposure, maintenance drag) so keeping the old thing is a decision too. Behavioral dependence is why announcement alone never works: with enough consumers, every observable behavior becomes a contract — bugs, timing, ordering, and error text included — so consumers can't "just switch" to a replacement that doesn't replicate what they actually depended on.
-3. **Accept the break and write it down** — legitimate only when it's explicit in the change record, never by omission, never the default for a consumer you couldn't actually reach, and never available at all for an identity seam with external or caching consumers — disposition 2's alias-through-a-window is the only option there.
+Three rules govern a deprecation. If you own the thing being deprecated, migrating its consumers is your job: ship the migration path, not an announcement with a deadline. Prefer a warning consumers act on at their own pace over a forced cutoff. Do not deprecate without a replacement. Announcement alone fails because, with enough consumers, every observable behaviour becomes a contract, including bugs, timing, ordering and error text.
 
-Why the ceremony: the only wrong option is the implicit one — a consumer that was never dispositioned is a decision made by accident.
+For routes: redirect a web page's old path with a `301` (see [[seo]]). For an API route a `301` can downgrade a non-`GET` request to `GET`, so serve both paths or use a `308`. For a CLI, keep the old subcommand as a deprecated alias.
 
-**Avoid:** rename the MCP tool `search` to `searchDocuments`; the server's own tests are green; ship on a Friday afternoon. Every client that had cached the old tool list keeps calling `search`, gets "unknown tool," and errors out — with nobody watching until support tickets arrive Monday. The same pattern breaks a hardcoded endpoint (`/v1/search` renamed to `/v1/documents/search`) or a CLI command (`mytool search` renamed to `mytool find`): a cached client, a bookmarked URL, or a pinned script keeps addressing a name that no longer resolves.
+## 5. Verify one downstream path
 
-**Prefer:** add `searchDocuments` alongside `search`; keep `search` as an alias that delegates to it; mark `search` deprecated in its own description so new clients see the signal; announce the deprecation window; remove `search` only in a later release, after telemetry confirms nothing is still calling it — and the removal takes the tests, docs, config, and the deprecation notices themselves along with it. Old cached clients keep working through the transition; new clients adopt the new name on their own schedule; the removal is a deliberate, watched step instead of an accident that lands over a weekend. The same pattern covers routes (for a web page, `301` the old path to the new one — [[seo]]'s redirect rule; for an API route, a `301` risks clients silently downgrading a non-`GET` request to `GET`, so serve both paths, or use a method-preserving `308`) and CLI commands (keep the old subcommand as a deprecated alias).
+Run a consumer, not only the producer's tests. Exercise the real flow, then read the logged row, emitted event or dashboard value and confirm it is populated and correct. The producer's suite proves the producer; only observed downstream output proves the seam.
 
-## 5. Verify one downstream path end-to-end
-
-Run the *consumer*, not just the producer's tests: exercise the real flow, then read the actual logged row / emitted event / dashboard value and confirm it is populated and correct. Why: the producer's suite proves the producer; only observed downstream output proves the seam.
-
-**Avoid:** wrap a tool's text output in a security envelope; the tool's own tests are green; ship it. A telemetry helper elsewhere `JSON.parse`s that text, throws, and returns `null` from its catch — and every event logs null result counts for a week with zero errors flagged, because the helper's fallback made the breakage look like data.
-
-**Prefer:** name the seam ("the tool's text output — is it parsed downstream?"), grep for parse sites, find the telemetry helper, update it to read the structured field instead, then run one real query and confirm the logged row shows a non-null count. Same change, one extra hour, no silent week-long outage.
+An example of the failure: a tool's text output is wrapped in a security envelope and the tool's tests pass. A telemetry helper elsewhere parses that text as JSON, throws, and returns `null` from its catch. Every event then logs null result counts with no error raised.
 
 ## 6. Record the impact
 
-End the change with a one-paragraph **Downstream impact** statement: the seam, the consumers found, their classification, and what was verified end-to-end. Carry it into the PR body's risk section ([[pr-conventions]]'s `## Risk / reviewer attention` block) — that is where the reviewer actually sees the audit happened, and [[self-review]] cites it from there. Why: the analysis is only durable if the reviewer can see it was done — an undocumented consumer audit is indistinguishable from a skipped one.
-
----
-
-## Self-check before you call it done
-
-- Seam named in one sentence before editing?
-- Consumers enumerated by *searching* (symbols, field names, parse sites, columns/topics) — including the logging/telemetry/analytics layer — never from memory?
-- Every silent-degradation site downstream (`catch → default`, `|| []`, `?? null`) identified, and every affected consumer explicitly dispositioned — updated, versioned, or break accepted in writing?
-- At least one downstream consumer verified end-to-end, its real output *observed* (logged row, emitted event, dashboard value)?
-- Downstream impact statement written where the reviewer will see it?
-- If a published identifier is renamed or removed: old identity still resolving (alias/shim) through a deprecation window — not removed in this release?
+End the change with a short downstream-impact statement: the seam, the consumers found, how each was classified, and what was verified. Put it where the reviewer will read it. In a pull-request flow that is the risk section of the PR body ([[pr-conventions]]); [[self-review]] cites it from there. A consumer audit nobody can see looks the same as one that was skipped.

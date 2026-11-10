@@ -1,280 +1,154 @@
 ---
 name: code-standards
 description: >-
-  Prabhdeep (Sonu) Singh's personal coding standards — the house rules and quality bar for how code gets written. INVOKE before writing, generating, refactoring, or reviewing ANY code in ANY language — schemas, endpoints, queries, logging, validation, error handling — even when nobody says "standards" or "style". ([[tdd]] assumes this bar.)
+  Prabhdeep (Sonu) Singh's house rules for code: schema and API naming, comments, function size, error handling, logging, config defaults, dependencies. Use when writing, refactoring or reviewing code. Test-first rules: [[tdd]]; contract changes: [[blast-radius]]; trust boundaries: [[security]].
 ---
 
-# Code Standards — write it like Sonu would
+# Code standards — the house rules
 
-This is the house style. It exists because code is read far more often than it's written, and the reader is usually a tired human (or model) six months from now with no context. Every rule below optimizes for that reader. Follow the spirit, not just the letter — these are the instincts of someone who's maintained code for 20 years, not a linter config.
+Explicit project instructions (its AGENTS.md, CLAUDE.md or other written rules) override these rules; follow them and skip that part of this. An established convention in the code overrides the style and structure rules here, as the next paragraph but one says. Existing code or habit alone never waives a trust boundary, a required human authorization or a data-safety rule (sections 7, 9, 10 and 14): where the code conflicts with one of those, say so instead of following it.
 
-## How to apply this
+These are the owner's preferences and the lessons that cost something to learn. General good practice is assumed and not repeated here. The reader of the code is a senior engineer with no context six months from now.
 
-Before writing new code, hold these standards in mind as the target. Before editing existing code, read the surrounding file first: **a consistent codebase beats a "correct" one.** If the existing code already has strong conventions, match them even where they differ from this guide, and mention the conflict rather than silently fighting it. Apply this guide fully when starting fresh, filling gaps, or when the existing code has no clear convention.
+**A consistent codebase beats a "correct" one.** Read the surrounding file before editing. Where the existing code has a clear convention, match it even where it differs from this guide, and mention the conflict instead of working against it. Apply this guide in full when starting fresh or where no convention exists.
 
-When you finish a change, run the self-check at the bottom against your own diff before considering it done.
+## How to work
 
-## How you work — discipline before output
+**Surface ambiguity.** When a request has more than one reasonable reading, or assumes something the codebase contradicts, say so before building. Ask when a wrong guess would be expensive to undo; otherwise state the assumption and proceed.
 
-The numbered sections below describe what finished code should look like. These four habits describe how to get there, and they head off the most common ways an AI coding session goes off the rails: confidently building the wrong thing, over-engineering, re-implementing what already exists, and leaving collateral damage in the diff. They bias toward care over raw speed — on a genuinely trivial change, use judgment.
+**Reuse before writing.** Before adding a helper, branch, option or component, check in this order and stop at the first that answers: does it need to exist at all; is it already in this codebase; is it in the standard library; is it a platform primitive (a native element over a component library, CSS over JavaScript, a database constraint over application code); is it in an installed dependency. Only then write the minimum code that does what was asked. When you skip something as unnecessary (a case that cannot occur, configurability nobody asked for, an abstraction with one use), name the skip in one line of the hand-off, not in a comment. This never removes validation at a trust boundary, error handling that prevents data loss, a security or accessibility requirement, or anything explicitly requested. Before relying on a platform feature, check it against the browsers and runtime versions the project supports.
 
-**Think before you code.** Don't assume your way past ambiguity — surface the options when a request has more than one reasonable reading, state the assumptions you're working from, and say so if a simpler approach exists. When something is genuinely unclear and a wrong guess would be expensive to unwind, stop and ask rather than building on the guess. That includes the requester's premises: if the request assumes something the codebase contradicts, surface the mismatch before implementing.
+**Verify APIs against the installed version**, not memory, before calling anything beyond the language's core. A new package is an architectural decision, so do not add one for what a few lines or an existing dependency can do.
 
-**Climb the ladder before you write.** Ten lines become two hundred in two ways — building what nobody needs, and re-implementing what already exists — and a model is pulled toward both, because generating fresh code is easier than reading existing code. So before writing any code — a helper, a branch, an option, a component — run these rungs in order; the first one that gives you an answer (skip it, reuse it, use it, or write it) is where you stop:
+**Change only what the task requires.** Do not improve or reformat adjacent lines. Clean up what your change orphaned, and flag out-of-scope dead code to the reviewer instead of deleting it. When an approach fails, revert it fully before trying the next. Re-read a file before editing when your view of it may be stale: after a subagent touched it, after a rebase, after a reviewer's fix landed.
 
-1. **Does it need to exist?** If not — a case that can't occur, configurability nobody asked for, an abstraction with one use, a guard for input a validated boundary already rejects — skip it, and name the skip in one line of the hand-off, never as a comment: what was left out and what would warrant adding it. If it does, keep climbing. (The rule of three from §4 applies here too.)
-2. **Already in this codebase?** Grep the concept; read `utils`/`lib`/shared folders. A helper a few files over — or the component library the codebase already renders with — is reused, not rewritten.
-3. **In the standard library?** Use it.
-4. **A platform primitive?** A native element over a component library, CSS over JavaScript, a database constraint over application code — the platform's version ships free, stays maintained, and was built by people whose whole job was that problem.
-5. **An installed dependency?** Use it — and never add a new one for what a few lines can do.
-6. **Only then: the minimum code that fully does what was asked.** If a senior engineer would call it overcomplicated, simplify.
+**Report only what you observed.** "Tests pass" means you ran them this session and saw them pass. Every count you report (call sites, rows, tests) is the output of a command you ran. In a hand-off, ticket or subagent prompt, give a path and the relevant lines, not a pasted log or large file.
 
-Two rungs answer? Take the earlier one — the lower number — and move on. The ladder shortens the solution, never the reading: it runs *after* you have read the code the change touches and traced the real flow, because the smallest diff in the wrong place is a second bug, not efficiency. And nothing on the ladder cuts what only code can supply — validation at a trust boundary (§9), error handling that prevents data loss (§7), a security or accessibility requirement, or anything explicitly requested stays in, however few lines the rest became.
+## 1. Names
 
-→ `references/platform-native.md` — the rung-4 lookup by stack (HTML, CSS, browser APIs, Node, Python, SQL); read when about to add a dependency, or to write interface behavior, formatting, or data-integrity logic a browser, runtime, or database might already provide.
+Do not use `data`, `info`, `item`, `value`, `temp`, `result`, `obj`, `arr`, `list` or `thing` as identifiers, or `Manager`, `Helper`, `Util` or `Service` as a catch-all suffix. They describe the type, which the reader can already see. Name for the domain, in the vocabulary the business uses. Booleans read as a yes/no statement (`isExpired`, `hasUnpaidInvoices`).
 
-```js
-// Avoid: hand-rolling what the platform (or a nearby helper) already does
-function groupUsersByRole(users) {
-  const grouped = {};
-  for (const user of users) {
-    if (!grouped[user.role]) grouped[user.role] = [];
-    grouped[user.role].push(user);
-  }
-  return grouped;
-}
+## 2. Schema and API naming
 
-// Prefer: rung 3 — the standard library already ships it
-const usersByRole = Object.groupBy(users, user => user.role);
-```
+A column or API field is far more expensive to rename than a variable, so get these right at the start and keep them consistent.
 
-Two corollaries: **don't guess APIs** — verify a method/signature against the *installed* version, not memory, before calling anything beyond the language's core; and **the inverse of reuse is dependency discipline** — a new package is an architectural decision (maintenance, security surface, upgrade treadmill), so don't install one for what the stdlib, the platform, or an existing dependency already does.
+- API, JSON and database field names are `snake_case` (`first_name`, `is_active`). In camelCase ecosystems, map at the boundary.
+- Identifiers are UUIDs, not auto-increment integers, which leak record counts, collide across merged systems and can be guessed in URLs. Name them `id` on their own table and `<entity>_id` as a foreign key.
+- Date and time fields are `<thing>_date` or `<thing>_at`, named for the event. Pick one per project. Store UTC.
+- Store names as separate fields (`first_name`, `last_name`), not one `full_name` to split later.
+- Booleans read as a question in data too (`is_active`, `has_subscription`).
+- Money is not a float. Store integer minor units (`total_amount_cents`) or a decimal type, and name the currency.
 
-**Make surgical changes.** Touch only what the task requires. Resist "improving" adjacent lines or reformatting; match the surrounding style even where you'd do it differently. Clean up what *your* change orphaned, but flag out-of-scope dead code to the reviewer instead of deleting it. When an approach fails, revert it fully before trying the next one — a diff must never carry the fossils of abandoned attempts layered under the fix that finally worked. And re-read before you edit whenever your view of the file might be stale — after a subagent touched it, after a suite run or a rebase, after a reviewer's fix landed, or simply after enough turns that you are working from memory rather than from the file. An edit composed against a remembered version lands on a line that has moved, or quietly undoes someone else's change, and both failures look like a clean diff.
+`references/data-and-api.md` has an example record and the idempotency contract; read it when the change touches a schema, an endpoint or a retried operation.
 
-**Size a file before you read it, and query anything large.** Context is the scarcest resource in a long build, and the fastest way to lose it is a single `cat` of something never meant to be read end to end — a test log, a CI dump, a lockfile diff, a generated client, a fixture, a vendored bundle. Check the size first (`wc -l`, `du -h`); past a few hundred lines, interrogate instead of ingesting: `grep`/`rg` for the signature, `head`/`tail` for the shape, `sed -n 'start,endp'` for the one hunk you need, `sort | uniq -c` for a distribution. The rule is about volume, not suspicion — a 200-line source file is read in full, and the file you are editing is always read before you edit it. Two corollaries. Never paste a large artifact into a hand-off, a ticket, a commit message, or a subagent prompt when a path plus the relevant ten lines would do. And every number you report — call sites, rows, tests, minutes — is the output of a command you ran this session, quoted as such; a count estimated from memory reads exactly like a measured one and is the cheapest false claim to make.
+## 3. Comments and docstrings
 
-**Turn the task into a verifiable goal, then loop.** Restate vague asks as something checkable: "fix the bug" becomes "write a test that reproduces it, then make it pass." For anything multi-step, sketch a plan with a verification check per part. And **claim only what you observed**: "tests pass" means you ran them and saw green this session — never assert an outcome you didn't watch happen. The full test-first discipline lives in [[tdd]].
+Prefer clear code to clever code, and guard clauses to nested conditionals.
 
----
+The default is no comment. A comment exists only for what the code cannot say, and before writing one, check four things:
 
-## 1. Names carry the meaning
+1. It states a hidden constraint, an invariant, a unit or format, a workaround with its issue link, a keep-in-sync pointer, a non-obvious algorithm choice, or a `TODO` that says what would make it removable. It does not describe what the next line does, and it does not describe the edit or the task ("added", "fixed", "as requested"); that belongs in the commit message.
+2. Budget: at most one inline comment per function. Needing a second means the function wants splitting or a better name, so fix that instead. The Arrange/Act/Assert markers in a test and the justification a suppression must carry (section 12) do not count against the budget and are exempt from check 3. Inline comment lines never outnumber code lines in any function.
+3. It sits above the function or block, not interleaved line by line.
+4. It is one line. A longer explanation is a docstring or a doc file.
 
-A name should tell the reader what something *is* or *does* without them having to go read its definition. Never ship these as real identifiers: `data`, `info`, `item`, `value`, `val`, `obj`, `temp`, `tmp`, `result`, `res`, `arr`, `list`, `thing`, `stuff`, `foo`, or a `Manager`/`Helper`/`Util`/`Service` suffix used as a junk drawer — they describe the variable's *type*, not its *purpose*, which the reader can already see.
+No dividers, end-of-block markers or commented-out code.
 
-Name for the domain, not the mechanism. Functions are verbs (`calculateInvoiceTotal`), variables/properties are nouns (`outstandingBalance`), booleans read as a yes/no assertion (`isExpired`, `hasUnpaidInvoices`). Avoid abbreviations unless genuinely universal (`id`, `url` are fine; `usrAcctBal` is not). Match the vocabulary the business already uses.
+Public or exported API gets a docstring in the language's own convention. Private helpers get none unless the logic is non-obvious. The summary line says what the caller gets and does not repeat the signature or its types; add only what the signature cannot say (a unit, an invariant, a failure mode).
 
-```js
-// Avoid: the reader has to decode every name
-const arr = users.filter(u => u.a);
-let temp = 0;
-for (const item of arr) temp += item.amt;
+A `TODO` for a deferred shortcut names the known limit and the trigger that upgrades it: `// TODO(owner): global lock; per-account locks when throughput matters`. For a reviewer finding judged a false positive, it says why the code is safe. `references/comments.md` has one example.
 
-// Prefer: the names ARE the documentation
-const activeUsers = users.filter(user => user.isActive);
-let totalMonthlyRevenue = 0;
-for (const user of activeUsers) totalMonthlyRevenue += user.subscriptionAmount;
-```
+## 4. Small, single-purpose pieces
 
-## 2. Schema and API naming conventions
+- A function is at most 40 lines. Past that, split it, or spend one line in the hand-off saying why it stays whole. A function that needs blank-line sections to stay readable has already crossed the limit. Split while writing, because a later splitting pass rarely happens.
+- A new file has one responsibility, and its primary export's name states it.
+- A helper with one caller exists only if its name carries a concept the reader needs. A wrapper that only forwards its arguments is inlined.
+- New behaviour goes in the module that owns the data it touches. The caller gains a call, not a block.
+- Abstract on the third occurrence, once you know what varies.
 
-Data outlives code — a column or API field gets baked into the database and into other teams' integrations, so it's far more expensive to rename later than a local variable. Get these right up front and keep them consistent across the whole surface.
+**A refactor must reduce the number of concepts a reader holds**, not move them. Prefer the change that makes a branch, mode or layer disappear. Before simplifying unfamiliar code, know its responsibility, its callers, its edge cases and why it might be written this way (check `git blame`). A simplification that needs test changes to pass probably changed behaviour ([[tdd]] section 9).
 
-- **API/JSON and database field names are `snake_case`** (`first_name`, `is_active`) — consistent casing means consumers never guess `userId` vs `user_id` vs `UserID`. Map at the boundary in camelCase ecosystems (JS/TS) rather than leaking mixed casing into payloads.
-- **Identifiers are UUIDs/GUIDs, not auto-increment integers** — sequential ids leak record counts, collide across merged systems, and are guessable in URLs. Name them `id` on their own table, `<entity>_id` as a foreign key.
-- **Date/time fields read as `<thing>_date` or `<thing>_at`**, named for the event (`created_date`/`created_at`). Pick one convention per project, never mix. Store in UTC; let presentation localize.
-- **Store names as separate fields** (`first_name`/`last_name`) — never a single `full_name` you have to split later; splitting is locale-hostile and lossy, composing from parts is always correct.
-- **Booleans read as a question in data too** (`is_active`, `has_subscription`) so a row is self-describing.
-- **Money is never a float** — binary floating point can't represent most decimal amounts exactly, and rounding compounds. Store integer minor units (`total_amount_cents`) or a decimal type, and name the currency.
+**Structural and behavioural changes do not travel in the same step.** Mixed together, a red suite cannot say whether the new behaviour is wrong or the restructuring broke something. Do the structural move first, on green; then the behaviour. If the suite goes red after a pure restructuring, revert it. Inside `/sonu:ship`'s review cycles, where each cycle's fixes land as one commit, answer a finding with the behavioural fix and leave the restructure as a follow-up.
 
-→ `references/data-and-api.md` — a full example record and the API/status-code depth for §13, read when this change touches a database schema, a query, or an endpoint.
+A file near a thousand lines is a signal to decompose before adding to it. A mechanical refactor across hundreds of lines is done with a codemod or script, because hand edits at that scale are error-prone and hard to review.
 
-## 3. Write for the next human to read
+## 5. Data access
 
-Favor clarity over cleverness — a dense one-liner that takes five minutes to parse is worse than three obvious lines. Use guard clauses to keep the happy path flat instead of nesting conditionals, which bury the main logic inside a pyramid of braces.
+Write every query as if the table is already large: select only the columns used, paginate by default, filter and aggregate in the database, avoid one query per row, and index the columns filtered and sorted on. A change made in order to be faster follows [[performance]], which measures first.
 
-```js
-// Avoid: the real work is buried three levels deep
-function getDiscount(user) {
-  if (user) {
-    if (user.isActive) {
-      if (user.plan === 'pro') return 0.2;
-    }
-  }
-  return 0;
-}
+## 6. Presentation
 
-// Prefer: handle the exits first, then the happy path reads straight down
-function getDiscount(user) {
-  if (!user || !user.isActive) return 0;
-  if (user.plan !== 'pro') return 0;
-  return 0.2;
-}
-```
+No inline styles; style belongs in stylesheets, tokens or the project's styling system. The exception is a truly dynamic runtime value, and a CSS custom property is preferred even then. Name thresholds and status values instead of using magic numbers and strings.
 
-**Comments: the default is none, and the limits below are hard.** The reader is a senior engineer who will not wade through a hundred comment lines on a three-line function, and who reads comments scattered through a body as noise, not help. The names (§1) and the small functions (§4) carry the meaning; a comment exists only for what the code *cannot* say. These are limits applied while writing — nothing is written to be trimmed later. Before writing a comment, it must pass all four checks; if it fails any, do not write it:
+## 7. Errors
 
-1. **It says one of these, and nothing else:** a hidden constraint, an invariant, a unit or format, a workaround with its issue link, a keep-in-sync-with pointer, a non-obvious algorithm choice, or a `TODO` that says what would make it removable — for a deferred shortcut, the ceiling-plus-trigger shape below; for a reviewer finding judged a false positive, why the code is safe. Never what the next line does (`// parse the hours` above `parseHours()`), and never the edit or the task ("added", "fixed", "updated", "now uses", "as requested", "per the ticket") — that is commit-message material.
-2. **Budget: at most one inline comment per function.** Needing a second means the function wants splitting or a better name — fix that instead (§4's tripwire). Two comment kinds other rules *require* count as zero against this budget and are exempt from check 3: the `// Arrange` / `// Act` / `// Assert` markers in a test body ([[tdd]]'s structure) and the justifying comment a suppression must carry (§12). Backstop: inline comment lines never outnumber code lines in any function; a public docstring is bounded by its own rule below, not by this count.
-3. **Placement: above the function or above a block — never interleaved line-by-line inside the body.** A body reads straight down as code.
-4. **Length: one line.** A why that needs more is a docstring or a doc file.
+Do not swallow errors. Catch only what you can handle, where there is enough context to decide.
 
-No dividers, no end-of-block markers, no commented-out code.
+**Write the failure path with the happy path**, because it is the path nobody exercises.
 
-**Docstrings follow the language, not the one-line rule.** Public or exported API gets a docstring in the language's own convention (godoc, rustdoc, PEP 257, JSDoc); private and unexported helpers get none unless the logic is non-obvious. The summary line says what the thing does for the caller — never restates the signature — and in a typed language never repeats parameter or return types the signature already declares. That is also the docstring's size bound: the summary line, plus only what the signature cannot say (a unit, an invariant, a failure mode) — a docstring longer than the function it documents has restated the code. A `TODO` is attributed and says what would make it removable. For a deferred shortcut that is two things: the ceiling — the known limit of the shortcut it marks (a global lock, an O(n²) scan, a naive heuristic) — and the trigger that upgrades it (`// TODO(owner): global lock; per-account locks when throughput matters`); for a reviewer finding judged a false positive, it is why the code is safe. `grep TODO` is the debt ledger, and a row with no trigger is one nobody ever acts on. Delete dead code instead of commenting it out; that's what version control is for.
+- Every acquire (a reservation, a lock, a marker, a slot) is released in a `finally`, or is not taken until after the last `await` that can reject.
+- Every detached promise has a `catch` that logs. Without one, a downstream failure crashes the process.
+- A remote write's transport timeout is ambiguous, never failed. The write may have landed, so the caller does not retry as if nothing happened, and the message to the user says so.
 
-→ `references/comments.md` — the four checks applied to one real function, and the public-vs-private docstring line, read the first time this session writes a comment in a file you did not author.
+Before calling a change done, ask what fires two levels out when it runs (callbacks, middleware, observers), whether the tests exercise the real chain or only mocks, and whether a failure can leave orphaned state.
 
-## 4. Small, single-purpose, modular pieces
+**A silent fallback is worse than an empty catch.** `catch { return [] }` or `?? defaultValue` on a failure path turns a crash that would be fixed today into wrong data that is trusted for months. A fallback is legitimate only as a deliberate product decision, and even then it logs the failure and is visibly a fallback.
 
-A function should do one thing at one level of abstraction — if you need "and" to describe it, it's three functions. **The size limits below are hard, and they are applied while writing** — the same shape as §3's comment budget: nothing is written large to be split later, because a split-later pass spends the tokens twice and usually never runs. The reader is a senior engineer who writes the fewest lines that do the exact job and keeps each piece swappable; the limits are what that instinct looks like as countable rules:
+**At a data boundary, a parse failure produces a signal.** When parsing external or cross-component data fails, log at error level with the raw input (truncated to a few hundred characters and redacted), increment an error metric, or rethrow. A default return is acceptable only alongside that signal. When you are the one changing what flows into someone else's parser, find the consumers first ([[blast-radius]]).
 
-1. **A function is at most 40 lines.** Past that: split it, or spend one line in the hand-off saying why it stays whole. A function that needs blank-line "sections" to stay readable has already crossed it.
-2. **A new file has one responsibility**, and its primary export's name states it. A second responsibility is a second file.
-3. **A helper with one caller exists only if its name carries a concept the reader needs** — otherwise inline it. A wrapper that only forwards its arguments is always inlined.
-4. **New behavior lands in the module that owns the data it touches**, never in the caller — the caller grows a one-line call, not a block. That is what keeps a piece replaceable without editing everything that uses it.
-5. **The fewest lines that fully do the job** — the ladder's rung 6 as a limit: if a senior engineer could delete a line and keep both the behavior and the names, delete it first. (The clarity rule in §3 still wins over compression — three obvious lines beat one dense one.)
+## 8. Logging
 
-Separate concerns by layer — business logic doesn't belong in UI components; data access doesn't belong in controllers or views. Prefer pure functions (same input, same output, no hidden side effects) wherever the work is a calculation, and push side effects to the edges. Don't repeat yourself, but don't abstract prematurely either — reach for a shared abstraction on the third occurrence (the rule of three), once you know what actually varies.
+Log through one shared logger, not scattered `console.log` or `print` calls, so levels, format, redaction and routing have one home. Each line has a stable message plus structured key/value context, with values kept out of the message string. Attach a correlation or request id. Do not log secrets or personal data: log the `user_id`, not the user. The exception is a dedicated, access-controlled, short-retention audit log for security events.
 
-**Refactors must reduce complexity, not relocate it.** Count the concepts a reader must hold to follow the code; if a "cleaner" version leaves that count unchanged, it isn't cleaner — prefer the restructuring that makes whole branches, modes, or layers disappear, and prefer deleting an abstraction to polishing it. The mirror-image traps when simplifying: inlining a helper that gave a concept its name makes call sites *harder* to read; merging two simple functions into one complex one isn't simpler; some abstractions exist for testability or extension, not complexity — and fewer lines was never the goal. Before simplifying unfamiliar code, answer: what is its responsibility, who calls it, what are the edge cases, do tests define its behavior, and *why might it be written this way* (performance? platform constraint? check `git blame`) — if you can't answer these, you're not ready to simplify. And a simplification that requires modifying tests to pass likely changed behavior — that's [[tdd]]'s test-is-innocent rule firing.
+## 9. Input validation
 
-**Structural and behavioral changes never travel in the same step.** There are two reasons to change code — to change what it does (a feature, a fix) and to change how it is organised (a refactor) — and combining them in one edit makes a red suite undiagnosable: you cannot tell whether the new behavior is wrong or the restructuring broke something, so you debug both. Do the structural move first, on green, as its own commit; then the behavior, on green, as its own commit. The loop is mechanical: green → one small transformation → green → commit. If the suite goes red after a transformation, revert it rather than debugging it — the failure is by construction the thing you just did. The same rule sets the commit boundary when a reviewer's finding asks for both: the rename or the test first, then the behavior that needed it. While building, that means separate commits. Inside `/sonu:ship`'s review cycles, where each cycle's fixes land as one commit, keep a structural move out of the cycle entirely — a reviewer's finding that needs one is answered with the behavioral fix now and the restructure as its own follow-up — rather than mixing the two into the cycle's commit.
+Every value crossing a trust boundary is untrusted; [[security]] covers which boundaries exist. Validate type, shape, length, range and allowed values on the server when input enters, with a schema validator and allow-lists. Do not re-validate between internal functions that share a type contract or on data read back from your own database, because validation everywhere buries the boundaries that matter. Parameterize queries, pass argument arrays to shells, and encode on output.
 
-**Two size tripwires beyond the function.** A *file* near ~1000 total lines is an inspection signal even when the diff is small — when a change materially grows an already-large file, decompose first, then add. And a refactor that would touch more than ~500 lines by hand gets automated (a codemod, `sed`, an AST transform) — manual edits at that scale are error-prone and exhausting to review.
+## 10. Do not leak information
 
-## 5. Data access: ask for exactly what you need
+Return generic errors and log the detail internally under a correlation id. A response does not carry a stack trace, SQL, an internal id or another user's data. Do not confirm which half of a credential pair was wrong; treat password reset and signup the same way, and keep `403` and `404` indistinguishable where existence itself is sensitive.
 
-Queries are where code meets scale — something instant against 50 rows in development can take down production at 50,000. Write every query as if the table is already huge. That is hygiene applied while you write — a change made *in order to* be faster is a different discipline: [[performance]] takes a baseline first and reverts anything that doesn't beat the noise.
+## 11. State
 
-- **Select only the columns you actually use** — `SELECT *` drags every column over the wire, silently changes behavior when a column is added, and hides what the code truly depends on.
-- **Paginate by default; never load an unbounded result set into memory.** Bulk pulls (exports, batch jobs) are fine only when deliberate, bounded, and streamed/chunked.
-- **Filter and aggregate in the database, not application code** — `COUNT`/`SUM`/`WHERE` is orders of magnitude faster than pulling rows back to loop over.
-- **Avoid N+1 queries** — fetching a list then firing one more query per row turns one round trip into a thousand; use a join or a batched `IN (...)`.
-- **Index the columns you filter and sort on.**
+Prefer immutable values and the tightest scope.
 
-→ `references/data-and-api.md` — worked SQL and ORM examples, read when this change touches a query.
+## 12. When tooling objects, fix the cause
 
-## 6. Keep presentation, logic, and content separate
+A type error, lint violation or failing hook is information. Suppression (`as any`, `@ts-ignore`, `eslint-disable`, `--no-verify`) is a last resort and does not ship bare: use the narrowest scope, one line, with a comment saying why and what would make it removable. The same holds for failing tests ([[tdd]] section 9) and runtime errors (section 7).
 
-No inline styles — style belongs in stylesheets, tokens, or the project's styling system. Inline styles can't be reused, themed, or respond to state cleanly. The one exception is a genuinely dynamic runtime value (prefer a CSS custom property even then).
+## 13. API design
 
-```jsx
-// Avoid
-<div style={{ color: '#3a3a3a', padding: '16px' }}>...</div>
-// Prefer: the look lives in the stylesheet / token system
-<div className="card-body">...</div>
-```
-
-The same instinct applies to magic numbers and strings buried in logic — `if (status === 3)` tells the reader nothing; `if (status === OrderStatus.Shipped)` tells them everything. Name thresholds and config values instead of sprinkling them inline.
-
-## 7. Fail loudly and handle errors honestly
-
-Don't swallow errors — an empty `catch {}` turns a bug into a silent mystery. Catch only what you can actually handle, handle it where there's enough context to decide, and otherwise let it propagate. Validate inputs at the system's boundaries so the core can trust what it's working with.
-
-**The failure path is written with the happy path, not after it.** Three rules, one why: the error case is where a change ships its worst bugs, because it is the case nobody exercised. Every acquire — a reservation, a lock, a marker, a slot — is released in a `finally`, or is not taken until after the last `await` that can reject; one audited change took a reservation before a token lookup that could fail and locked users out for a day at five separate call sites. Every detached promise has a `catch` that logs — a fire-and-forget without one turns a downstream send failure into a process crash. And a remote write's transport timeout is *ambiguous*, never *failed*: the write may have landed, so the caller must not retry it as if nothing happened, and the message to the user says so. Before calling a change green, ask three questions of it: what fires two levels out when this runs — callbacks, middleware, observers, handlers; do the tests exercise the real chain or only mocks, which prove the logic works in isolation; and can a failure leave orphaned state — something persisted before an external call that then fails, or a retry that creates a duplicate.
-
-**The silent fallback is the polished version of the empty catch — and it's worse.** `catch { return [] }` or `?? defaultValue` on a failure path *looks* like robustness, but it converts a crash (loud, findable, fixed today) into wrong data (silent, trusted, discovered months later). A fallback is legitimate only when the degraded behavior is a deliberate *product decision*, and even then it logs the failure and is visibly a fallback.
-
-**At a data boundary, a parse failure must produce a signal.** A parser, deserializer, or extractor that catches its own failure and returns `null`/empty converts breakage into silently missing data — everything downstream keeps running, the dashboards it feeds go quietly wrong, and nothing pages. When parsing external or cross-component data fails, emit a signal: log at error level with the raw input (truncated to a few hundred characters — enough to diagnose, not a payload dump — and redacted per §8), increment an error metric, or rethrow. A default return is acceptable only *alongside* that signal, never instead of it. And the mirror duty when you're the one changing what flows into someone else's parser: enumerate the consumers first — that's [[blast-radius]].
-
-→ `references/security.md` — the empty-dashboard example, read when this change adds an error-handling or fallback path.
-
-## 8. Logging: through one helper, never raw `console.log`
-
-Logs are how you understand a system you can't step through — in production there's no debugger, only the trail you left. Route everything through a single shared logger (or a thin wrapper) — never scattered `console.log`/`print` calls — for one place to set levels, format, redact secrets, and route output. Every line carries a **stable, scannable message** plus structured key/value context — never values mashed into the message string, which makes logs ungreppable.
-
-- **Use the right level so noise stays filterable** — `debug` for local detail, `info` for milestones, `warn` for recoverable oddities, `error` for failures needing a human.
-- **Attach a correlation/request id** to every line so one request's dozens of log lines can be traced across a concurrent stream.
-- **Never log secrets or PII** — log the `user_id`, not the user. The narrow exception is a dedicated, access-controlled, short-retention audit log for security events (failed logins, permission changes) — everywhere else, the rule stands.
-
-## 9. Trust nothing from the outside: validate inputs, parameterize queries
-
-Every value crossing a trust boundary — request body, query string, headers, third-party responses — is hostile until proven otherwise; naming *which* boundaries exist and what is reachable through them is [[security]]'s threat-model step, and this section is the mechanics that step assumes. Two defenses, always together:
-
-**Validate at the boundary, before the value touches any logic.** Check type, shape, length, range, and allowed values the moment input enters; prefer allow-lists over deny-lists; validate on the *server* even when the client already did (client checks are UX, not security). Use a schema validator (zod, Joi, pydantic) rather than a pile of hand-rolled `if`s. **And know where the boundary ends**: don't re-validate between internal functions that share a type contract, inside utilities only ever called by validated code, or on data read back from your own database — validation everywhere is noise that buries the boundaries that matter.
-
-**Never build a query or command by concatenating input — parameterize.** A parameterized query sends SQL and values over separate channels, so a malicious value is treated as data, never executed. The same instinct extends to shells (pass an argument array), `eval`, file paths (traversal), and HTML output (XSS — encode on output).
-
-→ `references/security.md` — the SQL-injection and schema-validation examples, read when this change handles external input or a database query.
-
-## 10. Never leak sensitive information
-
-Assume every response and error message will be read by someone trying to break in. **Return generic errors; log the detail internally** — a response should never carry a stack trace, SQL, an internal id, or another user's data; log the full detail keyed by a correlation id instead.
-
-**Don't let messages become a recon tool.** Never confirm which half of a credential pair was wrong ("no account with that email" vs "incorrect password") — one message for the pair lets an attacker learn nothing from the response. Apply the same thinking to password reset and signup, and keep `403`/`404` indistinguishable wherever existence itself is sensitive.
-
-→ `references/security.md` — the login-enumeration example, read when this change touches auth or an existence check.
-
-## 11. State and side effects
-
-Prefer immutability by default — return new values rather than mutating shared state in place; shared mutable state is the source of most "how did it get into THAT state" bugs. Keep variable scope as tight as possible.
-
-## 12. When the tooling objects, fix the cause — don't silence the messenger
-
-A type error, lint violation, or failing pre-commit hook is the toolchain telling you something is wrong. Suppressing it (`as any`, `@ts-ignore`, `eslint-disable`, `--no-verify`) makes the message go away and leaves the problem in place, now invisible — which is exactly why it's the most tempting shortcut under pressure.
-
-**Suppression is a last resort, never a first response, and it never ships bare.** Work the actual cause first. If you judge the diagnostic genuinely wrong, suppress at the *narrowest possible scope* (one line, never a file or rule globally) with a comment stating why and what would make it removable. The same principle governs failing tests ([[tdd]]'s "the test is innocent" rule) and runtime errors (§7): don't make the signal go away without addressing what it signals.
-
-## 13. API design: the response is a contract, not a data dump
-
-An endpoint's response gets baked into clients you don't control, so what you return you maintain forever, and what you leak you can't unleak.
-
-- **Serialize an allowlist, never the entity.** `res.json(user)` ships whatever the ORM row contains — password hashes, internal flags, columns added next year by someone who never saw this endpoint. Build responses from an explicit allowlist (DTO, serializer, projection) naming exactly what the client needs — including *related* data, which can drag another entity's private fields along.
-- **Status codes tell the truth** — never `200` with an error body; a lying status breaks retries, caching, and monitoring.
-- **One error shape, everywhere** — every error response uses the same envelope, or every client writes its own parser.
-- **Breaking a response is a migration** — remove or rename a field the same staged way as [[safe-migrations]]: add alongside, migrate consumers, retire deliberately, never in one step.
-
-- **Retried operations need idempotency designed, not assumed.** Any endpoint that moves money, sends messages, or creates records will be retried — and retries are *correlated*, spiking exactly when a dependency is degraded and duplicates cost most. Derive the idempotency key from the *intent* (client- or event-supplied, from an immutable identifier), never from the attempt; claim it atomically (check-then-act is a race — the unique constraint *is* the mechanism); and treat every outbound call as having three outcomes — success, failure, and *unknown* — recording intent before calling out.
-
-→ `references/data-and-api.md` — the allowlist example, full status-code list, migration detail, and the full idempotency contract (key derivation, atomic claim, payload guard, in-flight duplicates, retention), read when this change touches an endpoint's request or response shape or a retried operation.
+- Build responses from an explicit allowlist of fields, not the ORM entity, which ships whatever the row contains now and later.
+- Status codes are truthful: no `200` with an error body.
+- One error envelope for every endpoint.
+- Removing or renaming a response field is a staged migration, as in [[safe-migrations]]: add alongside, migrate consumers, retire deliberately.
+- Retried operations need idempotency designed. Derive the key from the intent, not the attempt; claim it atomically with a unique constraint; and treat every outbound call as having three outcomes: success, failure and unknown. Record intent before calling out. `references/data-and-api.md` has the full contract.
 
 ## 14. Configuration and feature flags: absence must be safe
 
-When a config value, env var, or feature flag that gates behavior is missing or unparseable, it resolves to the **safe state — never silently to enabled.** For a feature gate the safe state is off; for a protective control no accidentally-reached state is safe, so it fails fast instead (criterion below). Absent config means the operator never chose; silently activating a feature (or silently running *without* a protection) makes the system behave differently from what its operator believes, with no signal — which is exactly how critical systems break with nobody noticing. A default of `true` must be an explicit, written decision at the definition site, with a comment saying it's deliberate — never the accident of a fallback expression.
+When a config value, env var or feature flag that gates behaviour is missing or unparseable, it resolves to the safe state, never silently to enabled. Absent config means the operator did not choose.
 
 ```js
-// Avoid: a missing or misspelled env var silently turns the feature ON
+// Avoid: a missing or misspelled env var turns the feature on
 const newDashboardEnabled = process.env.NEW_DASHBOARD_ENABLED !== 'false';
 
-// Prefer: absent or malformed resolves to off; only the explicit value enables
+// Prefer: only the explicit value enables
 const newDashboardEnabled = process.env.NEW_DASHBOARD_ENABLED === 'true';
 ```
 
-Two corollaries: config that is *required* for correct operation fails fast at startup rather than defaulting at all; and the resolved values of behavior-gating flags are logged once at startup (through the §8 logger) so what's actually running is observable, not assumed.
+The test for which rule applies is whether running with the thing off would be unsafe. A feature gate (new UI, experiment, optimization) defaults off. A protective control (auth enforcement, rate limiting, TLS verification) is required config and fails fast at startup in production when unset, because off is not a safe state for a protection. A default of `true` is an explicit, commented decision at the definition site. Log the resolved values of behaviour-gating flags once at startup.
 
-The criterion for which corollary applies: **would running with this thing off be unsafe?** A *feature* gate (a new UI, an experiment, an optimization) defaults off — absence is safe. A *protective control* (auth enforcement, rate limiting, TLS verification) is required config: in production it fails fast at startup when unset, because "off" isn't a safe state for a protection — it's the outage waiting to be discovered. The one thing absence must never do, in either case, is silently choose "on."
+## 15. Dependencies
 
-## 15. Dependencies: adopt deliberately, upgrade one at a time
-
-Adding a package is an architectural decision; upgrading one is a behavioral change wearing a version number.
-
-- **Read the changelog, not the version number.** Semver is a promise the maintainer may not have kept — a "patch" can carry a behavioral change your code depends on.
-- **One dependency per change.** When a bulk bump breaks the build, you've lost which package did it; a single-package change makes the cause obvious and the revert clean.
-- **Let the tests decide** — green before *and* after, not "it installed." Thin coverage around the dependency's behavior is itself the finding: add the test first.
-- **Review the lockfile diff, not just the manifest** — one direct bump can pull dozens of transitive changes. Commit the lockfile; never hand-edit it.
-- **Don't implement a framework's API from memory.** Verify against the current official docs for the installed version; when you can't verify, mark the code `UNVERIFIED: not checked against current docs for the installed version` rather than hedging — a disclaimer helps nobody, a flag gets checked.
-
----
-
-## Self-check before you call it done
-
-Run this against your own diff — the numbered sections above are the rest of the bar; this list holds only the checks no section states. If any answer is "no," fix it before finishing:
-
-- Assumptions surfaced up front, not silently guessed — and is this the minimum that solves the problem?
-- Does every changed line trace to the request — no unrequested refactors, no fossils of abandoned attempts?
-- Zero debugging debris (`console.log`/`print`, `debugger`, temp scripts, commented-out experiments)?
-- Zero new bare suppressions — narrowest scope plus a justifying comment on any that remain?
-- Is every claim in your report something you actually observed this session?
-- Climbed the ladder — need, codebase, stdlib, platform primitive, installed dependency — before writing any new helper, component, or algorithm, and named every rung-1 skip in one line?
-- All five of §4's size limits held against the diff — every new or changed function at most 40 lines or justified in one line of the hand-off; one responsibility per new file; no one-caller helper without a concept-carrying name and no forwarding wrapper; new behavior in the module that owns its data; no line a senior engineer could delete without losing behavior or a name?
-- Does every comment in the diff pass §3's four checks — whitelisted content, at most one per function, above a block rather than interleaved, one line — with docstrings on public API only, and AAA markers and suppression justifications exempt? (A scan of the comments, not a rewrite pass.)
+- Read the changelog, not the version number. A patch release can change behaviour.
+- Upgrade one dependency per change, so a breakage has one suspect and a clean revert.
+- Tests pass before and after. Thin coverage around the dependency's behaviour is the finding: add the test first.
+- Review the lockfile diff, commit the lockfile, and do not hand-edit it.
+- When you cannot verify a framework API against current documentation for the installed version, mark the code `UNVERIFIED: not checked against current docs for the installed version`.
 
 ## Reference files
 
 | File | What it answers |
 |------|-----------------|
-| `references/data-and-api.md` | A full example record (§2), worked SQL/ORM query examples (§5), the API allowlist example, status-code list, and migration detail (§13), and the idempotency contract (§13) |
-| `references/security.md` | The silent-fallback example (§7), SQL-injection and boundary-validation examples (§9), and the login-enumeration example (§10) |
-| `references/comments.md` | The comment budget applied to one function — every generated comment mapped to the check it fails — and the public-vs-private docstring pair (§3) |
-| `references/platform-native.md` | The rung-4 lookup — what the browser, CSS, the JS runtime, Node, Python, and the database already provide, by the library or hand-rolled code people reach for instead |
+| `references/data-and-api.md` | An example record (section 2) and the idempotency contract (section 13) |
+| `references/comments.md` | One example of a comment and a docstring that pass the checks (section 3) |

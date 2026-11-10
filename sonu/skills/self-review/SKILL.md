@@ -1,157 +1,131 @@
 ---
 name: self-review
 description: >-
-  Surface the riskiest parts of the current diff so a reviewer knows where to look hardest — one inline pass on small diffs, one cold read on a cheaper model tier with in-session synthesis on substantial ones. INVOKE PROACTIVELY whenever a change is finished and about to be handed off, reviewed, or shipped. It points attention — never approves, never fixes.
+  Lists the riskiest parts of the current diff so a reviewer knows where to look, using one independent reader on large or high-risk diffs. Use when a change is about to be handed off or shipped. Never approves or fixes. Consumer impact: [[blast-radius]].
 argument-hint: "[what to review — defaults to the current diff]"
 allowed-tools: Skill, Bash, Read, Agent
 ---
 
-# Self-review — point attention, don't bless the change
+# Self-review — point attention, do not approve
 
-A self-review is not a score. It is not an approval. It is a pointer: *here are the spots a reviewer should look hardest at, and here is why.* Self-scoring rubber-stamps the model's own work — the model that wrote the code is the least reliable judge of whether it's right. That bias is structural, so on any substantial diff the *reading* is taken away from the author entirely: an independent reader on a cheaper model tier, which never saw this conversation, reads the diff cold against every checklist the diff's contents call for, and its findings then have to survive a default-reject bar in this session. Author-blindness is defeated by fresh eyes; finding-inflation is defeated by making every finding earn its place — and the read itself is priced by what the diff needs, not by how many checklists exist.
+The project's own instructions win: where its AGENTS.md, CLAUDE.md or established conventions say otherwise, follow them and skip that part of this. In particular, when the project defines its own review step (an external reviewer, a review command, a required second reader), that review is the independent read: do the inline pass here at most, and do not dispatch a reader on top of it.
 
-## When to apply this
+The output is a short list of the places a reviewer should look hardest and why. It is not a score or an approval, because the author of a change is the least reliable judge of it. On a large or high-risk diff the reading is therefore done by a reader that never saw this conversation, and its findings are accepted only when they hold up against the diff.
 
-- **Conductor hand-back** (`/sonu:build` Phase 3) — before handing back to the user.
-- **Ship pre-PR fix loop** (`/sonu:ship` Phase 1.5) — each pass of the loop runs this skill; the final pass's list seeds the `## Risk / reviewer attention` section of the PR body.
-- **Standalone** — any time the user says "self-review", "what should I look at", "what's risky here", or similar; or when a change is finished and about to be handed off. When invoked directly as `/sonu:self-review`, review `$ARGUMENTS` — the text typed after the invocation; if that token appears literally or is empty, review the working tree / current branch per the diff-picker below.
+It runs at `/sonu:build`'s hand-back, inside `/sonu:ship`'s pre-PR loop, or standalone. Invoked directly as `/sonu:self-review`, review `$ARGUMENTS`; if that token appears literally or is empty, review the working tree or current branch as picked below.
 
-## How to apply this
+## 1. Read the diff
 
-**1. Read the diff.**
+Pick the diff by the state of the tree.
 
-Pick the right diff command for the current state:
-- **Uncommitted changes** (working tree dirty): `git diff HEAD` — **plus** `git status --porcelain` to catch untracked files. Brand-new files never added to the index do not appear in `git diff HEAD` at all; read each untracked file directly and include it in the review. A change made entirely of new files (a fresh module plus its tests) is the classic case where `git diff HEAD` shows nothing while there is plenty to review.
-- **Just committed** (working tree clean, reviewing what was just committed): `git show HEAD` or `git diff HEAD^ HEAD`
-- **Staged only**: `git diff --cached`
-- **Whole branch, about to open a PR** (clean multi-commit branch): `git diff origin/<base>...HEAD` (three dots = diff from the merge base). Reviewing only the last commit on a multi-commit branch misses risks in the earlier ones.
+- **Uncommitted changes:** `git diff HEAD`, plus `git status --porcelain` for untracked files. New files that were never added do not appear in `git diff HEAD`; read each one.
+- **Just committed, tree clean:** `git show HEAD`.
+- **Staged only:** `git diff --cached`.
+- **Whole branch:** `git diff <base>...HEAD`, where the base is `origin/<base>` when a remote exists and the local base branch when it does not. Reviewing only the last commit of a multi-commit branch misses the earlier ones.
 
-If the working tree is clean, there are no untracked files, and there is no recent commit or branch to review, say so and stop — don't invent risks on a clean tree.
+If there is nothing to review, say so and stop.
 
-**2. Gate on size.**
+## 2. Size the change
 
-**Compute this count before anything is dispatched** — it decides the path *and* the reader count in step 3b, so a count taken "for the record" after the readers are out has decided nothing. Count the changed **production code** lines: documentation is excluded because prose volume says nothing about code risk, and **test files are excluded** because test lines decide nothing about which domain needs a read — they are still in the diff and the reader still reads them; they just don't inflate the gate (on the diff that motivated this rule, tests and fixtures doubled the count). Deletions still count: a deleted component or export is a consumer risk. Append `--numstat` to the step-1 diff command, drop doc files by extension and test files by path, and sum; add the line counts of any untracked production code files:
+The size of the production-code change decides how much review it is worth. Documentation and test files are left out of the count because their volume says little about code risk; the reader still reads them. Deletions count. `/sonu:ship` uses this same count, so this fence is its one home.
 
 ```bash
-# Example shown for the branch case — use the same filter on whichever
-# diff command step 1 picked. Binary files report "-" and sum as zero.
-BASE=main   # substitute the base branch step 1 picked — a wrong base must fail LOUDLY,
-            # because a failed git diff would otherwise print a silent, computed-looking 0
-git rev-parse --verify "origin/$BASE" >/dev/null 2>&1 \
-  || { echo "COUNT UNCOMPUTABLE — origin/$BASE not found; take the cold read"; exit 1; }
-git diff --numstat "origin/$BASE...HEAD" \
+BASE=main   # substitute the base branch step 1 picked
+if git rev-parse --verify -q "origin/$BASE" >/dev/null; then REF="origin/$BASE"
+elif git rev-parse --verify -q "$BASE" >/dev/null; then REF="$BASE"   # no remote: the local base branch is the reference
+else echo "COUNT UNCOMPUTABLE: no $BASE branch locally or on origin"; exit 1
+fi
+git diff --numstat "$REF...HEAD" \
   | grep -vE '\.(md|mdx|txt|rst|adoc)$' \
   | grep -vE '(^|/)(test|tests|__tests__|spec)/|\.(test|spec)\.[a-z]+$|_test\.go$|(^|/)test_[^/]*\.py$' \
   | awk '{ n += $1 + $2 } END { print n+0 }'
 ```
 
-- **Under ~100 changed production code lines** → the inline pass (step 3a). Small diffs don't earn a subagent's cost.
-- **At or above ~100** → the cold read (step 3b): one reader.
-- **Above ~500, with at least one domain checklist live** → the cold read with two readers (step 3b says how they split; a diff that size with no domain matched stays at one reader). This is the only place that number lives.
-- **Count uncomputable** (weird state, no git) → the cold read. Fail toward more review, never less.
-- **Judgment override:** a small diff touching a high-risk surface may get the cold read anyway. Checkable markers of high-risk: it introduces or modifies branching logic, crosses a module or service boundary, asserts a property the type system cannot verify (thread safety, idempotence, ordering, an invariant), or has an irreversible blast radius — a migration, an auth path, a contract other code consumes. The threshold is a floor on cheapness, not a ceiling on caution. And in a repo whose product *is* its documents (a skills or plugin repo, a docs site), count all changed lines — prose and its examples alike — because the doc-exclusion above otherwise makes the cold read unreachable exactly where the diffs are largest.
-- **Above ~1,500 counted lines (this step's own count, prose included where the docs-product rule counts it), or ~100 changed files** → the cold read still runs — this bullet outranks step 3b's fall-back-to-inline for a prose-only diff, because size is the risk here whatever the file type — but it is explicitly partial and reported as such. Two readers on a bounded read budget cannot cover a diff that size, and a risk list that looks like a 50-line diff's is the failure mode — it reads as coverage. Dispatch as normal, then make the output's first entry name the limit: which files the readers were pointed at (the highest-risk ones, by the override's markers above) and that the remainder was not read. Say in the hand-off that a diff this size is reviewed properly as two or three changes, and that splitting is the fix rather than a longer reader budget — an unbounded reader on a 100-file diff spends the tokens this gate exists to save and still misses things.
+Use the same filter on whichever diff command step 1 picked, and add the line counts of untracked production files. In a repo whose product is its documents (a skills or plugin repo, a docs site), count all changed lines, because there the prose is the behaviour.
 
-The cold read also needs a working subagent facility: if the harness has no subagent tool, or [[model-tiering]]'s ladder gives this session no trustworthy executor tier below it (locate your tier per that skill; if you cannot locate it with confidence, treat that as no tier — its uncertainty asymmetry applies here too), run the inline pass regardless of size. The skill degrades to exactly its single-pass behavior; nothing breaks.
+How to use the number:
 
-**3a. Inline pass (small diffs, or no cold read available).**
+- A small change, up to roughly a hundred lines, gets the inline pass (step 3a). A subagent costs more than it finds there.
+- A larger change gets one independent reader (step 3b), because the author's blind spots grow with the diff.
+- A small change still gets the reader when it is high-risk: it changes branching logic across a module boundary, asserts something the type system cannot check (thread safety, idempotence, ordering), or cannot be undone (a migration, an auth path, a contract other code consumes).
+- A very large change (well past a thousand lines or about a hundred files) cannot be covered by one read. Review the highest-risk files, say in the first line of the output which files were read and that the rest were not, and recommend splitting the change.
+- If the count cannot be computed, judge size by reading the diff. A missing remote or an unusual repo state is not a reason to take the more expensive path.
 
-Identify the 3–5 riskiest spots yourself. Focus on the things that, if wrong, would be hardest to catch in a review and most expensive to fix after the fact. Common categories (not a checklist — use judgment):
+When the harness has no subagent tool, do the inline pass at any size.
 
-- **Subtle logic** — branches, edge cases, off-by-ones, conditions that are almost-but-not-quite right.
-- **Security-relevant surfaces** — auth, permissions, input sanitization, data exposure, token/secret handling.
-- **Data integrity / migration risk** — schema changes, destructive writes, non-reversible transformations.
-- **Broad blast radius** — a change to a shared utility, a base class, a widely-imported module, or a config that silently affects many call sites. If the diff changes a data shape other components consume, consumer impact is automatically a top-listed risk — cite [[blast-radius]]'s consumer enumeration when the change ran it, and flag its absence when it didn't.
-- **Untested edges** — behavior that the new tests don't cover and that could break in production.
-- **Second implementation** — a new helper in the diff that duplicates an existing function's purpose. Grep the repo for the helper's verb and noun (truncate, format hour, parse status, normalize id) before accepting it; two implementations of one judgment drift, and the failure ships as records that pass one and fail the other.
-- **Silent behavior change** — the code "works" but now does something subtly different from before, in a way callers may depend on — especially a consumer that catches failures and returns a default, where the break produces no error at all.
-- **Duplicated judgment** — two expressions that independently decide the same thing (a filter and the transform it protects, a cap and the accumulator it bounds) and can drift apart; the failure ships as records that pass one and fail the other, with no error anywhere.
-- **Interface regressions** — *only when the diff touches user-facing interface files* (components, screens, templates, stylesheets, or interface copy): a keyboard or screen-reader path that no longer completes, a layout that breaks at a supported viewport, or copy that now misstates a consequence. These are risks a reviewer cannot see by reading the diff text, which is exactly why they belong on the list. Apply the owning domain skills for the judgment ([[accessibility]], [[layout]], [[typography]], [[colors]], [[ui-polish]], [[ux-writing]]) — [[interface-review]] is orchestration only and carries no domain rules.
+## 3a. Inline pass
+
+Identify the three to five riskiest spots: the things that would be hardest to catch in review and most expensive to fix later. Fewer is fine. Categories to consider:
+
+- subtle logic: branches, edge cases, off-by-ones;
+- security surfaces: auth, permissions, input handling, data exposure, secrets;
+- data integrity: schema changes, destructive or irreversible writes;
+- broad blast radius: a shared utility, a config, or a data shape other components consume. Cite [[blast-radius]]'s consumer list when the change produced one, and flag its absence when it should have;
+- untested edges;
+- a second implementation: a new helper that duplicates an existing function. Search the repo for the helper's verb and noun before accepting it;
+- silent behaviour change, especially for a consumer that catches failures and returns a default;
+- duplicated judgment: two expressions that decide the same thing separately (a filter and the transform it protects, a cap and the accumulator it bounds) and can drift;
+- interface regressions, only when the diff touches user-facing interface files: a keyboard or screen-reader path that no longer completes, a layout that breaks at a supported width, copy that misstates a consequence. The rules are in [[accessibility]], [[layout]], [[typography]], [[colors]], [[ui-polish]] and [[ux-writing]]; [[interface-review]] only coordinates them.
 
 Then go to step 5.
 
-**3b. Cold read (substantial diffs).**
+## 3b. Independent reader
 
-Dispatch **one** independent read-only reader using the harness's subagent tool, its prompt composed from the checklist blocks in `references/lenses.md` (read it when dispatching): the code checklists when the diff has code, plus every domain checklist whose condition below matches. **One reader with N checklists costs one read of the diff; N readers cost N** — the same arithmetic that merged the three code checklists into one block also puts the domain checklists in the same prompt, because a Sonnet-class reader holding five short checklists is still cheaper and faster than five readers each holding one. The single split: when step 2's count crosses its two-reader threshold (the number lives there, nowhere else), dispatch **two** readers in the same turn — one carrying the code block, one carrying every matched domain block — so a large diff isn't throttled by one reader's output cap. If no domain condition matched, there is nothing to split: one reader, whatever the size — a reader carrying no checklist is never dispatched. **Never more than two readers, whatever the size and however many domains are live.** A "lens" below is a checklist a reader carries, not a subagent of its own. Two conditions decide what goes into the prompt:
+Dispatch one read-only reader with the harness's subagent tool. Its prompt is composed from `references/lenses.md`: the shared frame, the code checklists when the diff changes executable code, and each domain checklist whose condition below matches. One reader carrying several checklists reads the diff once; several readers each read it again and add little. Use two readers only when the diff is very large and at least one domain matched: one carries the code checklists, the other the domain checklists.
 
-- **The code checklists — correctness, test-adequacy, and silent-behavior-change — are carried whenever the diff changes executable code**, meaning changed lines in non-doc files. Any code diff can carry a logic error, an untested path, or a changed default, so this block has no narrower precondition than "there is code here." One carve-out, because it decides the common case: a non-doc file changed **only** in metadata — a version string, a lockfile hash, a copyright year — is not code for this purpose. Nearly every release rides a version bump alongside its real change, and counting those two lines as code would make the prose path below unreachable in exactly the repos that need it. **Read this off the diff, not off step 2's number:** in a docs-product repo step 2 deliberately counts *all* changed lines including prose, and that count answers "is this diff big enough for the cold read," never "is there code here." Confusing the two carries the code checklists against a pure prose diff, which is exactly the waste this gate exists to stop.
-- **The domain lenses — security, data-integrity, blast-radius, interface — are carried only when the diff contains their domain**, per the four conditions below. Each is a paragraph in the reader's prompt, so including one costs a paragraph, not a subagent — the gate still matters, because a checklist with no domain in the diff produces invented findings for step 4 to reject, and the reader's attention is spent on it.
+The reader gets the diff command and the repo, and nothing from this conversation, because a reader that knows the author's intent inherits the author's blind spots. Its prompt is self-contained; do not tell it to load skills. If the harness lets you choose the reader's model, pass a cheaper one explicitly, since an Agent call without `model` runs on the session's model.
 
-**Why gating is safe:** a lens whose domain is absent from the diff is *structurally* empty, not luckily empty — a security checklist cannot find an injection sink in a file that has no sink, and a consumer checklist cannot find a broken consumer of a contract the diff never changed. This is the same reasoning that declines to load [[safe-migrations]] for a stylesheet change.
+**Code checklists** (correctness, test adequacy, silent behaviour change) are carried whenever the diff changes executable code. A non-doc file changed only in metadata (a version string, a lockfile hash) is not code for this purpose.
 
-**The no-code case — a diff that is entirely prose.** You reach the cold read on a prose-only diff through step 2's docs-product rule (a skills repo, plugin repo, or docs site counts all its changed lines). Here the code checklists have no domain either: a reader hunting off-by-ones and unhandled boundaries finds nothing in prose, and test-adequacy is empty in any repo with no test suite. The checklist blocks in `references/lenses.md` are written for code and would send a reader hunting off-by-ones through paragraphs, so **no reader goes out on the code framing alone** — every prose-path prompt carries that file's prose frame, which replaces the code framing and tells the reader it is reading instructions that govern behavior. Ask **what the prose governs** — because in a repo whose product is its documents, a skill or command file *is* the behavior:
+**Domain checklists** are carried only when the diff contains their domain. A checklist with no domain in the diff produces invented findings.
 
-Apply **the same four domain conditions below, unchanged** — reading "the diff" as the prose *and the behavior it governs*, because in a repo whose product is its documents a skill or command file **is** the behavior. Prose that alters what another component does is a change "read or addressed by code outside the diff"; prose that alters when a security check runs moves a trust boundary as surely as a middleware edit does. **Do not invent a second, looser test for the prose case** — a domain with two dispatch tests has two answers, and this skill has already had that bug.
+- **Security.** Carry it when the diff moves or weakens a trust boundary: untrusted input reaching a sink, a control that protects a boundary being added, changed or removed, or a secret crossing one. That sentence is the test, and a change that fits it but matches no example below still qualifies. Examples: auth or authorization, including a guard enforced only on the client; an API, route or endpoint handler; SQL or any constructed query, command or path; deserialization or dynamic evaluation of untrusted data; middleware; crypto, secret, token or credential handling; payments; env vars or config that gate runtime behaviour or name an outbound destination; session, header, CORS, `postMessage` or frame-isolation handling; file I/O, uploads or downloads; subprocess or shell invocation; outbound requests to user-influenced destinations; dependency manifests, lockfiles or a newly included third-party script; untrusted input interpolated into HTML, a URL, a navigation target or a log line; a regex applied to user input; a recursive merge or dynamic property assignment from user-controlled data; model or tool output reaching an executable sink. This is the one home of the security-surface test; `/sonu:ship` cites it.
+- **Data integrity.** Carry it when the diff touches migrations, schema, serialization, backfills, bulk or destructive writes, or persisted state that other code or a later release reads back.
+- **Blast radius.** Carry it when the diff changes something read or addressed by code outside the diff, by the same test [[blast-radius]] states. Skip purely internal changes and additive optional fields.
+- **Interface.** Carry it when the diff touches user-facing interface files.
 
-The code checklists are carried only where the prose carries at least one of their domains — **correctness** when it states rules, thresholds, or branches an executor follows; **silent-behavior-change** when it changes what a component does without announcing it; **test-adequacy** only when the repo has a suite whose adequacy this prose changes (usually it does not) — and the block keeps only the checklist paragraphs whose domain is present, dropping the rest.
+Leave a domain out only when you can say in one sentence why its domain is absent ("nothing here touches persisted state"). If you cannot, carry it.
 
-If nothing above fires — a typo pass, a wording cleanup, a README polish — say the diff is low-risk and fall back to the inline pass (3a) rather than dispatching anything at all. A subagent on a doc edit is the failure this gate exists to prevent.
+**A diff with no executable code.** In a repo whose product is its documents, a skill or command file is the behaviour. Insert the prose frame from `references/lenses.md`, apply the same four domain conditions to what the prose governs, and carry a code checklist only where the prose has its domain: correctness when it states rules or thresholds an executor follows, silent behaviour change when it changes what a component does without saying so. For a typo or wording pass, say the diff is low-risk and do the inline pass.
 
-The four domain conditions:
+## 4. Judge the findings yourself
 
-- **Security — dispatch when:** the diff **moves or weakens a trust boundary** — untrusted input reaching a sink, a control that protects a boundary being added/changed/removed, or a secret crossing one. *That sentence is the test.* The list below is examples that speed up the common case; it is **never the whole test**, because an enumeration of attack surfaces is never finished and treating a closed list as the test turns every unlisted class into a silent skip. **A change that fits the principle but matches no example still dispatches.** Examples: auth or authorization, including a route or render guard enforced only on the client; an API, route, or endpoint handler; SQL or any constructed query, command, or path; deserialization or dynamic evaluation of untrusted data; middleware; crypto, secret, token, or credential handling; payments; env vars or config that gates runtime behavior or names an outbound destination; session, header, CORS, `postMessage`, or frame-isolation handling; file I/O, uploads, or downloads; subprocess or shell invocation; outbound requests to user-influenced destinations; dependency manifests, lockfiles, or a newly included third-party script or asset; untrusted input interpolated into HTML, a URL, a navigation target, or a log line (`dangerouslySetInnerHTML`, `innerHTML`, an `href`/`src` built from input, a redirect); a regex applied to user input; a recursive merge or dynamic property assignment from user-controlled data; or model/tool output reaching an executable sink. **This condition is the canonical security-surface test** — `/sonu:ship`'s effort-mode table cites it rather than keeping a second copy, so the two gates can never disagree about the same diff.
-- **Data integrity — dispatch when:** the diff touches migrations, schema, serialization or deserialization, backfills, bulk or destructive writes, or **persisted state that other code or a later release reads back** — not scratch state written and read entirely inside the diff.
-- **Blast radius — dispatch when:** the diff changes something **read or addressed by code outside the diff** — a return shape or type, response body, serialized payload, DB column, log or telemetry field, event or queue message, config key or env var, parsed CLI/stdout output, or a published identifier (route, tool name, command, exported symbol) **that has consumers outside this change**. Skip purely internal changes and strictly additive optional fields; a newly-added export nothing calls yet is not a contract change. This is the same test [[blast-radius]] itself states — which this skill previously did not honour.
-- **Interface — dispatch when:** the diff touches user-facing interface files — components, screens, templates, stylesheets, or interface copy. Judge from the diff's file list.
+The reader gathers evidence. Every accept or reject happens in this session.
 
-**You may leave a domain lens out only when you can state, in one sentence, the specific reason its domain is absent** — "nothing here touches persisted state," not "probably fine." If you cannot write that sentence, carry it — it costs a paragraph. Do not treat "unsure" as a feeling to introspect on: it is simply the absence of an articulable reason. This is step 4's default-reject bar pointed the other way.
+- A finding survives only if it cites a concrete `file:line` and you can state how it goes wrong. Style and preference findings are rejected.
+- A finding about code outside the diff survives only if you can name the changed line that enabled it: a guard removed, a caller added, an argument now passed through.
+- Close every `Unverified:` line yourself before writing the list, by reading the file or stating why the question does not arise.
+- Two checklists flagging the same place become one entry, ranked higher. The same mistake in several places is one theme with several locations.
+- Rank by leverage, structural problems first, and keep the top three to five.
+- A `Withheld:` line means the reader found more than it reported; read that area yourself.
+- If two passes produced substantive findings and you accepted none, say so in the hand-off, because that pattern usually means you are defending your own work.
+- If nothing survives, say the diff is low-risk and why. Do not promote rejected findings to fill the list.
 
-Rules the templates encode, which hold even if you compose the prompt yourself:
+## 5. Write the list
 
-- **The reader gets the diff command and the repo — never this conversation.** Independence is the entire value; a reader that knows the author's intent inherits the author's blind spots.
-- **The reader prompt is self-contained.** Criteria live in the checklist blocks. Never tell a subagent to `Skill(…)` load domain skills or to read files from the plugin install — the shared frame only gives the customer repo root, and many harnesses give subagents no Skill tool. The interface block inlines its six-domain checklist for that reason; it does not orchestrate [[interface-review]].
-- **The reader reports findings as `Risk (<tag>): <what> — <why> [file:line]` lines with a confidence tag** — the tag names the checklist that caught it and is one of exactly seven: `SECURITY`, `DATA INTEGRITY`, `CONSUMERS`, `INTERFACE`, `CODE/correctness`, `CODE/tests`, `CODE/silent-change` — and must reply "Nothing in my lens." rather than invent a finding to seem useful.
-- **The reader reads on a budget and reports under a cap** — both live in the shared frame: bounded reads of a flagged hunk's enclosing block or its one-hop callee, no whole tracked files (untracked files *are* the diff and are read in full), and repo search only in the two places the frame allows — the consumers checklist hunting consumers, the tests checklist looking up a changed function's tests — each capped; at most five findings **per checklist carried**, high or medium confidence only, then one `Withheld (<tag>): N more.` line per checklist that hit the cap. A reader that reads whole files or emits a page of findings is spending the tokens this gate exists to save — and a withheld line is a signal to look at that checklist's domain yourself, never a reason to re-dispatch.
-- **Readers are read-only** — no edits, no writes, no state-changing commands.
-- **Reader model — set explicitly on the Agent call, every time**, to the cheapest trustworthy executor tier below this session. The mechanic and its why live in [[model-tiering]] Section 5; the literal call shape lives in `references/lenses.md`'s dispatch mechanics. Dispatching a read-only reader is not the delegation that skill's Section 4 forbids — the reader gathers evidence; every accept/reject decision stays in this session.
+One line per item, with `file:line` where it helps:
 
-**4. Synthesize in-session — never delegated.**
-
-The reader reports; this session judges. That split is load-bearing: reviewing gathered evidence is exactly the judgment [[model-tiering]] keeps in the session.
-
-- **Off-diff findings carry a stricter bar.** A finding whose cited `file:line` is inside the diff needs only the default-reject test below. A finding the reader reached by its one hop — a sink in a helper, a consumer found by grep — survives only if you can name the specific changed line that *enabled* it: a guard this diff removed, a caller it added, an argument it now feeds through. If you cannot name that line, the finding describes code this change did not touch, and it dies here; drop it also when an in-diff finding already covers the same sink. This is deliberately not `/sonu:ship`'s stale-by-path rule, which is about a reviewer's claim on an open PR; this is about the reader's own reach, where unchanged context is the largest source of findings that cost a rejection and buy nothing.
-- **Every `Unverified:` line is yours to close before the list is written.** The reader emits one when a question could not be settled inside its budget; you hold the plan, the build summary, and this conversation, so answer it here — read the one file, or state in one sentence why the question does not arise. An `Unverified:` line that reaches the output unanswered is a gap wearing a label, and it is the one reader output that may never be passed through.
-- **Default-reject.** A finding survives only if it cites a concrete `file:line` and you can articulate the mechanism by which it goes wrong. Pure style, preference, or "could be cleaner" findings are rejected — that is nit-churn, not risk. When you cannot verify a finding against the actual diff, it dies.
-- **Dedup with a bump.** Two or more checklists flagging the same file+issue collapse to one entry — and a co-flag is itself a signal (two different failure mechanisms point at the same line), so the merged entry ranks higher.
-- **Cross-cut.** The same mistake appearing in N places is one theme with N locations, not N findings.
-- Rank what survives and keep the top 3–5 — **by leverage, structural problems first**: one structural risk above ten nits is the correct order, because if there is one structural problem and ten nits, the structural problem *is* the review.
-- **Watch for doubt theater.** Across two or more passes where the reader surfaced substantive findings, zero findings accepted as real means you are validating your own work, not reviewing it — stop and say so in the hand-off instead of emitting a clean-looking list.
-- If nothing survives, the diff is low-risk — say so plainly ("This diff is low-risk: X, Y, Z") rather than promoting rejected findings to fill a quota.
-
-**5. Write the list.**
-
-For each item: one line on *what* it is and *why* it's risky. Add `file:line` when it helps a reviewer jump straight there. Keep it scannable — no paragraphs.
-
-Format:
 ```
 Risk: <what> — <why it's risky> [file:line]
 ```
 
-**On the cold-read path, end with a dispatch line naming what every gated domain lens did** (a lens here is a checklist the reader carried), followed by the reader count and tier — and, on the prose path only, a second `Code checklists:` line saying which of the three were carried and why the rest were dropped. Give either the clause that matched (so the checklist was carried) or state that none did, e.g. `Domain lenses: interface (stylesheets + components) · security, data-integrity, blast-radius — no clause matched. Readers: 1 (sonnet)`. The `Domain lenses:` prefix and its per-domain shape are read by `/sonu:ship` to set its security verdict — keep them exactly. Report both directions, not just the skips: an over-firing gate quietly eats the reader's attention, an under-firing one quietly eats a finding, and a guard that only makes skips visible catches only the second. A skip nobody can see is indistinguishable from a coverage gap.
+When a reader ran, end with a line naming what each domain checklist did, giving the clause that matched or saying none did, then the reader count:
 
-Worked examples — inline, cold-read synthesis, and the low-risk case — live in `references/examples.md`; read it when unsure what good output looks like.
+```
+Domain lenses: interface (stylesheets + components) · security, data-integrity, blast-radius — no clause matched. Readers: 1
+```
 
-**6. Explicitly state what this is NOT.**
+`/sonu:ship` reads the `Domain lenses:` prefix and its per-domain shape to set its security verdict, so keep them exactly. On a prose-only diff add a `Code checklists:` line saying which were carried. A reader that failed or returned nothing usable is reported as a risk entry naming the checklists it carried as unread, not as a clean pass.
 
-End the list with a single line:
+## 6. Say what this is not
+
+End with:
+
 > *This is a pointer for your review, not an approval. Read the diff yourself.*
-
-## Self-check before you call it done
-
-- Did you actually read the diff, or are you working from memory? Did it include untracked files and, for a branch review, every commit since the merge base?
-- Was the size gate computed **before** any dispatch, on production code lines with docs and test paths excluded — and did an uncomputable count fail open to the cold read, not closed to the cheap path?
-- On the cold-read path: one reader (two only above the split, never more), each Agent call carrying an explicit `model` at the cheaper tier, no conversation context in the prompt — and did synthesis — every accept/reject — happen in this session, not in a subagent?
-- Did the output name, for every gated lens — the four domain lenses always, the code checklists too when the prose path gated them — the clause that matched or that none did, plus the `Readers:` count, so both an over-firing and an under-firing gate are visible?
-- Did the reader's reply stay within the per-checklist cap — and did a `Withheld:` line make you read that checklist's domain yourself rather than re-dispatch?
-- Is every surviving risk concrete — a specific `file:line` and an articulable failure mechanism — not a vague "this could be better"?
-- Did rejected findings stay rejected? A list padded with nit-churn to reach five items is a worse pointer than a list of two real risks.
-- Did you avoid inventing risks just to fill the list? If it's low-risk, say so.
-- Did you end with the explicit non-approval line?
-- Is the list scannable in under 30 seconds?
 
 ## Reference files
 
 | File | What it answers |
 |---|---|
-| `references/lenses.md` | The checklist blocks the reader prompt is composed from — the code block with its three checklists and the four domain blocks — plus the shared frame's read budget and per-checklist output cap, and the dispatch mechanics (prompt order, the one-or-two-reader rule, the mandatory `model` argument) — read when dispatching the step-3b cold read. The conditions themselves live in step 3b, not here. |
-| `references/examples.md` | Worked output examples (inline pass, cold-read synthesis, low-risk case) — read when unsure of the output shape. |
+| `references/lenses.md` | The reader prompt: shared frame, prose frame, code checklists and the four domain checklists |
+| `references/examples.md` | Example outputs for the inline pass, the reader path, a low-risk diff and a failed reader |
